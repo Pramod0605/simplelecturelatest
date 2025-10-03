@@ -1,0 +1,127 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+// Query key factory for better cache management
+export const courseKeys = {
+  all: ["courses"] as const,
+  lists: () => [...courseKeys.all, "list"] as const,
+  list: (filters: string) => [...courseKeys.lists(), { filters }] as const,
+  details: () => [...courseKeys.all, "detail"] as const,
+  detail: (id: string) => [...courseKeys.details(), id] as const,
+};
+
+export const useCourses = (programId?: string) => {
+  return useQuery({
+    queryKey: programId ? courseKeys.list(programId) : courseKeys.lists(),
+    queryFn: async () => {
+      let query = supabase
+        .from("courses")
+        .select(`
+          *,
+          program:programs(
+            id,
+            name,
+            category
+          )
+        `)
+        .eq("is_active", true)
+        .order("sequence_order");
+
+      if (programId) {
+        query = query.eq("program_id", programId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+  });
+};
+
+export const useCourse = (courseId: string) => {
+  return useQuery({
+    queryKey: courseKeys.detail(courseId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select(`
+          *,
+          program:programs(*),
+          chapters(
+            *,
+            topics(*)
+          )
+        `)
+        .eq("id", courseId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!courseId,
+    staleTime: 1000 * 60 * 15, // Cache for 15 minutes
+  });
+};
+
+export const useEnrollment = (studentId: string, courseId: string) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: enrollment, isLoading } = useQuery({
+    queryKey: ["enrollment", studentId, courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select("*")
+        .eq("student_id", studentId)
+        .eq("course_id", courseId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!studentId && !!courseId,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
+  const enroll = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase
+        .from("enrollments")
+        .insert({
+          student_id: studentId,
+          course_id: courseId,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["enrollment", studentId, courseId] });
+      toast({
+        title: "Enrolled Successfully",
+        description: "You have been enrolled in the course.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Enrollment Failed",
+        description: error.message || "Failed to enroll in course.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return {
+    enrollment,
+    isLoading,
+    enroll: enroll.mutate,
+    isEnrolling: enroll.isPending,
+  };
+};

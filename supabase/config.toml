@@ -1,1 +1,10 @@
 project_id = "oxwhqvsoelqqsblmqkxx"
+
+[functions.ai-doubt-clear]
+verify_jwt = true
+
+[functions.ai-generate-mcqs]
+verify_jwt = true
+
+[functions.ai-tutor-chat]
+verify_jwt = true
