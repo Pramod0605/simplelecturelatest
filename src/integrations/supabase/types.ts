@@ -14,16 +14,641 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chapters: {
+        Row: {
+          chapter_number: number
+          course_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          pdf_url: string | null
+          sequence_order: number | null
+          subject: string
+          title: string
+          unlock_threshold: number | null
+        }
+        Insert: {
+          chapter_number: number
+          course_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          pdf_url?: string | null
+          sequence_order?: number | null
+          subject: string
+          title: string
+          unlock_threshold?: number | null
+        }
+        Update: {
+          chapter_number?: number
+          course_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          pdf_url?: string | null
+          sequence_order?: number | null
+          subject?: string
+          title?: string
+          unlock_threshold?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          program_id: string
+          sequence_order: number | null
+          slug: string
+          subjects: Json | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          program_id: string
+          sequence_order?: number | null
+          slug: string
+          subjects?: Json | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          program_id?: string
+          sequence_order?: number | null
+          slug?: string
+          subjects?: Json | null
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doubt_logs: {
+        Row: {
+          answer: string | null
+          context_used: string | null
+          created_at: string | null
+          id: string
+          model_used: string | null
+          question: string
+          response_time_ms: number | null
+          student_id: string
+          topic_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          context_used?: string | null
+          created_at?: string | null
+          id?: string
+          model_used?: string | null
+          question: string
+          response_time_ms?: number | null
+          student_id: string
+          topic_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          context_used?: string | null
+          created_at?: string | null
+          id?: string
+          model_used?: string | null
+          question?: string
+          response_time_ms?: number | null
+          student_id?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doubt_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doubt_logs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollments: {
+        Row: {
+          course_id: string
+          enrolled_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          student_id: string
+        }
+        Insert: {
+          course_id: string
+          enrolled_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          student_id: string
+        }
+        Update: {
+          course_id?: string
+          enrolled_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          full_name: string | null
+          id: string
+          phone_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          full_name?: string | null
+          id: string
+          phone_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          full_name?: string | null
+          id?: string
+          phone_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      programs: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          duration_months: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_inr: number | null
+          slug: string
+          sub_category: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_inr?: number | null
+          slug: string
+          sub_category?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_inr?: number | null
+          slug?: string
+          sub_category?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: string
+          created_at: string | null
+          difficulty: string | null
+          explanation: string | null
+          id: string
+          marks: number | null
+          options: Json | null
+          question_text: string
+          question_type: string
+          topic_id: string | null
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string | null
+          difficulty?: string | null
+          explanation?: string | null
+          id?: string
+          marks?: number | null
+          options?: Json | null
+          question_text: string
+          question_type: string
+          topic_id?: string | null
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string | null
+          difficulty?: string | null
+          explanation?: string | null
+          id?: string
+          marks?: number | null
+          options?: Json | null
+          question_text?: string
+          question_type?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_progress: {
+        Row: {
+          chapter_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean | null
+          is_unlocked: boolean | null
+          score: number | null
+          student_id: string
+          time_spent_seconds: number | null
+          topic_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id?: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_progress_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_progress_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_progress_2025: {
+        Row: {
+          chapter_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean | null
+          is_unlocked: boolean | null
+          score: number | null
+          student_id: string
+          time_spent_seconds: number | null
+          topic_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id?: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      student_progress_2026: {
+        Row: {
+          chapter_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean | null
+          is_unlocked: boolean | null
+          score: number | null
+          student_id: string
+          time_spent_seconds: number | null
+          topic_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          is_unlocked?: boolean | null
+          score?: number | null
+          student_id?: string
+          time_spent_seconds?: number | null
+          topic_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      test_submissions: {
+        Row: {
+          answers: Json
+          chapter_id: string | null
+          id: string
+          score: number | null
+          student_id: string
+          submitted_at: string | null
+          time_taken_seconds: number | null
+          topic_id: string | null
+          total_marks: number | null
+        }
+        Insert: {
+          answers: Json
+          chapter_id?: string | null
+          id?: string
+          score?: number | null
+          student_id: string
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+          topic_id?: string | null
+          total_marks?: number | null
+        }
+        Update: {
+          answers?: Json
+          chapter_id?: string | null
+          id?: string
+          score?: number | null
+          student_id?: string
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+          topic_id?: string | null
+          total_marks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_submissions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_submissions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topics: {
+        Row: {
+          ai_slides_url: string | null
+          chapter_id: string
+          content_markdown: string | null
+          content_url: string | null
+          created_at: string | null
+          estimated_duration_minutes: number | null
+          id: string
+          sequence_order: number | null
+          title: string
+          topic_number: number
+          video_url: string | null
+        }
+        Insert: {
+          ai_slides_url?: string | null
+          chapter_id: string
+          content_markdown?: string | null
+          content_url?: string | null
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title: string
+          topic_number: number
+          video_url?: string | null
+        }
+        Update: {
+          ai_slides_url?: string | null
+          chapter_id?: string
+          content_markdown?: string | null
+          content_url?: string | null
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title?: string
+          topic_number?: number
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      student_analytics: {
+        Row: {
+          avg_score: number | null
+          chapters_completed: number | null
+          course_id: string | null
+          last_activity: string | null
+          student_id: string | null
+          tests_taken: number | null
+          topics_completed: number | null
+          total_time_spent: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      refresh_student_analytics: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "teacher" | "student" | "parent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +775,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "teacher", "student", "parent"],
+    },
   },
 } as const
