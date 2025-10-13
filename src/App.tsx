@@ -8,6 +8,10 @@ import { queryClient } from "@/lib/queryClient";
 import Index from "./pages/Index";
 import Programs from "./pages/Programs";
 import NotFound from "./pages/NotFound";
+import SignUp from "./pages/SignUp";
+import Login from "./pages/Login";
+import MobileHome from "./pages/MobileHome";
+import Implementation from "./pages/Implementation";
 
 const App = () => (
   <HelmetProvider>
@@ -19,6 +23,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/programs" element={<Programs />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/mobile-home" element={<MobileHome />} />
+            <Route path="/implementation" element={<Implementation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
