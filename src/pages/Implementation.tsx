@@ -284,7 +284,7 @@ if (error) return <ErrorState onRetry={refetch} />;`}</code></pre>
 const { data } = await supabase
   .from('programs')
   .select('*')
-  .ilike('title', \\\`%\\\${query}%\\\`)
+  .ilike('title', '%' + query + '%')
   .order('created_at', { ascending: false });
 
 // Add debouncing (300ms)
@@ -301,10 +301,7 @@ localStorage.setItem('recentSearches', JSON.stringify(searches));`}</code></pre>
                         <pre className="text-xs"><code>{`// Fetch user enrollments
 const { data: enrollments } = await supabase
   .from('enrollments')
-  .select(\\`
-    *,
-    programs (*)
-  \\\`)
+  .select('*, programs (*)')
   .eq('user_id', user.id);
 
 // Fetch user progress
