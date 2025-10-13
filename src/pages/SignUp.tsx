@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { SEOHead } from "@/components/SEO";
-import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Sparkles, Users, Award, Zap, Shield, Smartphone } from "lucide-react";
+import logo from "@/assets/simplelecture-logo.jpg";
 
 const benefits = [
   { icon: Sparkles, title: "AI-Powered Tutors", description: "Get instant doubt clearing 24/7" },
@@ -58,7 +58,15 @@ const SignUp = () => {
         keywords="sign up, register, online courses India, AI learning platform, SimpleLecture registration"
         canonicalUrl="https://simplelecture.com/signup"
       />
-      <Header />
+      
+      {/* Header with Logo */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-b">
+        <div className="container mx-auto px-4 py-4">
+          <Link to="/">
+            <img src={logo} alt="SimpleLecture" className="h-12" />
+          </Link>
+        </div>
+      </div>
       
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background pt-20">
         <div className="container mx-auto px-4 py-12">

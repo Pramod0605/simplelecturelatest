@@ -6,8 +6,9 @@ import { CourseCard } from "@/components/mobile/CourseCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Gift, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Search, Bell, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { mockPromos } from "@/data/mockPromos";
+import heroImage from "@/assets/hero-students.jpg";
 
 const filterTabs = ["All", "Paper-1", "Commerce", "Science", "Arts", "Technology"];
 
@@ -67,10 +68,10 @@ const MobileHome = () => {
               UGC NET 📚
             </Badge>
             
-            <div className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold">XP: 0</span>
-            </div>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            </Button>
           </div>
         </div>
 
@@ -91,21 +92,25 @@ const MobileHome = () => {
           </div>
         </div>
 
-        {/* Hero Carousel */}
+        {/* Hero Carousel - Synced with Desktop */}
         <div className="relative px-4 mb-6">
-          <div className="relative h-48 rounded-lg overflow-hidden bg-gradient-to-r from-primary to-secondary">
+          <div className="relative h-64 rounded-lg overflow-hidden shadow-lg">
+            {/* Background Image */}
+            <div className="absolute inset-0">
+              <img src={heroImage} alt="Students learning" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/80" />
+            </div>
+            
+            {/* Content */}
             <div className="absolute inset-0 flex items-center justify-center text-center p-6">
               <div className="text-white">
-                <h2 className="text-2xl font-bold mb-2">
+                <h2 className="text-xl font-bold mb-3 leading-tight">
                   {mockPromos[currentSlide].title}
                 </h2>
-                <p className="text-sm mb-4 opacity-90">
+                <p className="text-sm mb-4 opacity-90 max-w-xs mx-auto">
                   {mockPromos[currentSlide].description}
                 </p>
-                <p className="text-3xl font-bold mb-4">
-                  Starting At Just ₹{mockPromos[currentSlide].price}/-
-                </p>
-                <Button variant="secondary" size="lg">
+                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-white/90">
                   {mockPromos[currentSlide].cta}
                 </Button>
               </div>

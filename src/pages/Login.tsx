@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { SEOHead } from "@/components/SEO";
-import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Eye, EyeOff } from "lucide-react";
+import logo from "@/assets/simplelecture-logo.jpg";
 
 const promos = [
   "Welcome back! Continue your learning journey",
@@ -46,7 +46,15 @@ const Login = () => {
         keywords="login, sign in, online learning, SimpleLecture login"
         canonicalUrl="https://simplelecture.com/login"
       />
-      <Header />
+      
+      {/* Header with Logo */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-b">
+        <div className="container mx-auto px-4 py-4">
+          <Link to="/">
+            <img src={logo} alt="SimpleLecture" className="h-12" />
+          </Link>
+        </div>
+      </div>
       
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background pt-20">
         <div className="container mx-auto px-4 py-12">
