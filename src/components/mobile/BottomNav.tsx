@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, BookOpen, Trophy, User, Compass } from "lucide-react";
+import { BookOpen, User, Compass, LayoutDashboard, ClipboardCheck } from "lucide-react";
 
 const navItems = [
-  { icon: Compass, label: "Explore", path: "/explore" },
-  { icon: Search, label: "Search", path: "/search" },
-  { icon: BookOpen, label: "My Learning", path: "/my-learning" },
-  { icon: Trophy, label: "IRE", path: "/ire" },
-  { icon: User, label: "Profile", path: "/profile" },
+  { icon: Compass, label: "Explore", path: "/mobile/explore" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/mobile/dashboard" },
+  { icon: BookOpen, label: "My Learning", path: "/mobile/my-learning" },
+  { icon: ClipboardCheck, label: "Assignments", path: "/mobile/my-assignments" },
+  { icon: User, label: "Profile", path: "/mobile/profile" },
 ];
 
 export const BottomNav = () => {

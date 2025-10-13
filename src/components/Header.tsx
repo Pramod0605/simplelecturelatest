@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { BookOpen, Menu, Search, Grid3x3, ChevronDown } from "lucide-react";
+import { Menu, Search, ChevronDown, Bell } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -8,8 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { MegaMenu } from "@/components/MegaMenu";
+import logo from "@/assets/simplelecture-logo.jpg";
 
 const categories = [
   "Generative AI",
@@ -71,22 +71,13 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold">SimpleLecture</span>
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="SimpleLecture" className="h-10 object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-3 flex-1 max-w-4xl">
-            {/* All Courses Link */}
-            <Link to="/programs">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2">
-                <Grid3x3 className="w-4 h-4" />
-                All Courses
-              </Button>
-            </Link>
+            <MegaMenu />
 
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
@@ -100,6 +91,9 @@ export const Header = () => {
 
           {/* Desktop Right Menu */}
           <nav className="hidden lg:flex items-center gap-4">
+            <Button variant="ghost" size="icon">
+              <Bell className="h-5 w-5" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-1">
@@ -113,9 +107,14 @@ export const Header = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-              Login
-            </Button>
+            <Link to="/login">
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                Login
+              </Button>
+            </Link>
+            <Link to="/signup">
+              <Button>Sign Up</Button>
+            </Link>
           </nav>
 
           {/* Mobile Menu Button */}
