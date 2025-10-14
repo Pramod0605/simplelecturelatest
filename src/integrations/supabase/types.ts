@@ -14,6 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_submissions: {
+        Row: {
+          answers: Json
+          assignment_id: string | null
+          feedback: string | null
+          graded_at: string | null
+          id: string
+          percentage: number | null
+          score: number | null
+          student_id: string | null
+          submitted_at: string | null
+          time_taken_seconds: number | null
+        }
+        Insert: {
+          answers: Json
+          assignment_id?: string | null
+          feedback?: string | null
+          graded_at?: string | null
+          id?: string
+          percentage?: number | null
+          score?: number | null
+          student_id?: string | null
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+        }
+        Update: {
+          answers?: Json
+          assignment_id?: string | null
+          feedback?: string | null
+          graded_at?: string | null
+          id?: string
+          percentage?: number | null
+          score?: number | null
+          student_id?: string | null
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          course_id: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean | null
+          passing_marks: number | null
+          questions: Json
+          title: string
+          total_marks: number | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          passing_marks?: number | null
+          questions: Json
+          title: string
+          total_marks?: number | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          passing_marks?: number | null
+          questions?: Json
+          title?: string
+          total_marks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_items: {
+        Row: {
+          added_at: string | null
+          id: string
+          program_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          added_at?: string | null
+          id?: string
+          program_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          added_at?: string | null
+          id?: string
+          program_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapters: {
         Row: {
           chapter_number: number
@@ -108,6 +234,48 @@ export type Database = {
           },
         ]
       }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          times_used: number | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          times_used?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          times_used?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       doubt_logs: {
         Row: {
           answer: string | null
@@ -159,6 +327,42 @@ export type Database = {
           },
         ]
       }
+      dpt_submissions: {
+        Row: {
+          answers: Json
+          id: string
+          questions: Json
+          score: number | null
+          student_id: string | null
+          submitted_at: string | null
+          test_date: string | null
+          time_taken_seconds: number | null
+          total_questions: number | null
+        }
+        Insert: {
+          answers: Json
+          id?: string
+          questions: Json
+          score?: number | null
+          student_id?: string | null
+          submitted_at?: string | null
+          test_date?: string | null
+          time_taken_seconds?: number | null
+          total_questions?: number | null
+        }
+        Update: {
+          answers?: Json
+          id?: string
+          questions?: Json
+          score?: number | null
+          student_id?: string | null
+          submitted_at?: string | null
+          test_date?: string | null
+          time_taken_seconds?: number | null
+          total_questions?: number | null
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           course_id: string
@@ -201,6 +405,105 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          payment_id: string | null
+          price_inr: number
+          program_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          price_inr: number
+          program_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          payment_id?: string | null
+          price_inr?: number
+          program_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_inr: number
+          completed_at: string | null
+          created_at: string | null
+          currency: string | null
+          discount_amount: number | null
+          error_message: string | null
+          final_amount: number
+          gateway_order_id: string | null
+          gateway_payment_id: string | null
+          id: string
+          metadata: Json | null
+          order_id: string
+          payment_gateway: string | null
+          payment_method: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_inr: number
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discount_amount?: number | null
+          error_message?: string | null
+          final_amount: number
+          gateway_order_id?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          payment_gateway?: string | null
+          payment_method?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_inr?: number
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discount_amount?: number | null
+          error_message?: string | null
+          final_amount?: number
+          gateway_order_id?: string | null
+          gateway_payment_id?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          payment_gateway?: string | null
+          payment_method?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -237,7 +540,10 @@ export type Database = {
           created_at: string | null
           description: string | null
           duration_months: number | null
+          features: Json | null
           id: string
+          instructor_bio: string | null
+          instructor_name: string | null
           is_active: boolean | null
           name: string
           price_inr: number | null
@@ -245,13 +551,17 @@ export type Database = {
           sub_category: string | null
           thumbnail_url: string | null
           updated_at: string | null
+          what_you_learn: string[] | null
         }
         Insert: {
           category?: string | null
           created_at?: string | null
           description?: string | null
           duration_months?: number | null
+          features?: Json | null
           id?: string
+          instructor_bio?: string | null
+          instructor_name?: string | null
           is_active?: boolean | null
           name: string
           price_inr?: number | null
@@ -259,13 +569,17 @@ export type Database = {
           sub_category?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
+          what_you_learn?: string[] | null
         }
         Update: {
           category?: string | null
           created_at?: string | null
           description?: string | null
           duration_months?: number | null
+          features?: Json | null
           id?: string
+          instructor_bio?: string | null
+          instructor_name?: string | null
           is_active?: boolean | null
           name?: string
           price_inr?: number | null
@@ -273,6 +587,7 @@ export type Database = {
           sub_category?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
+          what_you_learn?: string[] | null
         }
         Relationships: []
       }
@@ -319,6 +634,56 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          course_id: string | null
+          id: string
+          percentage: number | null
+          questions: Json
+          quiz_title: string
+          score: number | null
+          student_id: string | null
+          time_taken_seconds: number | null
+          total_questions: number | null
+        }
+        Insert: {
+          answers: Json
+          completed_at?: string | null
+          course_id?: string | null
+          id?: string
+          percentage?: number | null
+          questions: Json
+          quiz_title: string
+          score?: number | null
+          student_id?: string | null
+          time_taken_seconds?: number | null
+          total_questions?: number | null
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          course_id?: string | null
+          id?: string
+          percentage?: number | null
+          questions?: Json
+          quiz_title?: string
+          score?: number | null
+          student_id?: string | null
+          time_taken_seconds?: number | null
+          total_questions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]

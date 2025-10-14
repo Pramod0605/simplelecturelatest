@@ -1,107 +1,149 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { SEOHead } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, LogOut } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { BookOpen, TrendingUp, Clock, Award, ArrowRight, Play } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SEOHead } from '@/components/SEO';
+import { supabase } from '@/integrations/supabase/client';
+import { useEnrollments } from '@/hooks/useEnrollments';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: enrollments, isLoading } = useEnrollments();
 
   useEffect(() => {
-    // Check authentication
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser(session.user);
-      } else {
-        navigate("/auth");
-      }
-      setLoading(false);
-    });
+    checkAuth();
+  }, []);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setUser(session.user);
-      } else {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast({
-        title: "Logged out successfully",
-        description: "Come back soon!",
-      });
-      navigate("/");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   return (
     <>
-      <SEOHead
-        title="Dashboard | SimpleLecture"
-        description="Your learning dashboard"
-      />
-      
+      <SEOHead title="My Dashboard | SimpleLecture" description="Your learning dashboard" />
       <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b bg-card">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold">SimpleLecture</h1>
-            </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold">My Dashboard</h1>
+            <Button variant="outline" onClick={handleLogout}>Logout</Button>
           </div>
-        </div>
+        </header>
 
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-12">
-          <Card>
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl font-bold mb-4">
-                Welcome, {user?.user_metadata?.full_name || user?.email}! 🎉
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Your dashboard is under construction. Full features coming in Phase 5!
-              </p>
-              <div className="space-y-4 max-w-md mx-auto">
-                <p className="text-sm text-muted-foreground">
-                  ✅ Phase 1: Authentication System - <span className="font-bold text-green-600">Complete</span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  🚧 Phase 2-11: Coming soon...
-                </p>
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2">Welcome back!</h2>
+            <p className="text-muted-foreground">Continue your learning journey</p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-4 mb-8">
+            <Card className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <BookOpen className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Enrolled</p>
+                  <p className="text-2xl font-bold">{enrollments?.length || 0}</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Clock className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Hours Studied</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-yellow-100 rounded-lg">
+                  <Award className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Certificates</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="courses" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="courses">My Courses</TabsTrigger>
+              <TabsTrigger value="explore">Explore</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="courses" className="space-y-6">
+              {isLoading ? (
+                <p>Loading courses...</p>
+              ) : enrollments && enrollments.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {enrollments.map((enrollment: any) => (
+                    <Card key={enrollment.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="aspect-video bg-muted flex items-center justify-center">
+                        <Play className="h-12 w-12 text-primary" />
+                      </div>
+                      <div className="p-6">
+                        <h3 className="font-bold text-lg mb-2">{enrollment.courses?.name}</h3>
+                        <div className="mb-4">
+                          <Progress value={0} className="h-2" />
+                        </div>
+                        <Button className="w-full">
+                          Continue Learning <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-12 text-center">
+                  <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-bold mb-2">No courses yet</h3>
+                  <p className="text-muted-foreground mb-6">Start your learning journey</p>
+                  <Link to="/programs">
+                    <Button size="lg">Explore Courses</Button>
+                  </Link>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="explore">
+              <Card className="p-12 text-center">
+                <Link to="/programs">
+                  <Button size="lg">Browse Programs</Button>
+                </Link>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>

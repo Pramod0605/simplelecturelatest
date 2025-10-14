@@ -20,6 +20,16 @@ import MobileExplore from "./pages/mobile/MobileExplore";
 import MobileProfile from "./pages/mobile/MobileProfile";
 import MobileMyLearning from "./pages/mobile/MobileMyLearning";
 import Implementation from "./pages/Implementation";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFailed from "./pages/PaymentFailed";
+import Learning from "./pages/Learning";
+import AITutorial from "./pages/AITutorial";
+import MobileCart from "./pages/mobile/MobileCart";
+import MobileCheckout from "./pages/mobile/MobileCheckout";
+import MobilePaymentSuccess from "./pages/mobile/MobilePaymentSuccess";
+import MobileAuth from "./pages/mobile/MobileAuth";
 
 const App = () => (
   <HelmetProvider>
@@ -34,16 +44,25 @@ const App = () => (
             <Route path="/programs/:programId" element={<ProgramDetail />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/mobile-home" element={<MobileHome />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-failed" element={<PaymentFailed />} />
+            <Route path="/learning/:courseId/:subjectId" element={<Learning />} />
+            <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
+            <Route path="/mobile" element={<MobileHome />} />
+            <Route path="/mobile/auth" element={<MobileAuth />} />
             <Route path="/mobile/programs" element={<MobilePrograms />} />
             <Route path="/mobile/programs/:programId" element={<MobileProgramDetail />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />
+            <Route path="/mobile/cart" element={<MobileCart />} />
+            <Route path="/mobile/checkout" element={<MobileCheckout />} />
+            <Route path="/mobile/payment-success" element={<MobilePaymentSuccess />} />
             <Route path="/mobile/my-assignments" element={<MobileMyAssignments />} />
             <Route path="/mobile/explore" element={<MobileExplore />} />
             <Route path="/mobile/profile" element={<MobileProfile />} />
             <Route path="/mobile/my-learning" element={<MobileMyLearning />} />
             <Route path="/implementation" element={<Implementation />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
