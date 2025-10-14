@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       assignment_submissions: {
         Row: {
           answers: Json
@@ -110,6 +137,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          current_students: number | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          max_students: number | null
+          name: string
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          current_students?: number | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_students?: number | null
+          name: string
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          current_students?: number | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_students?: number | null
+          name?: string
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
@@ -316,6 +390,120 @@ export type Database = {
             columns: ["scheduled_class_id"]
             isOneToOne: false
             referencedRelation: "scheduled_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_categories: {
+        Row: {
+          category_id: string
+          course_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          category_id: string
+          course_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          category_id?: string
+          course_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_categories_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_goals: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          goal_id: string
+          id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          goal_id: string
+          id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          goal_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_goals_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_goals_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "explore_by_goal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_instructors: {
+        Row: {
+          assigned_at: string | null
+          course_id: string
+          id: string
+          is_primary: boolean | null
+          role: string | null
+          teacher_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          course_id: string
+          id?: string
+          is_primary?: boolean | null
+          role?: string | null
+          teacher_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          course_id?: string
+          id?: string
+          is_primary?: boolean | null
+          role?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_instructors_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_instructors_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -852,6 +1040,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           price_inr: number | null
+          program_type: Database["public"]["Enums"]["program_type"] | null
           slug: string
           sub_category: string | null
           thumbnail_url: string | null
@@ -870,6 +1059,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           price_inr?: number | null
+          program_type?: Database["public"]["Enums"]["program_type"] | null
           slug: string
           sub_category?: string | null
           thumbnail_url?: string | null
@@ -888,11 +1078,51 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           price_inr?: number | null
+          program_type?: Database["public"]["Enums"]["program_type"] | null
           slug?: string
           sub_category?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
           what_you_learn?: string[] | null
+        }
+        Relationships: []
+      }
+      question_uploads: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_log: Json | null
+          failed_questions: number | null
+          file_name: string
+          id: string
+          processed_questions: number | null
+          status: string | null
+          total_questions: number
+          uploaded_by: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_log?: Json | null
+          failed_questions?: number | null
+          file_name: string
+          id?: string
+          processed_questions?: number | null
+          status?: string | null
+          total_questions: number
+          uploaded_by: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_log?: Json | null
+          failed_questions?: number | null
+          file_name?: string
+          id?: string
+          processed_questions?: number | null
+          status?: string | null
+          total_questions?: number
+          uploaded_by?: string
         }
         Relationships: []
       }
@@ -903,11 +1133,16 @@ export type Database = {
           difficulty: string | null
           explanation: string | null
           id: string
+          is_ai_generated: boolean | null
+          is_verified: boolean | null
           marks: number | null
           options: Json | null
+          question_format: string | null
           question_text: string
           question_type: string
+          subtopic_id: string | null
           topic_id: string | null
+          verified_by: string | null
         }
         Insert: {
           correct_answer: string
@@ -915,11 +1150,16 @@ export type Database = {
           difficulty?: string | null
           explanation?: string | null
           id?: string
+          is_ai_generated?: boolean | null
+          is_verified?: boolean | null
           marks?: number | null
           options?: Json | null
+          question_format?: string | null
           question_text: string
           question_type: string
+          subtopic_id?: string | null
           topic_id?: string | null
+          verified_by?: string | null
         }
         Update: {
           correct_answer?: string
@@ -927,13 +1167,25 @@ export type Database = {
           difficulty?: string | null
           explanation?: string | null
           id?: string
+          is_ai_generated?: boolean | null
+          is_verified?: boolean | null
           marks?: number | null
           options?: Json | null
+          question_format?: string | null
           question_text?: string
           question_type?: string
+          subtopic_id?: string | null
           topic_id?: string | null
+          verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "questions_subtopic_id_fkey"
+            columns: ["subtopic_id"]
+            isOneToOne: false
+            referencedRelation: "subtopics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "questions_topic_id_fkey"
             columns: ["topic_id"]
@@ -1201,6 +1453,50 @@ export type Database = {
         }
         Relationships: []
       }
+      subtopics: {
+        Row: {
+          content_markdown: string | null
+          created_at: string | null
+          description: string | null
+          estimated_duration_minutes: number | null
+          id: string
+          sequence_order: number | null
+          title: string
+          topic_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content_markdown?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title: string
+          topic_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content_markdown?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title?: string
+          topic_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtopics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_profiles: {
         Row: {
           avatar_url: string | null
@@ -1418,6 +1714,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "teacher" | "student" | "parent"
+      program_type: "live" | "recorded_ai" | "recorded_video"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1546,6 +1843,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "student", "parent"],
+      program_type: ["live", "recorded_ai", "recorded_video"],
     },
   },
 } as const
