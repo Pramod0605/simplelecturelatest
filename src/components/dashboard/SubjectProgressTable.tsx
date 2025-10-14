@@ -12,6 +12,15 @@ export const SubjectProgressTable = () => {
     const names = (stats.courses || []).map((c: any) => c?.courses?.name).filter(Boolean);
     return ["All", ...Array.from(new Set(names))];
   }, [stats.courses]);
+
+  const subjects = useMemo(() => {
+    const entries = Object.entries(stats.subjectProgress);
+    if (selectedCourse === "All") return entries;
+    const selected = (stats.courses || []).find((c: any) => c?.courses?.name === selectedCourse);
+    const allowed = new Set<string>(((selected?.courses?.subjects as any[]) || []).map(String));
+    return entries.filter(([subject]) => allowed.has(subject));
+  }, [stats.subjectProgress, stats.courses, selectedCourse]);
+
   if (isLoading) {
     return (
       <Card>
@@ -28,14 +37,6 @@ export const SubjectProgressTable = () => {
       </Card>
     );
   }
-
-  const subjects = useMemo(() => {
-    const entries = Object.entries(stats.subjectProgress);
-    if (selectedCourse === "All") return entries;
-    const selected = (stats.courses || []).find((c: any) => c?.courses?.name === selectedCourse);
-    const allowed = new Set<string>(((selected?.courses?.subjects as any[]) || []).map(String));
-    return entries.filter(([subject]) => allowed.has(subject));
-  }, [stats.subjectProgress, stats.courses, selectedCourse]);
 
   return (
     <Card>
