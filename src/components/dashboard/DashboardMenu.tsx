@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const items = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
-  { label: "My Courses", icon: BookOpen, to: "/learning" },
+  { label: "My Courses", icon: BookOpen, to: "/my-courses" },
   { label: "Live Classes", icon: Video, to: "/live" },
   { label: "My Assignments", icon: FileText, to: "/assignments" },
   { label: "IRE", icon: Trophy, to: "/ire" },

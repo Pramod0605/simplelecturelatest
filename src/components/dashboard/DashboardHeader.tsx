@@ -1,15 +1,21 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Bell, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/website-logo.png";
 import { DashboardMenu } from "./DashboardMenu";
+import { NotificationModal } from "./NotificationModal";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotices } from "@/hooks/useNotices";
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const { unreadCount } = useNotices();
 
   const { data: profile } = useQuery({
     queryKey: ["dashboard-header-profile"],
@@ -41,9 +47,17 @@ export const DashboardHeader = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Notification before profile */}
-          <Button variant="ghost" size="icon" aria-label="Notifications">
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="relative" onClick={() => setNotificationOpen(true)}>
             <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {unreadCount}
+              </Badge>
+            )}
           </Button>
 
           {/* Profile */}
@@ -61,6 +75,9 @@ export const DashboardHeader = () => {
           <DashboardMenu />
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal open={notificationOpen} onOpenChange={setNotificationOpen} />
     </header>
   );
 };

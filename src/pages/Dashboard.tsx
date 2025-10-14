@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { SEOHead } from '@/components/SEO';
 import { supabase } from '@/integrations/supabase/client';
 import { StudentIDCard } from '@/components/dashboard/StudentIDCard';
-import { NoticeBoard } from '@/components/dashboard/NoticeBoard';
 import { SubjectProgressTable } from '@/components/dashboard/SubjectProgressTable';
 import { UpcomingClasses } from '@/components/dashboard/UpcomingClasses';
 import { AssignmentsList } from '@/components/dashboard/AssignmentsList';
-import { TeachersList } from '@/components/dashboard/TeachersList';
+import { InstructorsList } from '@/components/dashboard/InstructorsList';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Footer } from '@/components/Footer';
 
@@ -58,16 +57,13 @@ const Dashboard = () => {
               <AssignmentsList />
             </div>
 
-            {/* Column 4: Notice Board (narrow) */}
+            {/* Column 4: Instructors (narrow) */}
             <div className="lg:col-span-3">
-              <NoticeBoard />
+              <InstructorsList />
             </div>
           </div>
 
           {/* DPT section is now integrated into StudentIDCard */}
-
-          {/* Full-width Teachers Section */}
-          <TeachersList />
         </div>
         <Footer />
       </div>

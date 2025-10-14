@@ -1,22 +1,47 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Home, LayoutDashboard, BookOpen, Compass, Trophy, FileText, User, LogOut, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Menu, Home, LayoutDashboard, BookOpen, Video, FileText, Trophy, MessageSquare, HelpCircle, User, LogOut } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const menuItems = [
-  { icon: Home, label: "Home", path: "/", requiresAuth: false },
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", requiresAuth: true },
-  { icon: BookOpen, label: "My Programs", path: "/my-programs", requiresAuth: true },
-  { icon: Compass, label: "Browse Programs", path: "/programs", requiresAuth: false },
-  { icon: Trophy, label: "IRE", path: "/ire", requiresAuth: false },
-  { icon: FileText, label: "Assignments", path: "/assignments", requiresAuth: true },
-  { icon: User, label: "Profile", path: "/profile", requiresAuth: true },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/mobile/dashboard" },
+  { icon: BookOpen, label: "My Courses", path: "/mobile/my-courses" },
+  { icon: Video, label: "Live Classes", path: "/mobile/live" },
+  { icon: FileText, label: "My Assignments", path: "/mobile/my-assignments" },
+  { icon: Trophy, label: "IRE", path: "/mobile/ire" },
+  { icon: MessageSquare, label: "Forum", path: "/mobile/forum" },
+  { icon: HelpCircle, label: "Support", path: "/mobile/support" },
+  { icon: User, label: "Profile", path: "/mobile/profile" },
 ];
 
 export const HamburgerMenu = () => {
-  const isAuthenticated = false; // TODO: Connect to auth state
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const { data: profile } = useQuery({
+    queryKey: ["mobile-menu-profile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      return { ...data, email: user.email } as { full_name?: string | null; avatar_url?: string | null; email?: string | null };
+    },
+  });
+
+  const initials = (profile?.full_name || profile?.email || "U").slice(0, 2).toUpperCase();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/mobile");
+  };
 
   return (
     <Sheet>
@@ -28,58 +53,48 @@ export const HamburgerMenu = () => {
       <SheetContent side="left" className="w-[280px] sm:w-[320px]">
         <SheetHeader className="mb-6">
           <SheetTitle className="sr-only">Menu</SheetTitle>
+          {/* User Profile Section */}
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <>
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    JD
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold text-foreground">John Doe</p>
-                  <p className="text-sm text-muted-foreground">john@example.com</p>
-                </div>
-              </>
-            ) : (
-              <Link to="/signup" className="w-full">
-                <Button className="w-full">Login / Sign Up</Button>
-              </Link>
-            )}
+            <Avatar className="h-12 w-12">
+              {profile?.avatar_url && <AvatarImage src={profile.avatar_url} />}
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold text-foreground">{profile?.full_name || "Student"}</p>
+              <p className="text-sm text-muted-foreground">{profile?.email || "student@example.com"}</p>
+            </div>
           </div>
         </SheetHeader>
         
         <Separator className="my-4" />
         
         <nav className="flex flex-col gap-1">
-          {menuItems.map(({ icon: Icon, label, path, requiresAuth }) => (
-            <Link key={path} to={path}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 h-11"
-                disabled={requiresAuth && !isAuthenticated}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{label}</span>
-                {requiresAuth && !isAuthenticated && (
-                  <Lock className="h-4 w-4 ml-auto text-muted-foreground" />
-                )}
-              </Button>
-            </Link>
-          ))}
+          {menuItems.map(({ icon: Icon, label, path }) => {
+            const isActive = location.pathname === path;
+            return (
+              <Link key={path} to={path}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className="w-full justify-start gap-3 h-11"
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{label}</span>
+                </Button>
+              </Link>
+            );
+          })}
           
-          {isAuthenticated && (
-            <>
-              <Separator className="my-2" />
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 h-11 text-destructive hover:text-destructive"
-              >
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
-              </Button>
-            </>
-          )}
+          <Separator className="my-2" />
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-3 h-11 text-destructive border-destructive hover:text-destructive"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
+          </Button>
         </nav>
         
         <div className="absolute bottom-4 left-6 right-6">

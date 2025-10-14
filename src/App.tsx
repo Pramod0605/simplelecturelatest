@@ -19,12 +19,14 @@ import MobileMyAssignments from "./pages/mobile/MobileMyAssignments";
 import MobileExplore from "./pages/mobile/MobileExplore";
 import MobileProfile from "./pages/mobile/MobileProfile";
 import MobileMyLearning from "./pages/mobile/MobileMyLearning";
+import MobileMyCourses from "./pages/mobile/MobileMyCourses";
 import Implementation from "./pages/Implementation";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import Learning from "./pages/Learning";
+import MyCourses from "./pages/MyCourses";
 import AITutorial from "./pages/AITutorial";
 import MobileCart from "./pages/mobile/MobileCart";
 import MobileCheckout from "./pages/mobile/MobileCheckout";
@@ -44,6 +46,7 @@ const App = () => (
             <Route path="/programs/:programId" element={<ProgramDetail />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/my-courses" element={<MyCourses />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
@@ -62,6 +65,7 @@ const App = () => (
             <Route path="/mobile/explore" element={<MobileExplore />} />
             <Route path="/mobile/profile" element={<MobileProfile />} />
             <Route path="/mobile/my-learning" element={<MobileMyLearning />} />
+            <Route path="/mobile/my-courses" element={<MobileMyCourses />} />
             <Route path="/implementation" element={<Implementation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
