@@ -49,6 +49,8 @@ import InstructorsList from "./pages/admin/InstructorsList";
 import StaffList from "./pages/admin/StaffList";
 import Academics from "./pages/admin/Academics";
 import Settings from "./pages/admin/Settings";
+import BatchesList from "./pages/admin/BatchesList";
+import BatchForm from "./pages/admin/BatchForm";
 
 const App = () => (
   <HelmetProvider>
@@ -100,6 +102,9 @@ const App = () => (
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
                 <Route path="programs" element={<ProgramsList />} />
                 <Route path="courses" element={<CoursesList />} />
+                <Route path="batches" element={<BatchesList />} />
+                <Route path="batches/new" element={<BatchForm />} />
+                <Route path="batches/:id/edit" element={<BatchForm />} />
                 <Route path="users" element={<UsersList />} />
                 <Route path="parents" element={<ParentsList />} />
                 <Route path="instructors" element={<InstructorsList />} />
