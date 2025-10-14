@@ -1,10 +1,13 @@
 export type SubjectStats = { completed: number; total: number; percentage: number };
 
 export const mockSubjectProgress: Record<string, SubjectStats> = {
-  Physics: { completed: 8, total: 20, percentage: 40 },
-  Chemistry: { completed: 12, total: 20, percentage: 60 },
-  Mathematics: { completed: 16, total: 20, percentage: 80 },
-  Biology: { completed: 10, total: 20, percentage: 50 },
+  'Physics (101)': { completed: 8, total: 20, percentage: 40 },
+  'Chemistry (102)': { completed: 12, total: 20, percentage: 60 },
+  'Mathematics (110)': { completed: 16, total: 20, percentage: 80 },
+  'Biology (101)': { completed: 10, total: 20, percentage: 50 },
+  'English (210)': { completed: 14, total: 20, percentage: 70 },
+  'Hindi (230)': { completed: 6, total: 20, percentage: 30 },
+  'Computer (00220)': { completed: 18, total: 20, percentage: 90 },
 };
 
 export const mockCourses = [

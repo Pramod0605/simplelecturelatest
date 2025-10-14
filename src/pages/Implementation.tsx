@@ -339,18 +339,21 @@ const Implementation = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle>Prompt 15: Desktop Dashboard Redesign</CardTitle>
-                      <CardDescription>4-column layout with Student ID card</CardDescription>
+                      <CardDescription>Professional dashboard with notification modal and instructors</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
                         <p>Redesign /dashboard with:</p>
                         <ol className="list-decimal pl-5 space-y-1">
-                          <li>Full-width Student ID Card: Avatar (left), profile info (center), QR + Barcode (right)</li>
-                          <li>4-Column Grid: Subject Progress (narrow) | Upcoming Classes (medium) | Assignments (medium) | Notice Board (narrow)</li>
-                          <li>Full-width DPT Section: Streak, average score, weekly graph, Take DPT button</li>
-                          <li>Full-width Teachers Grid: Cards with avatar, name, subjects, contact info</li>
+                          <li><strong>Header:</strong> Bell icon for notifications modal (shows unread count badge)</li>
+                          <li><strong>Student ID Card:</strong> Full-width card with Avatar (left), profile info (center), QR + Barcode (right)</li>
+                          <li><strong>4-Column Grid:</strong> Subject Progress (narrow, with course filter dropdown) | Upcoming Classes (medium) | Assignments (medium, with status filters) | Notice Board (narrow, shows 5 recent)</li>
+                          <li><strong>DPT Section:</strong> Full-width with streak, average score, weekly calendar graph, Take DPT button</li>
+                          <li><strong>Instructors Grid:</strong> Full-width grid (5 columns) with avatar, name, subjects, email, phone</li>
                         </ol>
-                        <p>Install react-barcode for barcode generation.</p>
+                        <p><strong>Notification Modal:</strong> Opens from bell icon, shows all notices with filtering (All/General/Exam/Holiday), read/unread status with red envelope icons, Mark All as Read button</p>
+                        <p><strong>Sample Data:</strong> Use mock data fallbacks in hooks (useTeachers, useAssignments, useDashboardStats) for preview mode. Subject codes format: "Physics (101)", "Chemistry (102)", "Mathematics (110)", "English (210)", "Hindi (230)", "Computer (00220)"</p>
+                        <p><strong>Note:</strong> Use "Instructors" terminology instead of "Teachers" throughout</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -358,21 +361,78 @@ const Implementation = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle>Prompt 16: Mobile Dashboard Complete Redesign</CardTitle>
-                      <CardDescription>Comprehensive mobile dashboard with all features</CardDescription>
+                      <CardDescription>Comprehensive mobile dashboard with vertical instructors and combined sections</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
-                        <p>Redesign /mobile/dashboard with MobileLayout wrapper:</p>
+                        <p>Redesign /mobile/dashboard with MobileLayout wrapper and new section order:</p>
                         <ol className="list-decimal pl-5 space-y-1">
-                          <li>Quick Stats: 2x2 grid (Courses, Hours, Assignments, Streak)</li>
-                          <li>Live Classes: Banner with JOIN NOW button for ongoing classes</li>
-                          <li>Class Timetable: Today/Tomorrow/Week tabs with current class highlighted</li>
-                          <li>My Courses: Expandable cards with progress, subjects, last accessed</li>
-                          <li>Subject Progress: Colored bars, Continue Learning button</li>
-                          <li>Assignments: Filter tabs (All/Pending/Submitted/Graded), days remaining</li>
-                          <li>DPT: Weekly calendar, streak, Take DPT button</li>
-                          <li>Teachers: Avatar grid with quick actions</li>
+                          <li><strong>Quick Stats (2x2 Grid):</strong> Courses Enrolled | Hours This Week | Assignments Due | DPT Streak (with colored icons)</li>
+                          <li><strong>Live Classes Banner:</strong> Red "LIVE NOW" badge with JOIN button if classes are ongoing</li>
+                          <li><strong>Today's Schedule:</strong> ClassTimetableView with Today/Tomorrow/Week tabs</li>
+                          <li><strong>Notice Board:</strong> Card showing 4 recent notices with bell icons (red for unread), title, date, chevron. Shows "X New" badge if unread</li>
+                          <li><strong>Subject Progress:</strong> Single section with course filter dropdown at top. Display subjects with codes: "Physics (101)", "Chemistry (102)", etc. Color-coded progress bars (green &gt;75%, yellow &gt;50%, red &lt;50%). Show "X of Y chapters"</li>
+                          <li><strong>Combined Section (2-column):</strong> Left column "🎓 Classes" shows 3 upcoming with time and room. Right column "📝 Homework" shows 3 pending assignments with subject code and days left badge</li>
+                          <li><strong>DPT Section:</strong> Today's status badge, weekly calendar (7 days with checkmarks), 2-column grid (Streak | Avg Score), Take DPT button</li>
+                          <li><strong>My Instructors (Vertical List):</strong> Cards in vertical layout (not grid). Each card has avatar (left), name + subjects + email (right). Show 5 instructors</li>
                         </ol>
+                        <p><strong>Sample Data:</strong> Mock instructors (10 total), mock assignments (25 with varied statuses: pending/submitted/graded), subject codes in format "Subject (Code)". All hooks have fallback mock data</p>
+                        <p><strong>Course Filter:</strong> "All Courses" + list of enrolled courses. Filters Subject Progress section</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Prompt 23: Desktop My Courses Page</CardTitle>
+                      <CardDescription>Comprehensive courses view with grid/list toggle</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                        <p>Create /my-courses page with:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li><strong>Header:</strong> "My Courses" title with view toggle buttons (Grid/List view icons)</li>
+                          <li><strong>Course Filter Tabs:</strong> All Courses | JEE Advanced Course | NEET Preparation | [Other enrolled courses]</li>
+                          <li><strong>Grid View (default):</strong> Subject cards in 3-column grid. Each card shows:
+                            <ul className="list-disc pl-5 mt-1">
+                              <li>Subject name with code: "Physics (101)"</li>
+                              <li>Progress bar with percentage</li>
+                              <li>Chapter completion: "8/20 chapters completed"</li>
+                              <li>Instructor avatar + name</li>
+                              <li>"Continue Learning" button</li>
+                            </ul>
+                          </li>
+                          <li><strong>List View:</strong> Full-width cards with horizontal layout (same info as grid but wider)</li>
+                          <li><strong>Navigation:</strong> Click card or button to go to /learning/:courseId/:subjectId</li>
+                        </ol>
+                        <p><strong>Sample Data:</strong> Hook useMyCourses returns 4+ subjects with progress data, instructor info, chapter counts</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Prompt 24: Mobile My Courses Page</CardTitle>
+                      <CardDescription>Mobile courses view with course tabs and subject cards</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                        <p>Create /mobile/my-courses page with MobileLayout:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li><strong>Course Tabs:</strong> Horizontal scrollable tabs - "ALL" | "JEE Advanced Course" | "NEET Preparation"</li>
+                          <li><strong>Subject Cards (Vertical List):</strong> Each card shows:
+                            <ul className="list-disc pl-5 mt-1">
+                              <li>Subject icon + name with code: "Physics (101)"</li>
+                              <li>Progress bar with percentage</li>
+                              <li>Chapter info: "8 of 20 chapters"</li>
+                              <li>Instructor avatar + name</li>
+                              <li>Right arrow chevron for navigation</li>
+                            </ul>
+                          </li>
+                          <li><strong>Filtering:</strong> Tabs filter which subjects are displayed based on course selection</li>
+                          <li><strong>Navigation:</strong> Tap card to go to /mobile/my-learning</li>
+                        </ol>
+                        <p><strong>Sample Data:</strong> Same useMyCourses hook with mock subjects, courses, instructors</p>
                       </div>
                     </CardContent>
                   </Card>
