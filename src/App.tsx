@@ -9,8 +9,8 @@ import Index from "./pages/Index";
 import Programs from "./pages/Programs";
 import ProgramDetail from "./pages/ProgramDetail";
 import NotFound from "./pages/NotFound";
-import SignUp from "./pages/SignUp";
-import Login from "./pages/Login";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import MobileHome from "./pages/MobileHome";
 import MobilePrograms from "./pages/mobile/MobilePrograms";
 import MobileProgramDetail from "./pages/mobile/MobileProgramDetail";
@@ -32,8 +32,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/programs" element={<Programs />} />
             <Route path="/programs/:programId" element={<ProgramDetail />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/mobile-home" element={<MobileHome />} />
             <Route path="/mobile/programs" element={<MobilePrograms />} />
             <Route path="/mobile/programs/:programId" element={<MobileProgramDetail />} />

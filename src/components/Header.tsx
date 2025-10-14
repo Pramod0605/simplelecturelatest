@@ -107,12 +107,12 @@ export const Header = () => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link to="/login">
+            <Link to="/auth?tab=login">
               <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
                 Login
               </Button>
             </Link>
-            <Link to="/signup">
+            <Link to="/auth?tab=signup">
               <Button>Sign Up</Button>
             </Link>
           </nav>
@@ -146,9 +146,14 @@ export const Header = () => {
                 Contact
               </a>
               <div className="flex gap-2 pt-4">
-                <Button variant="outline" className="flex-1 border-primary text-primary">
-                  Login
-                </Button>
+                <Link to="/auth?tab=login" className="flex-1">
+                  <Button variant="outline" className="w-full border-primary text-primary">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/auth?tab=signup" className="flex-1">
+                  <Button className="w-full">Sign Up</Button>
+                </Link>
               </div>
             </nav>
           </div>
