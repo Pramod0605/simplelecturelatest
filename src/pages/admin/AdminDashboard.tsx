@@ -1,141 +1,149 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
-import { useAdminExploreByGoal } from "@/hooks/useAdminExploreByGoal";
-import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
-import { FolderTree, Target, BookOpen, BookMarked } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { MessageSquare, Mail, BarChart3, Trash2, ShoppingBag, DollarSign, ShoppingCart } from "lucide-react";
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const { data: categories } = useAdminCategories();
-  const { data: goals } = useAdminExploreByGoal();
-  const { data: subjects } = useAdminPopularSubjects();
-
-  const stats = [
-    {
-      title: "Total Categories",
-      value: categories?.length || 0,
-      icon: FolderTree,
-      description: `Level 1: ${categories?.filter(c => c.level === 1).length || 0} | Level 2: ${categories?.filter(c => c.level === 2).length || 0} | Level 3: ${categories?.filter(c => c.level === 3).length || 0}`,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
-      link: "/admin/categories",
-    },
-    {
-      title: "Explore by Goal",
-      value: goals?.length || 0,
-      icon: Target,
-      description: "Active learning goals",
-      color: "text-green-600",
-      bgColor: "bg-green-100",
-      link: "/admin/explore-by-goal",
-    },
-    {
-      title: "Popular Subjects",
-      value: subjects?.length || 0,
-      icon: BookOpen,
-      description: "Featured subjects",
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
-      link: "/admin/popular-subjects",
-    },
-    {
-      title: "Programs",
-      value: 0,
-      icon: BookMarked,
-      description: "Coming soon",
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-      link: "/admin/programs",
-    },
+  const quickActions = [
+    { icon: MessageSquare, label: "Comments", variant: "outline" as const },
+    { icon: Mail, label: "tickets", variant: "outline" as const },
+    { icon: BarChart3, label: "Reports", variant: "outline" as const },
+    { icon: Trash2, label: "Clear Cache", variant: "outline" as const },
   ];
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to SimpleLecture Admin Panel</p>
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div 
+        className="relative h-80 bg-cover bg-center rounded-lg overflow-hidden mx-6 mt-6"
+        style={{ 
+          backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80')",
+        }}
+      >
+        <div className="absolute inset-0 flex flex-col items-start justify-center px-12 text-white">
+          <h1 className="text-4xl font-bold mb-4">Welcome, Admin!</h1>
+          <p className="text-lg mb-8 max-w-2xl">
+            Everything is in your control, use quick access buttons to manage related actions easily.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Button
+                  key={action.label}
+                  variant={action.variant}
+                  className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  {action.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <Card
-            key={stat.title}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => navigate(stat.link)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
+      {/* Stats Section */}
+      <div className="px-6 space-y-6">
+        {/* Daily Sales */}
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Course Type Daily Sales</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.description}
-              </p>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Live Class</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Course</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Meeting</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-          <Button onClick={() => navigate("/admin/categories/add")}>
-            Add Category
-          </Button>
-          <Button onClick={() => navigate("/admin/explore-by-goal/add")} variant="outline">
-            Add Goal
-          </Button>
-          <Button onClick={() => navigate("/admin/popular-subjects/add")} variant="outline">
-            Add Subject
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Recent Categories */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Categories</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {categories?.slice(0, 5).map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center justify-between p-3 rounded-lg border"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{category.icon || "📁"}</span>
-                  <div>
-                    <p className="font-medium">{category.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Level {category.level}
-                      {category.parent_name && ` - ${category.parent_name}`}
-                    </p>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Platform Income</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Today</div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/admin/categories/edit/${category.id}`)}
-                >
-                  Edit
-                </Button>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Month</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">₹13,950</div>
+                  <div className="text-sm text-muted-foreground mt-1">Year</div>
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Sales Count</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Today</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">0</div>
+                  <div className="text-sm text-muted-foreground mt-1">Month</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold">22</div>
+                  <div className="text-sm text-muted-foreground mt-1">Year</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Income and Sales */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-lg bg-primary flex items-center justify-center">
+                  <DollarSign className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Income</p>
+                  <p className="text-3xl font-bold">₹14,996.47</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-lg bg-primary flex items-center justify-center">
+                  <ShoppingCart className="h-7 w-7 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Sales</p>
+                  <p className="text-3xl font-bold">87</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

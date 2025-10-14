@@ -41,6 +41,14 @@ import ExploreByGoalList from "./pages/admin/ExploreByGoalList";
 import ExploreByGoalForm from "./pages/admin/ExploreByGoalForm";
 import PopularSubjectsList from "./pages/admin/PopularSubjectsList";
 import PopularSubjectsForm from "./pages/admin/PopularSubjectsForm";
+import ProgramsList from "./pages/admin/ProgramsList";
+import CoursesList from "./pages/admin/CoursesList";
+import UsersList from "./pages/admin/UsersList";
+import ParentsList from "./pages/admin/ParentsList";
+import InstructorsList from "./pages/admin/InstructorsList";
+import StaffList from "./pages/admin/StaffList";
+import Academics from "./pages/admin/Academics";
+import Settings from "./pages/admin/Settings";
 
 const App = () => (
   <HelmetProvider>
@@ -90,6 +98,14 @@ const App = () => (
                 <Route path="popular-subjects" element={<PopularSubjectsList />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
+                <Route path="programs" element={<ProgramsList />} />
+                <Route path="courses" element={<CoursesList />} />
+                <Route path="users" element={<UsersList />} />
+                <Route path="parents" element={<ParentsList />} />
+                <Route path="instructors" element={<InstructorsList />} />
+                <Route path="staff" element={<StaffList />} />
+                <Route path="academics" element={<Academics />} />
+                <Route path="settings" element={<Settings />} />
               </Route>
             </Route>
             
