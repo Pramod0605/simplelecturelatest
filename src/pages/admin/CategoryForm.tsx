@@ -142,16 +142,7 @@ export default function CategoryForm() {
   };
 
   const level = form.watch("level");
-  // Show categories that can be parents - exclude self if editing, and only show categories with lower level
-  const parentCategories = categories?.filter((c) => {
-    // Exclude self when editing
-    if (isEdit && id && c.id === id) return false;
-    // Show all categories with level less than current level
-    // If current level is 1, no parents available (will be top-level)
-    // If current level is 2, show level 1 categories
-    // If current level is 3, show level 1 and 2 categories
-    return c.level < level;
-  });
+  const parentCategories = categories?.filter((c) => c.level < level);
 
   return (
     <div className="p-8 space-y-6">
@@ -257,35 +248,25 @@ export default function CategoryForm() {
                   <FormItem>
                     <FormLabel>Parent Category</FormLabel>
                     <Select
-                      onValueChange={(value) => {
-                        // If "none" is selected, set to undefined
-                        field.onChange(value === "none" ? undefined : value);
-                      }}
-                      value={field.value || "none"}
+                      onValueChange={field.onChange}
+                      value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="bg-background">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select parent category (optional)" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-popover z-50">
-                        <SelectItem value="none">
-                          None (Top-level Category - Level 1)
-                        </SelectItem>
+                      <SelectContent>
                         {parentCategories?.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.icon && `${cat.icon} `}{cat.name}
-                            {cat.parent_name && ` (under ${cat.parent_name})`}
-                            {` - Level ${cat.level}`}
+                            {cat.name}
+                            {cat.parent_name && ` - ${cat.parent_name}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Select a parent to create a subcategory. Level will auto-update.
-                      {level === 1 && " Currently a top-level category."}
-                      {level === 2 && " Currently a subcategory (Level 2)."}
-                      {level === 3 && " Currently a sub-subcategory (Level 3)."}
+                      Leave empty for top-level category
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -342,40 +323,29 @@ export default function CategoryForm() {
               <CardTitle>Explore by Goal</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {goals && goals.length > 0 ? (
-                <div className="space-y-3">
-                  {goals.map((goal) => (
-                    <div key={goal.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={goal.id}
-                        checked={selectedGoals.includes(goal.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedGoals(
-                            checked
-                              ? [...selectedGoals, goal.id]
-                              : selectedGoals.filter((id) => id !== goal.id)
-                          );
-                        }}
-                      />
-                      <label
-                        htmlFor={goal.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {goal.icon && `${goal.icon} `}{goal.name}
-                      </label>
-                    </div>
-                  ))}
-                  {selectedGoals.length > 0 && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {selectedGoals.length} goal(s) selected
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No goals available. Add goals from the "Explore by Goal" section first.
-                </p>
-              )}
+              <div className="space-y-3">
+                {goals?.map((goal) => (
+                  <div key={goal.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={goal.id}
+                      checked={selectedGoals.includes(goal.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedGoals(
+                          checked
+                            ? [...selectedGoals, goal.id]
+                            : selectedGoals.filter((id) => id !== goal.id)
+                        );
+                      }}
+                    />
+                    <label
+                      htmlFor={goal.id}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {goal.icon} {goal.name}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
