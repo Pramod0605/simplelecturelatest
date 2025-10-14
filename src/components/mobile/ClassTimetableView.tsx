@@ -60,9 +60,9 @@ export const ClassTimetableView = () => {
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={classItem.teacher?.avatar_url || ''} />
+                      <AvatarImage src={(classItem.teacher as any)?.avatar_url || ''} />
                       <AvatarFallback className="text-xs">
-                        {classItem.teacher?.full_name?.[0] || 'T'}
+                        {(classItem.teacher as any)?.full_name?.[0] || 'T'}
                       </AvatarFallback>
                     </Avatar>
                     
@@ -70,7 +70,7 @@ export const ClassTimetableView = () => {
                       <h4 className="font-medium text-sm">{classItem.subject}</h4>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <User className="h-3 w-3" />
-                        {classItem.teacher?.full_name}
+                        {(classItem.teacher as any)?.full_name || 'Teacher'}
                       </div>
                     </div>
 

@@ -32,16 +32,16 @@ export const LiveClassBanner = () => {
 
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={classItem.teacher?.avatar_url || ''} />
+              <AvatarImage src={(classItem.teacher as any)?.avatar_url || ''} />
               <AvatarFallback>
-                {classItem.teacher?.full_name?.[0] || 'T'}
+                {(classItem.teacher as any)?.full_name?.[0] || 'T'}
               </AvatarFallback>
             </Avatar>
             
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold">{classItem.subject}</h4>
               <p className="text-sm text-muted-foreground">
-                {classItem.teacher?.full_name}
+                {(classItem.teacher as any)?.full_name || 'Teacher'}
               </p>
               {classItem.room_number && (
                 <p className="text-xs text-muted-foreground">
