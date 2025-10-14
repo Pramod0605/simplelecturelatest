@@ -51,6 +51,7 @@ import Academics from "./pages/admin/Academics";
 import Settings from "./pages/admin/Settings";
 import BatchesList from "./pages/admin/BatchesList";
 import BatchForm from "./pages/admin/BatchForm";
+import SubjectForm from "./pages/admin/SubjectForm";
 
 const App = () => (
   <HelmetProvider>
@@ -98,6 +99,8 @@ const App = () => (
                 <Route path="explore-by-goal/add" element={<ExploreByGoalForm />} />
                 <Route path="explore-by-goal/edit/:id" element={<ExploreByGoalForm />} />
                 <Route path="popular-subjects" element={<PopularSubjectsList />} />
+                <Route path="subjects/add" element={<SubjectForm />} />
+                <Route path="subjects/:id/edit" element={<SubjectForm />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
                 <Route path="programs" element={<ProgramsList />} />

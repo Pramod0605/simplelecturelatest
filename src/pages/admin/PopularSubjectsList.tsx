@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles } from "lucide-react";
 import { useAdminPopularSubjects, useDeleteSubject } from "@/hooks/useAdminPopularSubjects";
 import {
   AlertDialog,
@@ -44,10 +44,16 @@ export default function PopularSubjectsList() {
           <h1 className="text-3xl font-bold">Popular Subjects</h1>
           <p className="text-muted-foreground">Manage featured subjects</p>
         </div>
-        <Button onClick={() => navigate("/admin/popular-subjects/add")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Subject
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/admin/subjects/add")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Subject (Enhanced)
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/admin/popular-subjects/add")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Subject (Simple)
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -87,6 +93,14 @@ export default function PopularSubjectsList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/admin/subjects/${subject.id}/edit`)}
+                      >
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Enhanced
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
