@@ -69,7 +69,7 @@ export default function CategoryForm() {
       slug: "",
       icon: "",
       description: "",
-      parent_id: "",
+      parent_id: undefined,
       level: 1,
       display_order: 0,
       is_popular: false,
@@ -85,7 +85,7 @@ export default function CategoryForm() {
         slug: category.slug,
         icon: category.icon || "",
         description: category.description || "",
-        parent_id: category.parent_id || "",
+        parent_id: category.parent_id || undefined,
         level: category.level,
         display_order: category.display_order,
         is_popular: category.is_popular,
@@ -257,7 +257,6 @@ export default function CategoryForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None (Level 1)</SelectItem>
                         {parentCategories?.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}
