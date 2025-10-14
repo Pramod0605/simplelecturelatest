@@ -9,12 +9,14 @@ interface MobileLayoutProps {
   children: ReactNode;
   title: string;
   showNoticeIcon?: boolean;
+  showProfile?: boolean;
 }
 
 export const MobileLayout = ({
   children,
   title,
   showNoticeIcon = true,
+  showProfile = false,
 }: MobileLayoutProps) => {
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const { unreadCount } = useNotices();

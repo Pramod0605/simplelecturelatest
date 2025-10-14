@@ -46,6 +46,7 @@ const Implementation = () => {
                   <TabsTrigger value="discovery">3. Home & Discovery</TabsTrigger>
                   <TabsTrigger value="learning">4. Learning Pages</TabsTrigger>
                   <TabsTrigger value="profile">5. Profile</TabsTrigger>
+                  <TabsTrigger value="dashboard">6. Dashboard</TabsTrigger>
                 </TabsList>
 
                 {/* AUTH SCREENS */}
@@ -328,6 +329,50 @@ const Implementation = () => {
                           <li>Storage: Downloaded courses size, Clear cache</li>
                           <li>Account: Delete account (with confirmation)</li>
                         </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* DASHBOARD ENHANCEMENT */}
+                <TabsContent value="dashboard" className="space-y-6 mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Prompt 15: Desktop Dashboard Redesign</CardTitle>
+                      <CardDescription>4-column layout with Student ID card</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                        <p>Redesign /dashboard with:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>Full-width Student ID Card: Avatar (left), profile info (center), QR + Barcode (right)</li>
+                          <li>4-Column Grid: Subject Progress (narrow) | Upcoming Classes (medium) | Assignments (medium) | Notice Board (narrow)</li>
+                          <li>Full-width DPT Section: Streak, average score, weekly graph, Take DPT button</li>
+                          <li>Full-width Teachers Grid: Cards with avatar, name, subjects, contact info</li>
+                        </ol>
+                        <p>Install react-barcode for barcode generation.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Prompt 16: Mobile Dashboard Complete Redesign</CardTitle>
+                      <CardDescription>Comprehensive mobile dashboard with all features</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
+                        <p>Redesign /mobile/dashboard with MobileLayout wrapper:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>Quick Stats: 2x2 grid (Courses, Hours, Assignments, Streak)</li>
+                          <li>Live Classes: Banner with JOIN NOW button for ongoing classes</li>
+                          <li>Class Timetable: Today/Tomorrow/Week tabs with current class highlighted</li>
+                          <li>My Courses: Expandable cards with progress, subjects, last accessed</li>
+                          <li>Subject Progress: Colored bars, Continue Learning button</li>
+                          <li>Assignments: Filter tabs (All/Pending/Submitted/Graded), days remaining</li>
+                          <li>DPT: Weekly calendar, streak, Take DPT button</li>
+                          <li>Teachers: Avatar grid with quick actions</li>
+                        </ol>
                       </div>
                     </CardContent>
                   </Card>
