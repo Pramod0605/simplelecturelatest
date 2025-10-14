@@ -2,10 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { BookOpen } from "lucide-react";
-
+import { useMemo, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 export const SubjectProgressTable = () => {
   const { stats, isLoading } = useDashboardStats();
+  const [selectedCourse, setSelectedCourse] = useState<string>("All");
 
+  const courseNames = useMemo(() => {
+    const names = (stats.courses || []).map((c: any) => c?.courses?.name).filter(Boolean);
+    return ["All", ...Array.from(new Set(names))];
+  }, [stats.courses]);
   if (isLoading) {
     return (
       <Card>
@@ -23,16 +29,36 @@ export const SubjectProgressTable = () => {
     );
   }
 
-  const subjects = Object.entries(stats.subjectProgress);
+  const subjects = useMemo(() => {
+    const entries = Object.entries(stats.subjectProgress);
+    if (selectedCourse === "All") return entries;
+    const selected = (stats.courses || []).find((c: any) => c?.courses?.name === selectedCourse);
+    const allowed = new Set<string>(((selected?.courses?.subjects as any[]) || []).map(String));
+    return entries.filter(([subject]) => allowed.has(subject));
+  }, [stats.subjectProgress, stats.courses, selectedCourse]);
 
   return (
     <Card>
-      <CardHeader>
+    <CardHeader className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <BookOpen className="h-5 w-5" />
           Subject Progress
         </CardTitle>
-      </CardHeader>
+        <div className="w-40">
+          <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="All Courses" />
+            </SelectTrigger>
+            <SelectContent>
+              {courseNames.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </CardHeader>
       <CardContent>
         {subjects.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">

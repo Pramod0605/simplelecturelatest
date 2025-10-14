@@ -8,8 +8,9 @@ import { NoticeBoard } from '@/components/dashboard/NoticeBoard';
 import { SubjectProgressTable } from '@/components/dashboard/SubjectProgressTable';
 import { UpcomingClasses } from '@/components/dashboard/UpcomingClasses';
 import { AssignmentsList } from '@/components/dashboard/AssignmentsList';
-import { DPTCard } from '@/components/dashboard/DPTCard';
 import { TeachersList } from '@/components/dashboard/TeachersList';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { Footer } from '@/components/Footer';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -34,12 +35,7 @@ const Dashboard = () => {
     <>
       <SEOHead title="My Dashboard | SimpleLecture" description="Your learning dashboard" />
       <div className="min-h-screen bg-background">
-        <header className="border-b bg-card">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 className="text-2xl font-bold">My Dashboard</h1>
-            <Button variant="outline" onClick={handleLogout}>Logout</Button>
-          </div>
-        </header>
+        <DashboardHeader />
 
         <div className="container mx-auto px-4 py-8 space-y-6">
           {/* Full-width Student ID Card */}
@@ -68,12 +64,12 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Full-width DPT Statistics */}
-          <DPTCard />
+          {/* DPT section is now integrated into StudentIDCard */}
 
           {/* Full-width Teachers Section */}
           <TeachersList />
         </div>
+        <Footer />
       </div>
     </>
   );

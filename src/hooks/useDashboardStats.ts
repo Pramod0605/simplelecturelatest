@@ -6,7 +6,11 @@ export const useDashboardStats = () => {
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      // If no user, return mock dashboard stats for preview/demo
+      if (!user) {
+        const { mockDashboardStats } = await import("@/data/mockDashboard");
+        return mockDashboardStats;
+      }
 
       // Get enrollments
       const { data: enrollments } = await supabase
