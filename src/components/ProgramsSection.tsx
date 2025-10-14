@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,72 +55,99 @@ const subcategories = {
 
 const programs: Program[] = [
   {
-    id: "1",
-    title: "11th/1st PUC",
+    id: "sslc-complete-2026",
+    title: "10th/SSLC Complete Package",
     category: "board",
-    subcategory: "11th",
+    subcategory: "10th",
     type: "Board",
     duration: "1 Year",
-    price: 800,
+    price: 2000,
     originalPrice: 22000,
-    rating: 4.7,
-    students: 22000,
-    subjects: ["Physics", "Chemistry", "Biology/Mathematics"],
+    rating: 4.8,
+    students: 18234,
+    subjects: ["Physics", "Chemistry", "Maths", "Biology", "English"],
     features: [
-      "Stream Selection Guidance",
-      "Competitive Exam Prep",
-      "Regular Tests",
+      "State Board Coverage",
+      "AI Doubt Clearing 24/7",
+      "Hindi/English/Kannada Support",
     ],
     image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80",
   },
   {
-    id: "2",
-    title: "12th/2nd PUC",
+    id: "i-puc-pcmb-2026",
+    title: "I PUC Science (PCMB)",
     category: "board",
-    subcategory: "12th",
+    subcategory: "11th",
     type: "Board",
     duration: "1 Year",
-    price: 900,
-    originalPrice: 18000,
-    rating: 4.8,
-    students: 18000,
-    subjects: ["Physics", "Chemistry", "Biology/Mathematics"],
-    features: ["Board Exam Focus", "Entrance Prep", "Career Guidance"],
+    price: 2000,
+    originalPrice: 25000,
+    rating: 4.7,
+    students: 22890,
+    subjects: ["Physics", "Chemistry", "Maths", "Biology"],
+    features: [
+      "Complete PUC Syllabus",
+      "Competitive Exam Foundation",
+      "AI-Powered Learning",
+    ],
     image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&q=80",
   },
   {
-    id: "3",
-    title: "CET Booster",
+    id: "puc-neet-integrated-2026",
+    title: "II PUC + NEET Integrated",
+    category: "entrance",
+    subcategory: "neet",
+    type: "Integrated",
+    duration: "1 Year",
+    price: 2000,
+    originalPrice: 40000,
+    rating: 4.9,
+    students: 35678,
+    subjects: ["Physics", "Chemistry", "Biology"],
+    features: [
+      "Dual Preparation (Board + NEET)",
+      "20,000+ NEET MCQs",
+      "50+ Full-Length Mocks",
+    ],
+    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&q=80",
+  },
+  {
+    id: "jee-main-advanced-2026",
+    title: "JEE Main + Advanced 2026",
+    category: "entrance",
+    subcategory: "jee",
+    type: "Entrance",
+    duration: "1 Year",
+    price: 2000,
+    originalPrice: 45000,
+    rating: 4.8,
+    students: 28456,
+    subjects: ["Physics", "Chemistry", "Mathematics"],
+    features: [
+      "IIT-Level Problem Solving",
+      "15 Years JEE PYQs",
+      "60+ Mock Tests",
+    ],
+    image: "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400&q=80",
+  },
+  {
+    id: "karnataka-cet-2026",
+    title: "Karnataka CET Complete",
     category: "entrance",
     subcategory: "cet",
     type: "Entrance",
     duration: "1 Year",
-    price: 800,
-    originalPrice: 15000,
-    rating: 4.7,
-    students: 15000,
+    price: 2000,
+    originalPrice: 18000,
+    rating: 4.8,
+    students: 19567,
     subjects: ["Physics", "Chemistry", "Mathematics"],
     features: [
-      "State-specific Curriculum",
-      "Local Expert Guidance",
-      "Practice Tests",
+      "State-Specific Syllabus",
+      "CET Pattern Tests",
+      "Local Expert Faculty",
     ],
     image: "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=400&q=80",
-  },
-  {
-    id: "4",
-    title: "NEET Mastery",
-    category: "entrance",
-    subcategory: "neet",
-    type: "Entrance",
-    duration: "1 Year",
-    price: 1200,
-    originalPrice: 25000,
-    rating: 4.9,
-    students: 35000,
-    subjects: ["Physics", "Chemistry", "Biology"],
-    features: ["Medical Entrance Focus", "All India Test Series", "Expert Faculty"],
-    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&q=80",
   },
 ];
 
@@ -270,10 +298,12 @@ export const ProgramsSection = () => {
                   </CardContent>
 
                   <CardFooter className="flex gap-2">
-                    <Button className="flex-1 group">
-                      View Details
-                      <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                    <Link to={`/programs/${program.id}`} className="flex-1">
+                      <Button className="w-full group">
+                        View Details
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </Link>
                     <Button variant="outline">Book Demo</Button>
                   </CardFooter>
                 </Card>

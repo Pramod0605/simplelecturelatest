@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEO";
@@ -25,17 +26,12 @@ import { Search, Grid3x3, List, ChevronDown, Star, Clock, Users, ArrowRight, Awa
 import { usePrograms } from "@/hooks/usePrograms";
 
 const categories = [
-  "Generative AI",
-  "AI & Machine Learning",
-  "Data Science & Business Analytics",
-  "Project Management",
-  "Cyber Security",
-  "Agile and Scrum",
-  "Cloud Computing & DevOps",
-  "Business and Leadership",
-  "Software Development",
-  "Product and Design",
-  "IT Service and Architecture",
+  "Board Exams (10th, I PUC, II PUC)",
+  "Medical Entrance (NEET, AIIMS)",
+  "Engineering Entrance (JEE, CET)",
+  "Integrated Programs (Board + Entrance)",
+  "Foundation Courses (8th, 9th, 10th)",
+  "Competitive Exams (UPSC, Banking)"
 ];
 
 const programTypes = ["Live Class", "Course", "Text Lesson"];
@@ -62,43 +58,91 @@ export default function Programs() {
     );
   };
 
-  // Mock data for demonstration (will use real data from usePrograms)
+  // Indian Education Programs
   const mockPrograms = [
     {
-      id: "1",
-      title: "Backend Development with Node.js",
-      category: "Software Development",
-      instructor: "Kate Williams",
-      instructorCategory: "Web Development",
-      price: 25,
-      duration: "3:10 Hours",
+      id: "sslc-complete-2026",
+      title: "10th/SSLC Complete Package 2026",
+      category: "Board Exams (10th, I PUC, II PUC)",
+      instructor: "Team SimpleLecture",
+      instructorCategory: "State Board Specialists",
+      price: 2000,
+      originalPrice: 22000,
+      duration: "1 Year",
       rating: 4.8,
-      students: 1200,
-      image: "https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=400&q=80",
+      students: 18234,
+      subjects: ["Physics", "Chemistry", "Mathematics", "Biology", "English"],
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80",
     },
     {
-      id: "2",
-      title: "Mobile App Development with React Native",
-      category: "Software Development",
-      instructor: "Robert Ransdell",
-      instructorCategory: "Web Development",
-      price: 30,
-      duration: "3:30 Hours",
-      rating: 4.7,
-      students: 980,
-      image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&q=80",
-    },
-    {
-      id: "3",
-      title: "Python for Data Science",
-      category: "Data Science & Business Analytics",
-      instructor: "Linda Anderson",
-      instructorCategory: "Web Development",
-      price: 10,
-      duration: "3:20 Hours",
+      id: "puc-neet-integrated-2026",
+      title: "II PUC + NEET Integrated 2026",
+      category: "Integrated Programs (Board + Entrance)",
+      instructor: "Dr. Priya Sharma",
+      instructorCategory: "NEET Expert",
+      price: 2000,
+      originalPrice: 40000,
+      duration: "1 Year",
       rating: 4.9,
-      students: 2400,
-      image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&q=80",
+      students: 35678,
+      subjects: ["Physics", "Chemistry", "Biology"],
+      image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&q=80",
+    },
+    {
+      id: "jee-main-advanced-2026",
+      title: "JEE Main + Advanced Complete 2026",
+      category: "Engineering Entrance (JEE, CET)",
+      instructor: "Prof. Rajesh Kumar",
+      instructorCategory: "IIT-JEE Expert",
+      price: 2000,
+      originalPrice: 45000,
+      duration: "1 Year",
+      rating: 4.8,
+      students: 28456,
+      subjects: ["Physics", "Chemistry", "Mathematics"],
+      image: "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400&q=80",
+    },
+    {
+      id: "i-puc-pcmb-2026",
+      title: "I PUC Science (PCMB) Complete 2026",
+      category: "Board Exams (10th, I PUC, II PUC)",
+      instructor: "Prof. Sneha Reddy",
+      instructorCategory: "PUC Board Expert",
+      price: 2000,
+      originalPrice: 25000,
+      duration: "1 Year",
+      rating: 4.7,
+      students: 22890,
+      subjects: ["Physics", "Chemistry", "Mathematics", "Biology"],
+      image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&q=80",
+    },
+    {
+      id: "karnataka-cet-2026",
+      title: "Karnataka CET Complete Course 2026",
+      category: "Engineering Entrance (JEE, CET)",
+      instructor: "Dr. Amit Kumar",
+      instructorCategory: "CET Specialist",
+      price: 2000,
+      originalPrice: 18000,
+      duration: "1 Year",
+      rating: 4.8,
+      students: 19567,
+      subjects: ["Physics", "Chemistry", "Mathematics"],
+      image: "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=400&q=80",
+    },
+    {
+      id: "neet-crash-course-2026",
+      title: "NEET Crash Course 2026",
+      category: "Medical Entrance (NEET, AIIMS)",
+      instructor: "Dr. Kavita Menon",
+      instructorCategory: "NEET Educator",
+      price: 2000,
+      originalPrice: 22000,
+      duration: "6 Months",
+      rating: 4.9,
+      students: 31245,
+      subjects: ["Physics", "Chemistry", "Biology"],
+      image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&q=80",
     },
   ];
 
@@ -309,16 +353,23 @@ export default function Programs() {
                           />
                         </div>
 
-                        <CardHeader className="pb-3">
+                  <CardHeader className="pb-3">
                           <h3 className="text-lg font-bold line-clamp-2 mb-2">{program.title}</h3>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 mb-3">
                             <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center text-white text-xs font-bold">
                               {program.instructor.split(' ').map(n => n[0]).join('')}
                             </div>
                             <div>
                               <p className="text-sm font-medium">{program.instructor}</p>
-                              <p className="text-xs text-muted-foreground">in {program.instructorCategory}</p>
+                              <p className="text-xs text-muted-foreground">{program.instructorCategory}</p>
                             </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {program.subjects && program.subjects.slice(0, 3).map((subject: string, idx: number) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {subject}
+                              </Badge>
+                            ))}
                           </div>
                         </CardHeader>
 
@@ -340,15 +391,27 @@ export default function Programs() {
                           </div>
 
                           <div className="pt-2 border-t">
-                            <span className="text-2xl font-bold text-primary">${program.price}</span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl font-bold text-success">₹{program.price}</span>
+                              {program.originalPrice && (
+                                <>
+                                  <span className="text-sm text-muted-foreground line-through">₹{program.originalPrice}</span>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                                    {Math.round((1 - program.price / program.originalPrice) * 100)}% OFF
+                                  </Badge>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </CardContent>
 
                         <CardFooter className="flex gap-2 pt-0">
-                          <Button className="flex-1 group">
-                            Enroll Now
-                            <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                          </Button>
+                          <Link to={`/programs/${program.id}`} className="flex-1">
+                            <Button className="w-full group">
+                              Enroll Now
+                              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                          </Link>
                         </CardFooter>
                       </Card>
                     ))}

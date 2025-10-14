@@ -1,4 +1,9 @@
-export const mockProgramDetails = {
+import { indianProgramDetails } from './indianProgramDetails';
+
+export const mockProgramDetails = indianProgramDetails;
+
+// Legacy exports for backward compatibility
+export const legacyMockProgramDetails = {
   singleSubject: {
     id: "prog-1",
     name: "MISSION JRF PRO DEC 2025",

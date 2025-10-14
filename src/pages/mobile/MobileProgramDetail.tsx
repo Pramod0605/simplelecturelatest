@@ -18,7 +18,14 @@ const MobileProgramDetail = () => {
   const [showContentDetail, setShowContentDetail] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(0);
 
-  const program = mockProgramDetails.multiSubject;
+  // Get program based on ID (default to PUC+NEET if not found)
+  const program = programId === 'puc-neet-integrated-2026' 
+    ? mockProgramDetails.puc_neet_integrated 
+    : programId === 'sslc-complete-2026'
+    ? mockProgramDetails.sslc_complete
+    : programId === 'jee-main-advanced-2026'
+    ? mockProgramDetails.jee_complete
+    : mockProgramDetails.puc_neet_integrated; // default
 
   const faqs = [
     {
