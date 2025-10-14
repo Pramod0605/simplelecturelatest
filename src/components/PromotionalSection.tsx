@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, TrendingUp, Zap, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, Zap, ArrowRight, Clock, IndianRupee } from "lucide-react";
 
 export const PromotionalSection = () => {
   return (
@@ -14,44 +14,44 @@ export const PromotionalSection = () => {
           {/* Badge */}
           <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
             <Sparkles className="w-4 h-4 mr-2" />
-            Limited Time Offer
+            India's Most Affordable AI Learning Platform
           </Badge>
 
           {/* Heading */}
           <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight">
-            Transform Your Career with
-            <span className="block mt-2">AI-Powered Learning</span>
+            Complete Education at
+            <span className="block mt-2">₹2000/Year</span>
           </h2>
 
           <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Get unlimited access to 50,000+ courses, AI tutors, and expert-led content. 
-            Start your journey to mastery today at 99% less cost than traditional coaching.
+            Get unlimited access to all courses, AI tutors, and expert-led content. 
+            99% less cost than traditional coaching with 100% quality guarantee.
           </p>
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-6 pt-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all">
               <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-7 h-7 text-white" />
+                <IndianRupee className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">99% Cost Savings</h3>
-              <p className="text-white/80">Learn at a fraction of traditional coaching costs</p>
+              <h3 className="text-xl font-bold text-white mb-2">Massive Cost Savings</h3>
+              <p className="text-white/80">₹2000 vs ₹2,00,000 - Get the same quality as ₹2 lakh coaching</p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all">
               <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">AI-Powered Tutors</h3>
-              <p className="text-white/80">24/7 personalized learning assistance</p>
+              <h3 className="text-xl font-bold text-white mb-2">AI Tutors 24/7</h3>
+              <p className="text-white/80">Never get stuck again. AI tutors in Hindi, English, Kannada</p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all">
               <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-7 h-7 text-white" />
+                <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Mastery-Based Progress</h3>
-              <p className="text-white/80">Unlock topics as you master each concept</p>
+              <h3 className="text-xl font-bold text-white mb-2">Proven Results</h3>
+              <p className="text-white/80">50,000+ students, 95% report improved grades within 3 months</p>
             </div>
           </div>
 
@@ -60,17 +60,17 @@ export const PromotionalSection = () => {
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 inline-block">
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className="text-left">
-                  <p className="text-white/80 text-sm mb-1">Special Launch Offer</p>
+                  <p className="text-white/80 text-sm mb-1">Full Year Access - All Courses</p>
                   <div className="flex items-baseline gap-3">
-                    <span className="text-5xl font-bold text-white">₹800</span>
-                    <span className="text-2xl text-white/60 line-through">₹22,000</span>
+                    <span className="text-5xl font-bold text-white">₹2000</span>
+                    <span className="text-2xl text-white/60 line-through">₹50,000</span>
                     <Badge className="bg-success text-white">Save 96%</Badge>
                   </div>
-                  <p className="text-white/80 text-sm mt-1">per year</p>
+                  <p className="text-white/80 text-sm mt-1">~₹167/month only</p>
                 </div>
                 <Button 
                   size="lg" 
-                  className="bg-white text-primary hover:bg-white/90 shadow-xl group whitespace-nowrap"
+                  className="bg-white text-primary hover:bg-white/90 shadow-xl group whitespace-nowrap text-lg px-8"
                 >
                   Start Learning Now
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />

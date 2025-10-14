@@ -16,11 +16,11 @@ const testimonials: Testimonial[] = [
   {
     id: "1",
     name: "Priya Sharma",
-    role: "NEET Qualifier",
+    role: "NEET Qualifier - 680/720",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
     rating: 5,
-    text: "SimpleLecture's AI tutor helped me understand complex biology concepts at my own pace. The mastery-based approach ensured I was truly prepared for NEET. Scored 680/720!",
-    course: "NEET Mastery Program",
+    text: "I scored 95% in II PUC and got selected for NEET with SimpleLecture's AI tutors. The mastery-based approach ensured I was truly prepared. Best ₹2000 I ever spent!",
+    course: "II PUC + NEET Integrated",
   },
   {
     id: "2",
@@ -28,44 +28,44 @@ const testimonials: Testimonial[] = [
     role: "JEE Advanced Rank 342",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
     rating: 5,
-    text: "The AI-generated MCQs and doubt-clearing feature were game-changers. I could practice unlimited questions and get instant explanations. Best investment for JEE prep!",
-    course: "JEE Advanced Program",
+    text: "The JEE coaching that cost my brother ₹50,000 is here for just ₹2000. I cleared JEE Main with 98 percentile! The AI-generated MCQs were game-changers.",
+    course: "JEE Main + Advanced",
   },
   {
     id: "3",
     name: "Ananya Reddy",
-    role: "12th Board Topper",
+    role: "II PUC Board Topper - 98%",
     image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80",
     rating: 5,
     text: "From struggling with physics to scoring 98%. The chapter-wise progression and AI tutor made learning so structured. My parents loved the progress reports too!",
-    course: "12th Board Excellence",
+    course: "II PUC PCMB Complete",
   },
   {
     id: "4",
     name: "Arjun Patel",
-    role: "CET State Rank 89",
+    role: "Karnataka CET State Rank 89",
     image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80",
     rating: 5,
-    text: "At just ₹800/year, this is 100x better than my ₹80,000 coaching. AI tutor was available 24/7, no traveling, and personalized attention. Highly recommended!",
-    course: "CET Booster",
+    text: "At just ₹2000/year, this is 100x better than my ₹80,000 coaching. AI tutor was available 24/7, no traveling, and personalized attention. Highly recommended!",
+    course: "CET + PUC Integrated",
   },
   {
     id: "5",
-    name: "Sneha Desai",
-    role: "Web Developer",
+    name: "Deepika R.",
+    role: "10th SSLC - 92%",
     image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200&q=80",
     rating: 5,
-    text: "The skill development courses are incredible. Learned full-stack development in 6 months with AI-powered practice projects. Landed my dream job!",
-    course: "Web Development Bootcamp",
+    text: "The AI tutor explains in Kannada which helped me understand Physics better. Scored 90+ for the first time! SimpleLecture made board exams easy.",
+    course: "10th SSLC Complete",
   },
   {
     id: "6",
     name: "Vikram Singh",
-    role: "MBA Aspirant",
+    role: "I PUC Science - 95%",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
     rating: 5,
-    text: "The adaptive learning path and AI-generated mock tests were perfect for CAT prep. Cleared with 99.2 percentile. SimpleLecture is the future of education!",
-    course: "MBA Entrance Program",
+    text: "The adaptive learning path and AI-generated tests were perfect for PUC preparation. Building strong foundation for NEET now. SimpleLecture is the future!",
+    course: "I PUC PCMB Package",
   },
 ];
 
@@ -83,7 +83,7 @@ export const TestimonialsSection = () => {
             What Our <span className="bg-gradient-primary bg-clip-text text-transparent">Students Say</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Join thousands of successful learners who transformed their careers
+            Join thousands of successful learners who transformed their academic journey
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export const TestimonialsSection = () => {
           </div>
           <div className="text-center">
             <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-              4.8/5
+              4.9/5
             </div>
             <p className="text-muted-foreground">Average Rating</p>
           </div>

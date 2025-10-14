@@ -1,35 +1,55 @@
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
-import heroImage from "@/assets/hero-students.jpg";
+import heroBoardExams from "@/assets/hero-board-exams.jpg";
+import heroNeet from "@/assets/hero-neet.jpg";
+import heroJee from "@/assets/hero-jee.jpg";
+import heroIntegrated from "@/assets/hero-integrated.jpg";
 
-const promos = [
+const heroSlides = [
   {
-    title: "Unlock Unlimited Live Classes for Your Workforce",
+    title: "Score 90+ in Your Board Exams",
+    subtitle: "10th, I PUC, II PUC - Complete AI-Powered Coaching",
     points: [
-      "700+ Live classes monthly",
-      "550+ Learning solutions",
-      "100+ Hands-on projects with labs",
+      "All subjects covered (Physics, Chemistry, Maths, Biology)",
+      "24/7 AI doubt clearing in Hindi, English, Kannada",
+      "Unlimited practice questions & tests",
     ],
-    cta: "Explore SimpleLecture Learning Hub+",
+    cta: "Start Learning at Just ₹2000/Year",
+    image: heroBoardExams,
   },
   {
-    title: "Master Your Future With AI Tutors",
+    title: "Crack NEET with AI-Powered Tutoring",
+    subtitle: "99% Cost Reduction. 100% Success Rate.",
     points: [
-      "AI-powered personalized learning",
-      "24/7 doubt clearing with AI assistants",
-      "Learn at 99% less cost than traditional tutoring",
+      "Physics, Chemistry, Biology - Complete Coverage",
+      "AI-generated mock tests matching NEET pattern",
+      "Personalized weak area improvement",
     ],
-    cta: "Start Learning Now",
+    cta: "Join 50,000+ NEET Aspirants at ₹2000",
+    image: heroNeet,
   },
   {
-    title: "Achieve 100% Mastery in Every Subject",
+    title: "IIT Dreams Made Affordable",
+    subtitle: "Complete JEE Main & Advanced Preparation",
     points: [
-      "Mastery-based learning approach",
-      "Practice until perfect with unlimited questions",
-      "Track your progress with detailed analytics",
+      "PCM with problem-solving techniques",
+      "AI tutor explains every concept until mastery",
+      "Previous years' papers & video solutions",
     ],
-    cta: "Join 50,000+ Students",
+    cta: "Begin Your JEE Journey - ₹2000 Only",
+    image: heroJee,
+  },
+  {
+    title: "Excel in Both Board Exams & Entrance Tests",
+    subtitle: "PUC + NEET or PUC + JEE Integrated",
+    points: [
+      "Dual preparation strategy",
+      "Same syllabus, smarter approach",
+      "Save time, maximize results",
+    ],
+    cta: "Get 2-Year Access - Just ₹2000",
+    image: heroIntegrated,
   },
 ];
 
@@ -38,79 +58,88 @@ export const Hero = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % promos.length);
-    }, 5000);
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 6000);
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <section className="relative min-h-[75vh] flex items-center overflow-hidden bg-gradient-hero">
+    <section className="relative min-h-[80vh] flex items-center overflow-hidden">
+      {/* Background Image with Overlay */}
+      {heroSlides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            currentSlide === index ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <img
+            src={slide.image}
+            alt={slide.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/85 to-primary/60" />
+        </div>
+      ))}
+
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:40px_40px]" />
       
-      <div className="container mx-auto px-4 py-12 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Content - Scrolling Promos */}
-          <div className="space-y-8">
-            {promos.map((promo, index) => (
-              <div
-                key={index}
-                className={`transition-all duration-700 ${
-                  currentSlide === index
-                    ? "opacity-100 translate-x-0"
-                    : "opacity-0 absolute translate-x-8 pointer-events-none"
-                }`}
-              >
-                <div className="space-y-6">
-                  <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-                    {promo.title}
-                  </h1>
-                  
-                  <div className="space-y-4">
-                    {promo.points.map((point, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-white flex-shrink-0 mt-1" />
-                        <p className="text-lg text-white/90">{point}</p>
-                      </div>
-                    ))}
-                  </div>
+      <div className="container mx-auto px-4 py-16 relative z-10">
+        <div className="max-w-3xl">
+          {/* Content */}
+          {heroSlides.map((slide, index) => (
+            <div
+              key={index}
+              className={`transition-all duration-700 ${
+                currentSlide === index
+                  ? "opacity-100 translate-x-0"
+                  : "opacity-0 absolute -translate-x-8 pointer-events-none"
+              }`}
+            >
+              <div className="space-y-6 animate-fade-in">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+                  {slide.title}
+                </h1>
+                
+                <p className="text-xl md:text-2xl text-white/90 font-medium">
+                  {slide.subtitle}
+                </p>
+                
+                <div className="space-y-4 pt-4">
+                  {slide.points.map((point, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-6 h-6 text-white flex-shrink-0 mt-1" />
+                      <p className="text-lg md:text-xl text-white/95">{point}</p>
+                    </div>
+                  ))}
+                </div>
 
+                <div className="pt-6">
                   <Button 
                     size="lg" 
-                    className="bg-white text-primary hover:bg-white/90 shadow-lg hover:shadow-xl transition-all group mt-6"
+                    className="bg-white text-primary hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all group text-lg px-8 py-6 h-auto"
                   >
-                    {promo.cta}
-                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    {slide.cta}
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </div>
               </div>
-            ))}
-
-            {/* Slide Indicators */}
-            <div className="flex gap-2 pt-4">
-              {promos.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`h-1 rounded-full transition-all ${
-                    currentSlide === index ? "bg-white w-8" : "bg-white/40 w-4"
-                  }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
             </div>
-          </div>
+          ))}
 
-          {/* Right Image */}
-          <div className="relative lg:block hidden">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-              <img
-                src={heroImage}
-                alt="Students learning together"
-                className="w-full h-auto object-cover"
+          {/* Slide Indicators */}
+          <div className="flex gap-2 pt-12">
+            {heroSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-1 rounded-full transition-all ${
+                  currentSlide === index ? "bg-white w-12" : "bg-white/40 w-8"
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent" />
-            </div>
+            ))}
           </div>
         </div>
       </div>

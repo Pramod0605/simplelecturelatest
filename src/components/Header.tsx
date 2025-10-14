@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { MegaMenu } from "@/components/MegaMenu";
-import logo from "@/assets/simplelecture-logo.jpg";
+import logo from "@/assets/website-logo.png";
 
 const categories = [
   "Generative AI",

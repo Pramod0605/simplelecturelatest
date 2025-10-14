@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SEOHead } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { Eye, EyeOff } from "lucide-react";
-import logo from "@/assets/simplelecture-logo.jpg";
+import logo from "@/assets/website-logo.png";
 
 const promos = [
   "Welcome back! Continue your learning journey",

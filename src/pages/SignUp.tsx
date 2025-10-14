@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SEOHead } from "@/components/SEO";
 import { Footer } from "@/components/Footer";
 import { Sparkles, Users, Award, Zap, Shield, Smartphone } from "lucide-react";
-import logo from "@/assets/simplelecture-logo.jpg";
+import logo from "@/assets/website-logo.png";
 
 const benefits = [
   { icon: Sparkles, title: "AI-Powered Tutors", description: "Get instant doubt clearing 24/7" },

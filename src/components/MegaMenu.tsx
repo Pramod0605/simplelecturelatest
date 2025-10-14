@@ -6,28 +6,8 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { mockCategories } from "@/data/mockCategories";
+import { educationCategories, exploreByGoal, popularSubjects } from "@/data/educationCategories";
 import { ChevronDown } from "lucide-react";
-
-const exploreByGoal = [
-  { name: "Learn AI & GenAI", slug: "learn-ai" },
-  { name: "Launch Your Career", slug: "career" },
-  { name: "Get Certified", slug: "certifications" },
-  { name: "Upskill Your Team", slug: "business" },
-  { name: "For Developers", slug: "developers" },
-  { name: "For Students", slug: "students" },
-];
-
-const popularTopics = [
-  "Prompt Engineering",
-  "Large Language Models",
-  "ChatGPT Mastery",
-  "AI Agents",
-  "Machine Learning",
-  "Data Science",
-  "Cyber Security",
-  "Web Development",
-];
 
 export const MegaMenu = () => {
   return (
@@ -63,10 +43,10 @@ export const MegaMenu = () => {
                 {/* Column 2: Categories & Subcategories */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
-                    Browse by Category
+                    Browse by Class/Exam
                   </h3>
                   <ul className="space-y-3">
-                    {mockCategories.slice(0, 6).map((category) => (
+                    {educationCategories.slice(0, 4).map((category) => (
                       <li key={category.id}>
                         <Link
                           to={`/programs?category=${category.slug}`}
@@ -76,7 +56,7 @@ export const MegaMenu = () => {
                           {category.name}
                         </Link>
                         <ul className="ml-6 mt-1 space-y-1">
-                          {category.subcategories.slice(0, 2).map((sub) => (
+                          {category.subcategories.slice(0, 3).map((sub) => (
                             <li key={sub}>
                               <Link
                                 to={`/programs?category=${category.slug}&subcategory=${sub.toLowerCase().replace(/\s+/g, '-')}`}
@@ -92,19 +72,19 @@ export const MegaMenu = () => {
                   </ul>
                 </div>
 
-                {/* Column 3: Popular Topics */}
+                {/* Column 3: Popular Subjects */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
-                    Popular Topics
+                    Popular Subjects
                   </h3>
                   <ul className="space-y-2">
-                    {popularTopics.map((topic) => (
-                      <li key={topic}>
+                    {popularSubjects.map((subject) => (
+                      <li key={subject}>
                         <Link
-                          to={`/programs?topic=${topic.toLowerCase().replace(/\s+/g, '-')}`}
+                          to={`/programs?subject=${subject.toLowerCase().replace(/\s+/g, '-')}`}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block py-1"
                         >
-                          {topic}
+                          {subject}
                         </Link>
                       </li>
                     ))}
