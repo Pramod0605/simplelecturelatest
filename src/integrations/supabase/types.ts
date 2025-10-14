@@ -68,10 +68,12 @@ export type Database = {
           description: string | null
           due_date: string | null
           duration_minutes: number | null
+          homework_date: string | null
           id: string
           is_active: boolean | null
           passing_marks: number | null
           questions: Json
+          submission_date: string | null
           title: string
           total_marks: number | null
         }
@@ -81,10 +83,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           duration_minutes?: number | null
+          homework_date?: string | null
           id?: string
           is_active?: boolean | null
           passing_marks?: number | null
           questions: Json
+          submission_date?: string | null
           title: string
           total_marks?: number | null
         }
@@ -94,10 +98,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           duration_minutes?: number | null
+          homework_date?: string | null
           id?: string
           is_active?: boolean | null
           passing_marks?: number | null
           questions?: Json
+          submission_date?: string | null
           title?: string
           total_marks?: number | null
         }
@@ -833,6 +839,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           is_cancelled: boolean | null
+          is_live: boolean | null
           meeting_link: string | null
           notes: string | null
           room_number: string | null
@@ -846,6 +853,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_cancelled?: boolean | null
+          is_live?: boolean | null
           meeting_link?: string | null
           notes?: string | null
           room_number?: string | null
@@ -859,6 +867,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_cancelled?: boolean | null
+          is_live?: boolean | null
           meeting_link?: string | null
           notes?: string | null
           room_number?: string | null
