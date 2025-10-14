@@ -187,6 +187,76 @@ export type Database = {
           },
         ]
       }
+      class_attendance: {
+        Row: {
+          id: string
+          marked_at: string | null
+          notes: string | null
+          scheduled_class_id: string
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          marked_at?: string | null
+          notes?: string | null
+          scheduled_class_id: string
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          id?: string
+          marked_at?: string | null
+          notes?: string | null
+          scheduled_class_id?: string
+          status?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_attendance_scheduled_class_id_fkey"
+            columns: ["scheduled_class_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_teachers: {
+        Row: {
+          assigned_at: string | null
+          course_id: string
+          id: string
+          is_primary: boolean | null
+          subject: string | null
+          teacher_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          course_id: string
+          id?: string
+          is_primary?: boolean | null
+          subject?: string | null
+          teacher_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          course_id?: string
+          id?: string
+          is_primary?: boolean | null
+          subject?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_teachers_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           created_at: string | null
@@ -404,6 +474,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notice_reads: {
+        Row: {
+          id: string
+          notice_id: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notice_id: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notice_id?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notice_reads_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "notices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notices: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          is_global: boolean | null
+          priority: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          priority?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          priority?: string | null
+          title?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -688,6 +826,56 @@ export type Database = {
           },
         ]
       }
+      scheduled_classes: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          is_cancelled: boolean | null
+          meeting_link: string | null
+          notes: string | null
+          room_number: string | null
+          scheduled_at: string
+          subject: string
+          teacher_id: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_cancelled?: boolean | null
+          meeting_link?: string | null
+          notes?: string | null
+          room_number?: string | null
+          scheduled_at: string
+          subject: string
+          teacher_id?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_cancelled?: boolean | null
+          meeting_link?: string | null
+          notes?: string | null
+          room_number?: string | null
+          scheduled_at?: string
+          subject?: string
+          teacher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_classes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_progress: {
         Row: {
           chapter_id: string | null
@@ -832,6 +1020,45 @@ export type Database = {
           student_id?: string
           time_spent_seconds?: number | null
           topic_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      teacher_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          email: string | null
+          experience_years: number | null
+          full_name: string
+          id: string
+          phone_number: string | null
+          specialization: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name: string
+          id: string
+          phone_number?: string | null
+          specialization?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string
+          id?: string
+          phone_number?: string | null
+          specialization?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
