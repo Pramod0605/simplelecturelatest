@@ -69,7 +69,7 @@ export default function CategoryForm() {
       slug: "",
       icon: "",
       description: "",
-      parent_id: undefined,
+      parent_id: "none",
       level: 1,
       display_order: 0,
       is_popular: false,
@@ -85,7 +85,7 @@ export default function CategoryForm() {
         slug: category.slug,
         icon: category.icon || "",
         description: category.description || "",
-        parent_id: category.parent_id || undefined,
+        parent_id: category.parent_id || "none",
         level: category.level,
         display_order: category.display_order,
         is_popular: category.is_popular,
@@ -111,7 +111,7 @@ export default function CategoryForm() {
   // Auto-calculate level based on parent
   const parentId = form.watch("parent_id");
   useEffect(() => {
-    if (parentId && categories) {
+    if (parentId && parentId !== "none" && categories) {
       const parent = categories.find((c) => c.id === parentId);
       if (parent) {
         form.setValue("level", parent.level + 1);
@@ -124,6 +124,7 @@ export default function CategoryForm() {
   const onSubmit = (data: FormData) => {
     const categoryData = {
       ...data,
+      parent_id: data.parent_id === "none" ? null : data.parent_id,
       goal_ids: selectedGoals,
     };
 
@@ -142,7 +143,13 @@ export default function CategoryForm() {
   };
 
   const level = form.watch("level");
-  const parentCategories = categories?.filter((c) => c.level < level);
+  
+  // Filter parent categories: exclude self and allow any other category
+  // (descendants will be prevented by level auto-calculation)
+  const parentCategories = categories?.filter((c) => {
+    if (isEdit && id && c.id === id) return false; // Can't be own parent
+    return true;
+  });
 
   return (
     <div className="p-8 space-y-6">
@@ -256,11 +263,11 @@ export default function CategoryForm() {
                           <SelectValue placeholder="Select parent category (optional)" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="none">None (Top Level)</SelectItem>
                         {parentCategories?.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                            {cat.parent_name && ` - ${cat.parent_name}`}
+                            {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name} (Level {cat.level})
                           </SelectItem>
                         ))}
                       </SelectContent>
