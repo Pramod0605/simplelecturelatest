@@ -32,6 +32,15 @@ import MobileCart from "./pages/mobile/MobileCart";
 import MobileCheckout from "./pages/mobile/MobileCheckout";
 import MobilePaymentSuccess from "./pages/mobile/MobilePaymentSuccess";
 import MobileAuth from "./pages/mobile/MobileAuth";
+import { AdminProtectedRoute } from "./components/admin/AdminProtectedRoute";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import CategoryList from "./pages/admin/CategoryList";
+import CategoryForm from "./pages/admin/CategoryForm";
+import ExploreByGoalList from "./pages/admin/ExploreByGoalList";
+import ExploreByGoalForm from "./pages/admin/ExploreByGoalForm";
+import PopularSubjectsList from "./pages/admin/PopularSubjectsList";
+import PopularSubjectsForm from "./pages/admin/PopularSubjectsForm";
 
 const App = () => (
   <HelmetProvider>
@@ -67,6 +76,23 @@ const App = () => (
             <Route path="/mobile/my-learning" element={<MobileMyLearning />} />
             <Route path="/mobile/my-courses" element={<MobileMyCourses />} />
             <Route path="/implementation" element={<Implementation />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminProtectedRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="categories" element={<CategoryList />} />
+                <Route path="categories/add" element={<CategoryForm />} />
+                <Route path="categories/edit/:id" element={<CategoryForm />} />
+                <Route path="explore-by-goal" element={<ExploreByGoalList />} />
+                <Route path="explore-by-goal/add" element={<ExploreByGoalForm />} />
+                <Route path="explore-by-goal/edit/:id" element={<ExploreByGoalForm />} />
+                <Route path="popular-subjects" element={<PopularSubjectsList />} />
+                <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
+                <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
+              </Route>
+            </Route>
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
