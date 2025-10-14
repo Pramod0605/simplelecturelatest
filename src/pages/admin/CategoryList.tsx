@@ -83,10 +83,10 @@ export default function CategoryList() {
             />
           </div>
           <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-background">
               <SelectValue placeholder="Filter by level" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover z-50">
               <SelectItem value="all">All Levels</SelectItem>
               <SelectItem value="1">Level 1</SelectItem>
               <SelectItem value="2">Level 2</SelectItem>
@@ -94,10 +94,10 @@ export default function CategoryList() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-background">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover z-50">
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
@@ -146,10 +146,10 @@ export default function CategoryList() {
                   <TableCell>
                     {category.parent_name ? (
                       <span className="text-sm text-muted-foreground">
-                        {category.name} - {category.parent_name}
+                        {category.parent_name}
                       </span>
                     ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
+                      <span className="text-sm text-muted-foreground">Top Level</span>
                     )}
                   </TableCell>
                   <TableCell>
