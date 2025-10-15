@@ -22,7 +22,7 @@ const PaymentFailed = () => {
             <Button onClick={() => navigate('/cart')} className="w-full" size="lg">
               Retry Payment
             </Button>
-            <Button onClick={() => navigate('/programs')} variant="outline" className="w-full">
+            <Button onClick={() => navigate('/courses')} variant="outline" className="w-full">
               Continue Shopping
             </Button>
           </div>

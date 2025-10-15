@@ -107,8 +107,8 @@ const MyCourses = () => {
                   : `No subjects found in ${selectedCourse}`
                 }
               </p>
-              <Button onClick={() => navigate('/programs')}>
-                Browse Programs
+              <Button onClick={() => navigate('/courses')}>
+                Browse Courses
               </Button>
             </Card>
           )}

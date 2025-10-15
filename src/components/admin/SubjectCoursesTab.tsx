@@ -31,7 +31,6 @@ export const SubjectCoursesTab = ({ subjectId, subjectName }: SubjectCoursesTabP
             <TableHeader>
               <TableRow>
                 <TableHead>Course Name</TableHead>
-                <TableHead>Program</TableHead>
                 <TableHead>Price (INR)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -41,7 +40,6 @@ export const SubjectCoursesTab = ({ subjectId, subjectName }: SubjectCoursesTabP
               {courses.map((course) => (
                 <TableRow key={course.id}>
                   <TableCell className="font-medium">{course.name}</TableCell>
-                  <TableCell>{course.programs?.name || "N/A"}</TableCell>
                   <TableCell>₹{course.price_inr?.toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant={course.is_active ? "default" : "secondary"}>

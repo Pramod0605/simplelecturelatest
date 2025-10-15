@@ -8,10 +8,7 @@ export const useAdminCourses = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("courses")
-        .select(`
-          *,
-          program:programs(id, name, category)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (error) throw error;

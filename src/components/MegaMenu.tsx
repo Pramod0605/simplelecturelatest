@@ -30,7 +30,7 @@ export const MegaMenu = () => {
                     {exploreByGoal.map((goal) => (
                       <li key={goal.slug}>
                         <Link
-                          to={`/programs?goal=${goal.slug}`}
+                          to={`/courses?goal=${goal.slug}`}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block py-1"
                         >
                           {goal.name}
@@ -49,7 +49,7 @@ export const MegaMenu = () => {
                     {educationCategories.slice(0, 4).map((category) => (
                       <li key={category.id}>
                         <Link
-                          to={`/programs?category=${category.slug}`}
+                          to={`/courses?category=${category.slug}`}
                           className="text-sm font-medium text-foreground hover:text-primary transition-colors block"
                         >
                           <span className="mr-2">{category.icon}</span>
@@ -59,7 +59,7 @@ export const MegaMenu = () => {
                           {category.subcategories.slice(0, 3).map((sub) => (
                             <li key={sub}>
                               <Link
-                                to={`/programs?category=${category.slug}&subcategory=${sub.toLowerCase().replace(/\s+/g, '-')}`}
+                                to={`/courses?category=${category.slug}&subcategory=${sub.toLowerCase().replace(/\s+/g, '-')}`}
                                 className="text-xs text-muted-foreground hover:text-primary transition-colors block"
                               >
                                 {sub}
@@ -81,7 +81,7 @@ export const MegaMenu = () => {
                     {popularSubjects.map((subject) => (
                       <li key={subject}>
                         <Link
-                          to={`/programs?subject=${subject.toLowerCase().replace(/\s+/g, '-')}`}
+                          to={`/courses?subject=${subject.toLowerCase().replace(/\s+/g, '-')}`}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block py-1"
                         >
                           {subject}

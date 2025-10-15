@@ -6,14 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
 import { queryClient } from "@/lib/queryClient";
 import Index from "./pages/Index";
-import Programs from "./pages/Programs";
-import ProgramDetail from "./pages/ProgramDetail";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import MobileHome from "./pages/MobileHome";
-import MobilePrograms from "./pages/mobile/MobilePrograms";
-import MobileProgramDetail from "./pages/mobile/MobileProgramDetail";
 import MobileDashboard from "./pages/mobile/MobileDashboard";
 import MobileMyAssignments from "./pages/mobile/MobileMyAssignments";
 import MobileExplore from "./pages/mobile/MobileExplore";
@@ -41,7 +37,6 @@ import ExploreByGoalList from "./pages/admin/ExploreByGoalList";
 import ExploreByGoalForm from "./pages/admin/ExploreByGoalForm";
 import PopularSubjectsList from "./pages/admin/PopularSubjectsList";
 import PopularSubjectsForm from "./pages/admin/PopularSubjectsForm";
-import ProgramsList from "./pages/admin/ProgramsList";
 import CoursesList from "./pages/admin/CoursesList";
 import CourseForm from "./pages/admin/CourseForm";
 import UsersList from "./pages/admin/UsersList";
@@ -71,8 +66,6 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/programs" element={<Programs />} />
-            <Route path="/programs/:programId" element={<ProgramDetail />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/my-courses" element={<MyCourses />} />
@@ -84,8 +77,6 @@ const App = () => (
             <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
-            <Route path="/mobile/programs" element={<MobilePrograms />} />
-            <Route path="/mobile/programs/:programId" element={<MobileProgramDetail />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />
             <Route path="/mobile/cart" element={<MobileCart />} />
             <Route path="/mobile/checkout" element={<MobileCheckout />} />
@@ -114,7 +105,6 @@ const App = () => (
               <Route path="assignments" element={<AssignmentManager />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
-                <Route path="programs" element={<ProgramsList />} />
                 <Route path="courses" element={<CoursesList />} />
                 <Route path="courses/new" element={<CourseForm />} />
                 <Route path="courses/:courseId/edit" element={<CourseForm />} />

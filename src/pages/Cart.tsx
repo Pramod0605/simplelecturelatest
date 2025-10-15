@@ -71,9 +71,9 @@ const Cart = () => {
             <Card className="max-w-md mx-auto p-8 text-center">
               <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
               <h2 className="text-2xl font-bold mb-2">Your cart is empty</h2>
-              <p className="text-muted-foreground mb-6">Start exploring our programs</p>
-              <Link to="/programs">
-                <Button size="lg">Explore Programs</Button>
+              <p className="text-muted-foreground mb-6">Start exploring our courses</p>
+              <Link to="/courses">
+                <Button size="lg">Explore Courses</Button>
               </Link>
             </Card>
           </div>
@@ -87,7 +87,7 @@ const Cart = () => {
       <SEOHead title="Shopping Cart | SimpleLecture" description="Review your selected programs" />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <Link to="/programs">
+          <Link to="/courses">
             <Button variant="ghost" className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Continue Shopping

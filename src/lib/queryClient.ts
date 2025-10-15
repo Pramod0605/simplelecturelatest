@@ -17,30 +17,21 @@ export const queryClient = new QueryClient({
 });
 
 // Prefetch strategies for common data
-export const prefetchPrograms = async () => {
+export const prefetchCourses = async (category?: string) => {
   await queryClient.prefetchQuery({
-    queryKey: ["programs", "list"],
+    queryKey: category ? ["courses", "list", { filters: category }] : ["courses", "list"],
     queryFn: async () => {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = await supabase
-        .from("programs")
-        .select("*")
-        .eq("is_active", true);
-      return data;
-    },
-  });
-};
-
-export const prefetchCourses = async (programId: string) => {
-  await queryClient.prefetchQuery({
-    queryKey: ["courses", "list", { filters: programId }],
-    queryFn: async () => {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = await supabase
+      let query = supabase
         .from("courses")
         .select("*")
-        .eq("program_id", programId)
         .eq("is_active", true);
+      
+      if (category) {
+        query = query.eq("category", category);
+      }
+      
+      const { data } = await query;
       return data;
     },
   });

@@ -55,7 +55,7 @@ const Checkout = () => {
         {
           body: {
             amount: finalAmount,
-            programs: items.map((item) => item.program_id),
+            courses: items.map((item) => item.program_id),
             customerInfo: formData,
           },
         }
@@ -71,7 +71,7 @@ const Checkout = () => {
           state: {
             orderId: orderData.orderId,
             amount: finalAmount,
-            programs: items,
+            courses: items,
           },
         });
       }, 2000);

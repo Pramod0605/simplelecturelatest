@@ -10,7 +10,7 @@ import confetti from 'canvas-confetti';
 const PaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { orderId, amount, programs } = location.state || {};
+  const { orderId, amount, courses } = location.state || {};
 
   useEffect(() => {
     // Confetti celebration
@@ -50,12 +50,12 @@ const PaymentSuccess = () => {
             </div>
 
             <div>
-              <p className="text-sm text-muted-foreground mb-2">Programs Purchased:</p>
+              <p className="text-sm text-muted-foreground mb-2">Courses Purchased:</p>
               <div className="space-y-2">
-                {programs?.map((program: any) => (
-                  <div key={program.id} className="flex items-center gap-2">
+                {courses?.map((course: any) => (
+                  <div key={course.id} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">{program.program_name}</span>
+                    <span className="font-medium">{course.program_name}</span>
                   </div>
                 ))}
               </div>

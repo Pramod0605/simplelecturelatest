@@ -11,25 +11,18 @@ export const courseKeys = {
   detail: (id: string) => [...courseKeys.details(), id] as const,
 };
 
-export const useCourses = (programId?: string) => {
+export const useCourses = (category?: string) => {
   return useQuery({
-    queryKey: programId ? courseKeys.list(programId) : courseKeys.lists(),
+    queryKey: category ? courseKeys.list(category) : courseKeys.lists(),
     queryFn: async () => {
       let query = supabase
         .from("courses")
-        .select(`
-          *,
-          program:programs(
-            id,
-            name,
-            category
-          )
-        `)
+        .select("*")
         .eq("is_active", true)
         .order("sequence_order");
 
-      if (programId) {
-        query = query.eq("program_id", programId);
+      if (category) {
+        query = query.eq("category", category);
       }
 
       const { data, error } = await query;
@@ -48,7 +41,6 @@ export const useCourse = (courseId: string) => {
         .from("courses")
         .select(`
           *,
-          program:programs(*),
           chapters(
             *,
             topics(*)

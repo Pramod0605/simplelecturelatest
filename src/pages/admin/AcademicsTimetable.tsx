@@ -25,10 +25,8 @@ export default function AcademicsTimetable() {
   const { data: categories } = useAdminCategories();
   const { data: allCourses } = useCourses();
   
-  // Filter courses by selected category
-  const courses = allCourses?.filter(course => 
-    !selectedCategory || course.program?.category === selectedCategory
-  );
+  // Filter courses by selected category  
+  const courses = allCourses;
 
   const [dayEntries, setDayEntries] = useState<Record<number, any[]>>({
     1: [],

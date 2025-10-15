@@ -16,11 +16,7 @@ export const useSubjectCourses = (subjectId?: string) => {
             name,
             slug,
             price_inr,
-            is_active,
-            program_id,
-            programs (
-              name
-            )
+            is_active
           )
         `)
         .eq("subject_id", subjectId);

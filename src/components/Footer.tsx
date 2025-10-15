@@ -52,7 +52,7 @@ export const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-bold mb-4">Programs</h3>
+            <h3 className="font-bold mb-4">Courses</h3>
             <ul className="space-y-3">
               <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
