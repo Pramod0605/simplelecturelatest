@@ -424,7 +424,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                 }}
               >
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button onClick={() => setIsAddManualOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Question
                   </Button>

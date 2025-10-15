@@ -327,7 +327,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                 }}
               >
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button onClick={() => setIsAddChapterOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Chapter
                   </Button>
