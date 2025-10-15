@@ -715,6 +715,8 @@ export type Database = {
       }
       courses: {
         Row: {
+          ai_tutoring_enabled: boolean | null
+          ai_tutoring_price: number | null
           course_includes: Json | null
           created_at: string | null
           description: string | null
@@ -725,6 +727,8 @@ export type Database = {
           instructor_bio: string | null
           instructor_name: string | null
           is_active: boolean | null
+          live_classes_enabled: boolean | null
+          live_classes_price: number | null
           name: string
           original_price_inr: number | null
           price_inr: number | null
@@ -740,6 +744,8 @@ export type Database = {
           what_you_learn: Json | null
         }
         Insert: {
+          ai_tutoring_enabled?: boolean | null
+          ai_tutoring_price?: number | null
           course_includes?: Json | null
           created_at?: string | null
           description?: string | null
@@ -750,6 +756,8 @@ export type Database = {
           instructor_bio?: string | null
           instructor_name?: string | null
           is_active?: boolean | null
+          live_classes_enabled?: boolean | null
+          live_classes_price?: number | null
           name: string
           original_price_inr?: number | null
           price_inr?: number | null
@@ -765,6 +773,8 @@ export type Database = {
           what_you_learn?: Json | null
         }
         Update: {
+          ai_tutoring_enabled?: boolean | null
+          ai_tutoring_price?: number | null
           course_includes?: Json | null
           created_at?: string | null
           description?: string | null
@@ -775,6 +785,8 @@ export type Database = {
           instructor_bio?: string | null
           instructor_name?: string | null
           is_active?: boolean | null
+          live_classes_enabled?: boolean | null
+          live_classes_price?: number | null
           name?: string
           original_price_inr?: number | null
           price_inr?: number | null
