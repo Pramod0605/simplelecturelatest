@@ -2006,7 +2006,7 @@ export type Database = {
           employee_id?: string | null
           experience_years?: number | null
           full_name: string
-          id: string
+          id?: string
           phone_number?: string | null
           qualification?: string | null
           specialization?: string[] | null
