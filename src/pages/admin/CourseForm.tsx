@@ -10,6 +10,8 @@ import { CourseCategoriesTab } from "@/components/admin/course/CourseCategoriesT
 import { CourseSubjectsTab } from "@/components/admin/course/CourseSubjectsTab";
 import { CourseContentTab } from "@/components/admin/course/CourseContentTab";
 import { CourseFAQsTab } from "@/components/admin/course/CourseFAQsTab";
+import { CourseInstructorsTab } from "@/components/admin/course/CourseInstructorsTab";
+import { CoursePricingTab } from "@/components/admin/course/CoursePricingTab";
 import { toast } from "sonner";
 
 export default function CourseForm() {
@@ -35,6 +37,10 @@ export default function CourseForm() {
     what_you_learn: [],
     course_includes: [],
     is_active: true,
+    ai_tutoring_enabled: false,
+    ai_tutoring_price: 2000,
+    live_classes_enabled: false,
+    live_classes_price: 2000,
   });
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -58,6 +64,10 @@ export default function CourseForm() {
         what_you_learn: course.what_you_learn || [],
         course_includes: course.course_includes || [],
         is_active: course.is_active ?? true,
+        ai_tutoring_enabled: course.ai_tutoring_enabled || false,
+        ai_tutoring_price: course.ai_tutoring_price || 2000,
+        live_classes_enabled: course.live_classes_enabled || false,
+        live_classes_price: course.live_classes_price || 2000,
       });
     }
   }, [course]);
@@ -130,12 +140,14 @@ export default function CourseForm() {
       <Card>
         <CardContent className="pt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="subjects">Subjects</TabsTrigger>
-              <TabsTrigger value="content">Content</TabsTrigger>
-              <TabsTrigger value="faqs">FAQs</TabsTrigger>
+              <TabsTrigger value="instructors" disabled={!courseId}>Instructors</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+              <TabsTrigger value="content" disabled={!courseId}>Content</TabsTrigger>
+              <TabsTrigger value="faqs" disabled={!courseId}>FAQs</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className="space-y-6 pt-6">
@@ -151,6 +163,14 @@ export default function CourseForm() {
 
             <TabsContent value="subjects" className="space-y-6 pt-6">
               <CourseSubjectsTab courseId={courseId} selectedCategories={selectedCategories} />
+            </TabsContent>
+
+            <TabsContent value="instructors" className="space-y-6 pt-6">
+              <CourseInstructorsTab courseId={courseId} />
+            </TabsContent>
+
+            <TabsContent value="pricing" className="space-y-6 pt-6">
+              <CoursePricingTab formData={formData} onChange={handleChange} />
             </TabsContent>
 
             <TabsContent value="content" className="space-y-6 pt-6">

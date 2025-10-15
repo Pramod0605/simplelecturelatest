@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, BookOpen, List, Brain, FileText, Tag } from "lucide-react";
+import { ArrowLeft, BookOpen, List, Brain, FileText, Tag, Users, GraduationCap } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   useAdminSubject,
@@ -34,6 +34,8 @@ import {
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
 import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTab";
+import { SubjectInstructorsTab } from "@/components/admin/SubjectInstructorsTab";
+import { SubjectCoursesTab } from "@/components/admin/SubjectCoursesTab";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -155,10 +157,18 @@ export default function SubjectForm() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Basic Info
+          </TabsTrigger>
+          <TabsTrigger value="instructors" disabled={!isEdit} className="gap-2">
+            <Users className="h-4 w-4" />
+            Instructors
+          </TabsTrigger>
+          <TabsTrigger value="courses" disabled={!isEdit} className="gap-2">
+            <GraduationCap className="h-4 w-4" />
+            Courses
           </TabsTrigger>
           <TabsTrigger value="chapters" disabled={!isEdit} className="gap-2">
             <List className="h-4 w-4" />
@@ -330,7 +340,33 @@ export default function SubjectForm() {
           </Form>
         </TabsContent>
 
-        {/* Tab 2: Chapters & Topics */}
+        {/* Tab 2: Instructors */}
+        <TabsContent value="instructors">
+          {isEdit && id ? (
+            <SubjectInstructorsTab subjectId={id} subjectName={subject?.name || ""} />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Save the subject first to manage instructors
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 3: Courses */}
+        <TabsContent value="courses">
+          {isEdit && id ? (
+            <SubjectCoursesTab subjectId={id} subjectName={subject?.name || ""} />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Save the subject first to view related courses
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 4: Chapters & Topics */}
         <TabsContent value="chapters">
           {isEdit && id ? (
             <SubjectChaptersTab subjectId={id} subjectName={subject?.name || ""} />
@@ -343,7 +379,7 @@ export default function SubjectForm() {
           )}
         </TabsContent>
 
-        {/* Tab 3: Questions */}
+        {/* Tab 5: Questions */}
         <TabsContent value="questions">
           {isEdit && id ? (
             <SubjectQuestionsTab subjectId={id} subjectName={subject?.name || ""} />
@@ -356,7 +392,7 @@ export default function SubjectForm() {
           )}
         </TabsContent>
 
-        {/* Tab 4: Previous Year Papers */}
+        {/* Tab 6: Previous Year Papers */}
         <TabsContent value="previous-year">
           {isEdit && id ? (
             <SubjectPreviousYearTab subjectId={id} subjectName={subject?.name || ""} />
