@@ -37,7 +37,7 @@ export const useSubjectQuestions = (filters?: {
     queryFn: async () => {
       let query = supabase
         .from("questions")
-        .select("*, topics(*, subject_chapters(subject_id))");
+        .select("*, subject_topics(*, subject_chapters(subject_id))");
 
       if (filters?.topicId) {
         query = query.eq("topic_id", filters.topicId);
@@ -62,7 +62,7 @@ export const useSubjectQuestions = (filters?: {
       // Filter by subjectId if provided (through chapter relationship)
       if (filters?.subjectId) {
         return (data as any[]).filter(
-          (q) => q.topics?.subject_chapters?.subject_id === filters.subjectId
+          (q) => q.subject_topics?.subject_chapters?.subject_id === filters.subjectId
         );
       }
 
@@ -77,9 +77,22 @@ export const useCreateQuestion = () => {
 
   return useMutation({
     mutationFn: async (question: Omit<SubjectQuestion, "id" | "created_at">) => {
+      const normalizeType = (qf?: string, qt?: string) => {
+        const allowed = ["mcq", "subjective", "true_false"] as const;
+        if (qt && (allowed as readonly string[]).includes(qt)) return qt;
+        if (qf === "true_false") return "true_false";
+        if (qf === "single_choice" || qf === "multiple_choice") return "mcq";
+        return "subjective";
+      };
+
+      const payload = {
+        ...question,
+        question_type: normalizeType(question.question_format, question.question_type),
+      };
+
       const { data, error } = await supabase
         .from("questions")
-        .insert(question)
+        .insert(payload)
         .select()
         .single();
 
@@ -186,11 +199,24 @@ export const useBulkImportQuestions = () => {
       for (let i = 0; i < questions.length; i += 100) {
         const batch = questions.slice(i, i + 100);
         
+        const normalizeBatchType = (qf?: string, qt?: string) => {
+          const allowed = ["mcq", "subjective", "true_false"] as const;
+          if (qt && (allowed as readonly string[]).includes(qt)) return qt;
+          if (qf === "true_false") return "true_false";
+          if (qf === "single_choice" || qf === "multiple_choice") return "mcq";
+          return "subjective";
+        };
+
         try {
-          const { error } = await supabase.from("questions").insert(batch);
-          
+          const normalizedBatch = batch.map((q) => ({
+            ...q,
+            question_type: normalizeBatchType(q.question_format, (q as any).question_type),
+          }));
+
+          const { error } = await supabase.from("questions").insert(normalizedBatch);
           if (error) throw error;
-          results.success += batch.length;
+          results.success += normalizedBatch.length;
+
         } catch (error) {
           results.errors.push(
             `Batch ${Math.floor(i / 100) + 1}: ${error instanceof Error ? error.message : "Unknown error"}`
