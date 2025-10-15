@@ -50,6 +50,8 @@ import {
   useDeleteQuestion,
   useUploadQuestionImage,
   useBulkImportQuestions,
+  useBulkVerifyQuestions,
+  useBulkDeleteQuestions,
 } from "@/hooks/useSubjectQuestions";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { toast } from "@/hooks/use-toast";
@@ -57,6 +59,9 @@ import { AIRephraseModal } from "./AIRephraseModal";
 import { ExcelImportModal } from "./ExcelImportModal";
 import { FormulaEditor } from "./FormulaEditor";
 import { ImageUploadWidget } from "./ImageUploadWidget";
+import { QuestionFilters } from "./QuestionFilters";
+import { QuestionPreview } from "./QuestionPreview";
+import { BulkActionsBar } from "./BulkActionsBar";
 import * as XLSX from "xlsx";
 
 interface SubjectQuestionsTabProps {
@@ -69,8 +74,19 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<any>(null);
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
-  const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
-  const [filterVerified, setFilterVerified] = useState<string>("all");
+  
+  // Enhanced filters
+  const [filters, setFilters] = useState({
+    difficulty: "all",
+    verified: "all",
+    aiGenerated: "all",
+    chapterId: "all",
+    topicId: "all",
+    searchQuery: "",
+  });
+
+  // Selection and bulk operations
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
 
   // AI Rephrase states
   const [rephraseModalOpen, setRephraseModalOpen] = useState(false);
@@ -96,22 +112,126 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   });
 
   const { data: chapters } = useSubjectChapters(subjectId);
-  const { data: topics } = useChapterTopics(questionForm.chapter_id);
+  const { data: topics } = useChapterTopics(filters.chapterId !== "all" ? filters.chapterId : questionForm.chapter_id);
   
-  const filters = {
+  const queryFilters = {
     subjectId,
-    difficulty: filterDifficulty !== "all" ? filterDifficulty : undefined,
-    isVerified: filterVerified === "verified" ? true : filterVerified === "pending" ? false : undefined,
+    difficulty: filters.difficulty !== "all" ? filters.difficulty : undefined,
+    isVerified: filters.verified === "verified" ? true : filters.verified === "unverified" ? false : undefined,
+    isAiGenerated: filters.aiGenerated === "ai" ? true : filters.aiGenerated === "manual" ? false : undefined,
+    topicId: filters.topicId !== "all" ? filters.topicId : undefined,
   };
 
-  const { data: questions, isLoading } = useSubjectQuestions(filters);
+  const { data: questions, isLoading } = useSubjectQuestions(queryFilters);
   const createQuestion = useCreateQuestion();
   const updateQuestion = useUpdateQuestion();
   const deleteQuestion = useDeleteQuestion();
   const uploadImage = useUploadQuestionImage();
   const bulkImport = useBulkImportQuestions();
+  const bulkVerify = useBulkVerifyQuestions();
+  const bulkDelete = useBulkDeleteQuestions();
 
-  const resetForm = () => {
+  // Filter management
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    if (key === "chapterId" && value !== prev.chapterId) {
+      setFilters(prev => ({ ...prev, topicId: "all" }));
+    }
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      difficulty: "all",
+      verified: "all",
+      aiGenerated: "all",
+      chapterId: "all",
+      topicId: "all",
+      searchQuery: "",
+    });
+  };
+
+  const activeFilterCount = Object.values(filters).filter(v => v !== "all" && v !== "").length;
+
+  // Selection management
+  const handleSelectQuestion = (id: string) => {
+    const newSelection = new Set(selectedQuestions);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedQuestions(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedQuestions.size === filteredQuestions.length) {
+      setSelectedQuestions(new Set());
+    } else {
+      setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedQuestions(new Set());
+  };
+
+  // Bulk operations
+  const handleBulkVerify = () => {
+    if (selectedQuestions.size === 0) return;
+    bulkVerify.mutate(Array.from(selectedQuestions), {
+      onSuccess: () => handleClearSelection(),
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedQuestions.size === 0) return;
+    bulkDelete.mutate(Array.from(selectedQuestions), {
+      onSuccess: () => handleClearSelection(),
+    });
+  };
+
+  const handleBulkExport = () => {
+    if (selectedQuestions.size === 0) return;
+    
+    const selectedQuestionsData = filteredQuestions.filter(q => selectedQuestions.has(q.id));
+    const exportData = selectedQuestionsData.map(q => ({
+      topic_id: q.topic_id,
+      question_text: q.question_text,
+      question_format: q.question_format,
+      option_a: q.options?.A?.text || "",
+      option_b: q.options?.B?.text || "",
+      option_c: q.options?.C?.text || "",
+      option_d: q.options?.D?.text || "",
+      correct_answer: q.correct_answer,
+      explanation: q.explanation || "",
+      difficulty: q.difficulty,
+      marks: q.marks,
+      contains_formula: q.contains_formula,
+      formula_type: q.formula_type || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Questions");
+    XLSX.writeFile(workbook, `questions_export_${Date.now()}.xlsx`);
+    
+    toast({
+      title: "Export Successful",
+      description: `Exported ${selectedQuestions.size} questions`,
+    });
+  };
+
+  const handleVerifyQuestion = (id: string, verified: boolean) => {
+    updateQuestion.mutate({ id, updates: { is_verified: verified } });
+  };
+
+  // Filter questions client-side for search
+  const filteredQuestions = questions?.filter(q => {
+    if (filters.searchQuery) {
+      return q.question_text.toLowerCase().includes(filters.searchQuery.toLowerCase());
+    }
+    return true;
+  }) || [];
     setQuestionForm({
       chapter_id: "",
       topic_id: "",
@@ -851,136 +971,46 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <Label className="text-xs mb-2 block">Difficulty</Label>
-              <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs mb-2 block">Status</Label>
-              <Select value={filterVerified} onValueChange={setFilterVerified}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Questions</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="pending">Pending Review</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <QuestionFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            chapters={chapters || []}
+            topics={topics || []}
+            activeFilterCount={activeFilterCount}
+          />
 
-          {/* Questions Table */}
+          {/* Questions Grid */}
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : questions && questions.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Question</TableHead>
-                  <TableHead>Format</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead>Marks</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {questions.map((question) => (
-                  <TableRow key={question.id}>
-                    <TableCell className="max-w-md">
-                      <div className="flex items-start gap-2">
-                        {question.question_image_url && (
-                          <ImageIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                        )}
-                        <span className="line-clamp-2">{question.question_text}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {question.question_format.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          question.difficulty === "easy"
-                            ? "default"
-                            : question.difficulty === "hard"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {question.difficulty}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{question.marks}</TableCell>
-                    <TableCell>
-                      {question.is_verified ? (
-                        <Badge className="bg-green-500">Verified</Badge>
-                      ) : (
-                        <Badge variant="outline">Pending</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingQuestion(question);
-                            setQuestionForm({
-                              chapter_id: "",
-                              topic_id: question.topic_id || "",
-                              question_text: question.question_text,
-                              question_format: question.question_format,
-                              difficulty: question.difficulty,
-                              options: question.options || {},
-                              correct_answer: question.correct_answer,
-                              explanation: question.explanation || "",
-                              marks: question.marks,
-                              contains_formula: question.contains_formula,
-                              formula_type: (question.formula_type as any) || "plain",
-                              question_image_url: question.question_image_url || "",
-                              option_images: question.option_images || {},
-                            });
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteQuestionId(question.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          ) : filteredQuestions && filteredQuestions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              {filteredQuestions.map((question) => (
+                <QuestionPreview
+                  key={question.id}
+                  question={question}
+                  onEdit={setEditingQuestion}
+                  onDelete={(id) => setDeleteQuestionId(id)}
+                  onVerify={handleVerifyQuestion}
+                />
+              ))}
+            </div>
           ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <Brain className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>No questions added yet</p>
-              <p className="text-sm mt-2">Click "Add Question" to get started</p>
+            <div className="text-center py-8 text-muted-foreground">
+              No questions found. Try adjusting your filters or create a new question.
             </div>
           )}
+
+          {/* Bulk Actions Bar */}
+          <BulkActionsBar
+            selectedCount={selectedQuestions.size}
+            onClearSelection={handleClearSelection}
+            onBulkVerify={handleBulkVerify}
+            onBulkDelete={handleBulkDelete}
+            onBulkExport={handleBulkExport}
+          />
         </CardContent>
       </Card>
 

@@ -120,7 +120,7 @@ export const useUpdateQuestion = () => {
       id: string;
       updates: Partial<SubjectQuestion>;
     }) => {
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from("questions")
         .update(updates)
         .eq("id", id)
@@ -136,6 +136,52 @@ export const useUpdateQuestion = () => {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: "Failed to update question: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
+export const useBulkVerifyQuestions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("questions")
+        .update({ is_verified: true })
+        .in("id", ids);
+
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
+      toast({ title: "Success", description: `${count} questions verified successfully` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to verify questions: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
+export const useBulkDeleteQuestions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("questions")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
+      toast({ title: "Success", description: `${count} questions deleted successfully` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to delete questions: " + error.message, variant: "destructive" });
     },
   });
 };
