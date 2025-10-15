@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 // Types
 export interface SubjectCategory {
@@ -128,10 +128,10 @@ export const useUpdateSubjectCategories = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subject-categories", variables.subjectId] });
-      toast.success("Subject categories updated");
+      toast({ title: "Success", description: "Subject categories updated" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to update categories: " + error.message);
+      toast({ title: "Error", description: "Failed to update categories: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -172,10 +172,10 @@ export const useCreateChapter = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-chapters", data.subject_id] });
-      toast.success("Chapter created successfully");
+      toast({ title: "Success", description: "Chapter created successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to create chapter: " + error.message);
+      toast({ title: "Error", description: "Failed to create chapter: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -203,10 +203,10 @@ export const useUpdateChapter = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-chapters", data.subject_id] });
-      toast.success("Chapter updated successfully");
+      toast({ title: "Success", description: "Chapter updated successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to update chapter: " + error.message);
+      toast({ title: "Error", description: "Failed to update chapter: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -226,10 +226,10 @@ export const useDeleteChapter = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-chapters", data.subjectId] });
-      toast.success("Chapter deleted successfully");
+      toast({ title: "Success", description: "Chapter deleted successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to delete chapter: " + error.message);
+      toast({ title: "Error", description: "Failed to delete chapter: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -270,10 +270,10 @@ export const useCreateTopic = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-topics", data.chapter_id] });
-      toast.success("Topic created successfully");
+      toast({ title: "Success", description: "Topic created successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to create topic: " + error.message);
+      toast({ title: "Error", description: "Failed to create topic: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -301,10 +301,10 @@ export const useUpdateTopic = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-topics", data.chapter_id] });
-      toast.success("Topic updated successfully");
+      toast({ title: "Success", description: "Topic updated successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to update topic: " + error.message);
+      toast({ title: "Error", description: "Failed to update topic: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -324,10 +324,10 @@ export const useDeleteTopic = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-topics", data.chapterId] });
-      toast.success("Topic deleted successfully");
+      toast({ title: "Success", description: "Topic deleted successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to delete topic: " + error.message);
+      toast({ title: "Error", description: "Failed to delete topic: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -401,13 +401,14 @@ export const useBulkImportChapters = () => {
     },
     onSuccess: (results, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subject-chapters", variables.subjectId] });
-      toast.success(
-        `Imported ${results.chapters} chapters and ${results.topics} topics` +
+      toast({
+        title: "Import Complete",
+        description: `Imported ${results.chapters} chapters and ${results.topics} topics` +
           (results.errors.length > 0 ? ` with ${results.errors.length} errors` : "")
-      );
+      });
     },
     onError: (error: Error) => {
-      toast.error("Bulk import failed: " + error.message);
+      toast({ title: "Error", description: "Bulk import failed: " + error.message, variant: "destructive" });
     },
   });
 };

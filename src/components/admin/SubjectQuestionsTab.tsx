@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Upload, Brain, FileText, CheckCircle, XCircle, Filter } from "lucide-react";
+import { Plus, Upload, Brain, Sparkles, Trash2, Edit, Loader2, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,7 +25,38 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  useSubjectQuestions,
+  useCreateQuestion,
+  useUpdateQuestion,
+  useDeleteQuestion,
+  useUploadQuestionImage,
+  useBulkImportQuestions,
+} from "@/hooks/useSubjectQuestions";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
+import { AIRephraseModal } from "./AIRephraseModal";
+import { ExcelImportModal } from "./ExcelImportModal";
+import { FormulaEditor } from "./FormulaEditor";
+import { ImageUploadWidget } from "./ImageUploadWidget";
+import * as XLSX from "xlsx";
 
 interface SubjectQuestionsTabProps {
   subjectId: string;
@@ -31,10 +64,340 @@ interface SubjectQuestionsTabProps {
 }
 
 export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestionsTabProps) {
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isAddManualOpen, setIsAddManualOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<any>(null);
+  const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
+  const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
+  const [filterVerified, setFilterVerified] = useState<string>("all");
+
+  // AI Rephrase states
+  const [rephraseModalOpen, setRephraseModalOpen] = useState(false);
+  const [rephraseText, setRephraseText] = useState("");
+  const [rephraseType, setRephraseType] = useState<"question" | "answer" | "explanation">("question");
+  const [rephraseCallback, setRephraseCallback] = useState<((text: string) => void) | null>(null);
+
+  // Question form state
+  const [questionForm, setQuestionForm] = useState({
+    chapter_id: "",
+    topic_id: "",
+    question_text: "",
+    question_format: "single_choice",
+    difficulty: "medium",
+    options: {} as Record<string, any>,
+    correct_answer: "",
+    explanation: "",
+    marks: 1,
+    contains_formula: false,
+    formula_type: "plain" as "plain" | "latex" | "accounting",
+    question_image_url: "",
+    option_images: {} as Record<string, string>,
+  });
+
+  const { data: chapters } = useSubjectChapters(subjectId);
+  const { data: topics } = useChapterTopics(questionForm.chapter_id);
+  
+  const filters = {
+    subjectId,
+    difficulty: filterDifficulty !== "all" ? filterDifficulty : undefined,
+    isVerified: filterVerified === "verified" ? true : filterVerified === "pending" ? false : undefined,
+  };
+
+  const { data: questions, isLoading } = useSubjectQuestions(filters);
+  const createQuestion = useCreateQuestion();
+  const updateQuestion = useUpdateQuestion();
+  const deleteQuestion = useDeleteQuestion();
+  const uploadImage = useUploadQuestionImage();
+  const bulkImport = useBulkImportQuestions();
+
+  const resetForm = () => {
+    setQuestionForm({
+      chapter_id: "",
+      topic_id: "",
+      question_text: "",
+      question_format: "single_choice",
+      difficulty: "medium",
+      options: {},
+      correct_answer: "",
+      explanation: "",
+      marks: 1,
+      contains_formula: false,
+      formula_type: "plain",
+      question_image_url: "",
+      option_images: {},
+    });
+  };
+
+  const handleCreateQuestion = () => {
+    const questionData: any = {
+      topic_id: questionForm.topic_id || undefined,
+      question_text: questionForm.question_text,
+      question_type: questionForm.question_format,
+      question_format: questionForm.question_format,
+      options: questionForm.options,
+      correct_answer: questionForm.correct_answer,
+      explanation: questionForm.explanation,
+      marks: questionForm.marks,
+      difficulty: questionForm.difficulty,
+      is_verified: false,
+      is_ai_generated: false,
+      contains_formula: questionForm.contains_formula,
+      formula_type: questionForm.contains_formula ? questionForm.formula_type : undefined,
+      question_image_url: questionForm.question_image_url || undefined,
+      option_images: Object.keys(questionForm.option_images).length > 0 ? questionForm.option_images : undefined,
+    };
+
+    createQuestion.mutate(questionData, {
+      onSuccess: () => {
+        setIsAddManualOpen(false);
+        resetForm();
+      },
+    });
+  };
+
+  const handleUpdateQuestion = () => {
+    if (!editingQuestion) return;
+    
+    const updates: any = {
+      question_text: questionForm.question_text,
+      question_format: questionForm.question_format,
+      options: questionForm.options,
+      correct_answer: questionForm.correct_answer,
+      explanation: questionForm.explanation,
+      marks: questionForm.marks,
+      difficulty: questionForm.difficulty,
+      contains_formula: questionForm.contains_formula,
+      formula_type: questionForm.contains_formula ? questionForm.formula_type : undefined,
+      question_image_url: questionForm.question_image_url || undefined,
+      option_images: Object.keys(questionForm.option_images).length > 0 ? questionForm.option_images : undefined,
+    };
+
+    updateQuestion.mutate(
+      { id: editingQuestion.id, updates },
+      {
+        onSuccess: () => {
+          setEditingQuestion(null);
+          resetForm();
+        },
+      }
+    );
+  };
+
+  const handleDeleteQuestion = () => {
+    if (!deleteQuestionId) return;
+    deleteQuestion.mutate(deleteQuestionId, {
+      onSuccess: () => setDeleteQuestionId(null),
+    });
+  };
+
+  const openRephraseModal = (
+    text: string,
+    type: "question" | "answer" | "explanation",
+    callback: (text: string) => void
+  ) => {
+    setRephraseText(text);
+    setRephraseType(type);
+    setRephraseCallback(() => callback);
+    setRephraseModalOpen(true);
+  };
+
+  const handleRephraseAccept = (rephrasedText: string) => {
+    if (rephraseCallback) {
+      rephraseCallback(rephrasedText);
+    }
+    setRephraseModalOpen(false);
+  };
+
+  const handleQuestionImageUpload = async (file: File) => {
+    const url = await uploadImage.mutateAsync({
+      file,
+      questionId: editingQuestion?.id || `temp-${Date.now()}`,
+    });
+    setQuestionForm({ ...questionForm, question_image_url: url });
+    return url;
+  };
+
+  const handleOptionImageUpload = async (file: File, optionKey: string) => {
+    const url = await uploadImage.mutateAsync({
+      file,
+      questionId: editingQuestion?.id || `temp-${Date.now()}`,
+    });
+    setQuestionForm({
+      ...questionForm,
+      option_images: {
+        ...questionForm.option_images,
+        [optionKey]: url,
+      },
+    });
+    return url;
+  };
+
+  const handleExcelImport = async (file: File) => {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+    const questionsToImport = jsonData.map((row) => {
+      const options: Record<string, any> = {};
+      
+      if (row.option_a) options.A = { text: row.option_a, image_url: row.option_a_image };
+      if (row.option_b) options.B = { text: row.option_b, image_url: row.option_b_image };
+      if (row.option_c) options.C = { text: row.option_c, image_url: row.option_c_image };
+      if (row.option_d) options.D = { text: row.option_d, image_url: row.option_d_image };
+
+      return {
+        question_text: row.question_text,
+        question_type: row.question_format || "single_choice",
+        question_format: row.question_format || "single_choice",
+        options,
+        correct_answer: row.correct_answer,
+        explanation: row.explanation || "",
+        marks: parseInt(row.marks) || 1,
+        difficulty: row.difficulty || "medium",
+        is_verified: false,
+        is_ai_generated: false,
+        contains_formula: row.contains_formula === "TRUE" || row.contains_formula === true,
+        formula_type: row.formula_type || undefined,
+        question_image_url: row.question_image_url || undefined,
+      };
+    });
+
+    const result = await bulkImport.mutateAsync({ questions: questionsToImport });
+    return result;
+  };
+
+  // Render options based on question format
+  const renderOptionsEditor = () => {
+    switch (questionForm.question_format) {
+      case "single_choice":
+      case "multiple_choice":
+        return (
+          <div className="space-y-4">
+            {["A", "B", "C", "D"].map((optionKey) => (
+              <div key={optionKey} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="w-12">Option {optionKey}</Label>
+                  {questionForm.question_format === "single_choice" ? (
+                    <RadioGroup
+                      value={questionForm.correct_answer}
+                      onValueChange={(value) =>
+                        setQuestionForm({ ...questionForm, correct_answer: value })
+                      }
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value={optionKey} id={`radio-${optionKey}`} />
+                        <Label htmlFor={`radio-${optionKey}`} className="text-xs">
+                          Correct
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  ) : (
+                    <Checkbox
+                      checked={questionForm.correct_answer.includes(optionKey)}
+                      onCheckedChange={(checked) => {
+                        const current = questionForm.correct_answer.split(";").filter(Boolean);
+                        const updated = checked
+                          ? [...current, optionKey]
+                          : current.filter((k) => k !== optionKey);
+                        setQuestionForm({
+                          ...questionForm,
+                          correct_answer: updated.join(";"),
+                        });
+                      }}
+                    />
+                  )}
+                </div>
+                <Input
+                  placeholder={`Enter option ${optionKey}`}
+                  value={questionForm.options[optionKey]?.text || ""}
+                  onChange={(e) =>
+                    setQuestionForm({
+                      ...questionForm,
+                      options: {
+                        ...questionForm.options,
+                        [optionKey]: {
+                          ...questionForm.options[optionKey],
+                          text: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                />
+                <ImageUploadWidget
+                  label={`Option ${optionKey} Image (Optional)`}
+                  value={questionForm.option_images[optionKey]}
+                  onChange={(url) => {
+                    if (!url) {
+                      const { [optionKey]: removed, ...rest } = questionForm.option_images;
+                      setQuestionForm({ ...questionForm, option_images: rest });
+                    }
+                  }}
+                  onFileSelect={(file) => handleOptionImageUpload(file, optionKey)}
+                />
+              </div>
+            ))}
+          </div>
+        );
+
+      case "true_false":
+        return (
+          <RadioGroup
+            value={questionForm.correct_answer}
+            onValueChange={(value) =>
+              setQuestionForm({ ...questionForm, correct_answer: value })
+            }
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="true" id="true" />
+              <Label htmlFor="true">True</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="false" id="false" />
+              <Label htmlFor="false">False</Label>
+            </div>
+          </RadioGroup>
+        );
+
+      case "fill_blank":
+      case "numerical":
+        return (
+          <div className="space-y-2">
+            <Label>Correct Answer</Label>
+            <Input
+              placeholder={
+                questionForm.question_format === "numerical"
+                  ? "Enter numerical answer (e.g., 42)"
+                  : "Enter the correct answer"
+              }
+              type={questionForm.question_format === "numerical" ? "number" : "text"}
+              value={questionForm.correct_answer}
+              onChange={(e) =>
+                setQuestionForm({ ...questionForm, correct_answer: e.target.value })
+              }
+            />
+          </div>
+        );
+
+      case "subjective":
+        return (
+          <div className="space-y-2">
+            <Label>Model Answer / Key Points</Label>
+            <Textarea
+              placeholder="Enter model answer or key points for evaluation..."
+              rows={4}
+              value={questionForm.correct_answer}
+              onChange={(e) =>
+                setQuestionForm({ ...questionForm, correct_answer: e.target.value })
+              }
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -43,275 +406,291 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Question Bank</CardTitle>
-              <CardDescription>
-                Manage questions for {subjectName}
-              </CardDescription>
+              <CardDescription>Manage questions for {subjectName}</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
+              <Button variant="outline" onClick={() => setIsExcelImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Bulk Import
+              </Button>
+              <Dialog
+                open={isAddManualOpen || !!editingQuestion}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsAddManualOpen(false);
+                    setEditingQuestion(null);
+                    resetForm();
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button>
-                    <Brain className="mr-2 h-4 w-4" />
-                    AI Generate
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-background max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Generate Questions with AI</DialogTitle>
-                    <DialogDescription>
-                      Use AI to automatically generate questions for selected topics
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Select Chapter</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a chapter" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="ch1">Chapter 1: Mechanics</SelectItem>
-                          <SelectItem value="ch2">Chapter 2: Thermodynamics</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Select Topic(s)</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose topic(s)" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="t1">Newton's Laws</SelectItem>
-                          <SelectItem value="t2">Work & Energy</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="num-questions">Number of Questions</Label>
-                        <Input id="num-questions" type="number" defaultValue={10} min={1} max={50} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="difficulty">Difficulty</Label>
-                        <Select defaultValue="mixed">
-                          <SelectTrigger id="difficulty">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="mixed">Mixed</SelectItem>
-                            <SelectItem value="easy">Easy</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="hard">Hard</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="format">Question Format</Label>
-                        <Select defaultValue="single_choice">
-                          <SelectTrigger id="format">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="single_choice">Single Choice</SelectItem>
-                            <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                            <SelectItem value="true_false">True/False</SelectItem>
-                            <SelectItem value="subjective">Subjective</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-muted p-4">
-                      <h4 className="font-medium mb-2">AI Generation Settings</h4>
-                      <div className="space-y-2 text-sm text-muted-foreground">
-                        <div className="flex justify-between">
-                          <span>Model:</span>
-                          <span className="font-medium text-foreground">Gemini 2.5 Flash</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Questions per topic:</span>
-                          <span className="font-medium text-foreground">10</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Difficulty distribution:</span>
-                          <span className="font-medium text-foreground">30% Easy, 50% Medium, 20% Hard</span>
-                        </div>
-                      </div>
-                      <Button variant="link" size="sm" className="mt-2 h-auto p-0">
-                        Modify in Settings
-                      </Button>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsGenerateOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={() => setIsGenerateOpen(false)}>
-                      <Brain className="mr-2 h-4 w-4" />
-                      Generate Questions
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog open={isAddManualOpen} onOpenChange={setIsAddManualOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Manual
+                    Add Question
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-background max-w-2xl">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Add Question Manually</DialogTitle>
+                    <DialogTitle>
+                      {editingQuestion ? "Edit Question" : "Add New Question"}
+                    </DialogTitle>
                     <DialogDescription>
-                      Create a new question for this subject
+                      Create a comprehensive question with multiple formats and formula support
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                    <div className="space-y-2">
-                      <Label htmlFor="manual-chapter">Chapter *</Label>
-                      <Select>
-                        <SelectTrigger id="manual-chapter">
-                          <SelectValue placeholder="Select chapter" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="ch1">Chapter 1: Mechanics</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <Tabs defaultValue="question" className="space-y-4">
+                    <TabsList>
+                      <TabsTrigger value="question">Question</TabsTrigger>
+                      <TabsTrigger value="options">Options</TabsTrigger>
+                      <TabsTrigger value="details">Details</TabsTrigger>
+                    </TabsList>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="manual-topic">Topic *</Label>
-                      <Select>
-                        <SelectTrigger id="manual-topic">
-                          <SelectValue placeholder="Select topic" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background">
-                          <SelectItem value="t1">Newton's Laws</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <TabsContent value="question" className="space-y-4">
+                      {/* Chapter & Topic Selection */}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Chapter</Label>
+                          <Select
+                            value={questionForm.chapter_id}
+                            onValueChange={(value) =>
+                              setQuestionForm({ ...questionForm, chapter_id: value, topic_id: "" })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select chapter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {chapters?.map((chapter) => (
+                                <SelectItem key={chapter.id} value={chapter.id}>
+                                  Ch {chapter.chapter_number}: {chapter.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Topic (Optional)</Label>
+                          <Select
+                            value={questionForm.topic_id}
+                            onValueChange={(value) =>
+                              setQuestionForm({ ...questionForm, topic_id: value })
+                            }
+                            disabled={!questionForm.chapter_id}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select topic" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {topics?.map((topic) => (
+                                <SelectItem key={topic.id} value={topic.id}>
+                                  {topic.topic_number}. {topic.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="question-text">Question Text *</Label>
-                      <Textarea
-                        id="question-text"
-                        placeholder="Enter the question..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
+                      {/* Question Format */}
                       <div className="space-y-2">
-                        <Label htmlFor="question-type">Question Type *</Label>
-                        <Select defaultValue="single_choice">
-                          <SelectTrigger id="question-type">
+                        <Label>Question Format *</Label>
+                        <Select
+                          value={questionForm.question_format}
+                          onValueChange={(value) =>
+                            setQuestionForm({ ...questionForm, question_format: value })
+                          }
+                        >
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="single_choice">Single Choice</SelectItem>
-                            <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                          <SelectContent>
+                            <SelectItem value="single_choice">Single Choice (Radio)</SelectItem>
+                            <SelectItem value="multiple_choice">
+                              Multiple Choice (Checkbox)
+                            </SelectItem>
                             <SelectItem value="true_false">True/False</SelectItem>
-                            <SelectItem value="subjective">Subjective</SelectItem>
+                            <SelectItem value="fill_blank">Fill in the Blank</SelectItem>
+                            <SelectItem value="numerical">Numerical Answer</SelectItem>
+                            <SelectItem value="subjective">Subjective (Long Answer)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="manual-difficulty">Difficulty *</Label>
-                        <Select defaultValue="medium">
-                          <SelectTrigger id="manual-difficulty">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background">
-                            <SelectItem value="easy">Easy</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="hard">Hard</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      {/* Formula Support */}
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="contains-formula"
+                          checked={questionForm.contains_formula}
+                          onCheckedChange={(checked) =>
+                            setQuestionForm({
+                              ...questionForm,
+                              contains_formula: checked as boolean,
+                            })
+                          }
+                        />
+                        <Label htmlFor="contains-formula">
+                          This question contains formulas (Math/Chemistry/Accounting)
+                        </Label>
                       </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label>Options</Label>
+                      {/* Question Text */}
                       <div className="space-y-2">
-                        {[1, 2, 3, 4].map((i) => (
-                          <Input key={i} placeholder={`Option ${i}`} />
-                        ))}
+                        <div className="flex items-center justify-between">
+                          <Label>Question Text *</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              openRephraseModal(
+                                questionForm.question_text,
+                                "question",
+                                (text) => setQuestionForm({ ...questionForm, question_text: text })
+                              )
+                            }
+                            disabled={!questionForm.question_text}
+                          >
+                            <Sparkles className="h-4 w-4 mr-1" />
+                            AI Rephrase
+                          </Button>
+                        </div>
+                        {questionForm.contains_formula ? (
+                          <FormulaEditor
+                            value={questionForm.question_text}
+                            onChange={(value, type) =>
+                              setQuestionForm({
+                                ...questionForm,
+                                question_text: value,
+                                formula_type: type,
+                              })
+                            }
+                            formulaType={questionForm.formula_type}
+                          />
+                        ) : (
+                          <Textarea
+                            placeholder="Enter your question..."
+                            rows={4}
+                            value={questionForm.question_text}
+                            onChange={(e) =>
+                              setQuestionForm({ ...questionForm, question_text: e.target.value })
+                            }
+                          />
+                        )}
                       </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="correct-answer">Correct Answer *</Label>
-                      <Input id="correct-answer" placeholder="Enter correct answer" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="explanation">Explanation</Label>
-                      <Textarea
-                        id="explanation"
-                        placeholder="Explain why this is the correct answer..."
-                        rows={3}
+                      {/* Question Image */}
+                      <ImageUploadWidget
+                        label="Question Image (Optional)"
+                        value={questionForm.question_image_url}
+                        onChange={(url) =>
+                          setQuestionForm({ ...questionForm, question_image_url: url || "" })
+                        }
+                        onFileSelect={handleQuestionImageUpload}
                       />
-                    </div>
-                  </div>
+                    </TabsContent>
+
+                    <TabsContent value="options" className="space-y-4">
+                      {renderOptionsEditor()}
+                    </TabsContent>
+
+                    <TabsContent value="details" className="space-y-4">
+                      {/* Explanation */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Explanation (Optional)</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              openRephraseModal(
+                                questionForm.explanation,
+                                "explanation",
+                                (text) => setQuestionForm({ ...questionForm, explanation: text })
+                              )
+                            }
+                            disabled={!questionForm.explanation}
+                          >
+                            <Sparkles className="h-4 w-4 mr-1" />
+                            AI Rephrase
+                          </Button>
+                        </div>
+                        <Textarea
+                          placeholder="Provide detailed explanation for the answer..."
+                          rows={4}
+                          value={questionForm.explanation}
+                          onChange={(e) =>
+                            setQuestionForm({ ...questionForm, explanation: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      {/* Difficulty and Marks */}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Difficulty</Label>
+                          <Select
+                            value={questionForm.difficulty}
+                            onValueChange={(value) =>
+                              setQuestionForm({ ...questionForm, difficulty: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="easy">Easy</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="hard">Hard</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Marks</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={questionForm.marks}
+                            onChange={(e) =>
+                              setQuestionForm({
+                                ...questionForm,
+                                marks: parseInt(e.target.value) || 1,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddManualOpen(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddManualOpen(false);
+                        setEditingQuestion(null);
+                        resetForm();
+                      }}
+                    >
                       Cancel
                     </Button>
-                    <Button onClick={() => setIsAddManualOpen(false)}>
-                      Add Question
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Bulk Upload
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-background">
-                  <DialogHeader>
-                    <DialogTitle>Bulk Upload Questions</DialogTitle>
-                    <DialogDescription>
-                      Upload multiple questions from a CSV or Excel file
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                      <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Drag and drop your file here, or click to browse
-                      </p>
-                      <Button variant="outline" size="sm">
-                        Choose File
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>File Format</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Supported formats: CSV, XLSX. Download the template file to ensure correct format.
-                      </p>
-                      <Button variant="link" size="sm" className="h-auto p-0">
-                        <FileText className="mr-2 h-4 w-4" />
-                        Download Template
-                      </Button>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={() => setIsBulkUploadOpen(false)}>
-                      Upload Questions
+                    <Button
+                      onClick={editingQuestion ? handleUpdateQuestion : handleCreateQuestion}
+                      disabled={
+                        !questionForm.question_text ||
+                        !questionForm.correct_answer ||
+                        createQuestion.isPending ||
+                        updateQuestion.isPending
+                      }
+                    >
+                      {createQuestion.isPending || updateQuestion.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : editingQuestion ? (
+                        "Update Question"
+                      ) : (
+                        "Add Question"
+                      )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -320,70 +699,181 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="all" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="all">All Questions</TabsTrigger>
-                <TabsTrigger value="verified">Verified</TabsTrigger>
-                <TabsTrigger value="pending">Pending Review</TabsTrigger>
-                <TabsTrigger value="ai-generated">AI Generated</TabsTrigger>
-              </TabsList>
-
-              <div className="flex gap-2">
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Difficulty" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="all">All Difficulty</SelectItem>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Filters */}
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
+              <Label className="text-xs mb-2 block">Difficulty</Label>
+              <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <div className="flex-1">
+              <Label className="text-xs mb-2 block">Status</Label>
+              <Select value={filterVerified} onValueChange={setFilterVerified}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Questions</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="pending">Pending Review</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-            <TabsContent value="all" className="space-y-4">
-              {questions.length === 0 ? (
-                <div className="py-12 text-center">
-                  <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">No questions yet</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={() => setIsGenerateOpen(true)}>
-                      <Brain className="mr-2 h-4 w-4" />
-                      Generate with AI
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsAddManualOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Manually
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {/* Question list will be populated here */}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="verified">
-              <p className="text-center text-muted-foreground py-8">No verified questions yet</p>
-            </TabsContent>
-
-            <TabsContent value="pending">
-              <p className="text-center text-muted-foreground py-8">No questions pending review</p>
-            </TabsContent>
-
-            <TabsContent value="ai-generated">
-              <p className="text-center text-muted-foreground py-8">No AI generated questions yet</p>
-            </TabsContent>
-          </Tabs>
+          {/* Questions Table */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : questions && questions.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Question</TableHead>
+                  <TableHead>Format</TableHead>
+                  <TableHead>Difficulty</TableHead>
+                  <TableHead>Marks</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {questions.map((question) => (
+                  <TableRow key={question.id}>
+                    <TableCell className="max-w-md">
+                      <div className="flex items-start gap-2">
+                        {question.question_image_url && (
+                          <ImageIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        )}
+                        <span className="line-clamp-2">{question.question_text}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {question.question_format.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          question.difficulty === "easy"
+                            ? "default"
+                            : question.difficulty === "hard"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                      >
+                        {question.difficulty}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{question.marks}</TableCell>
+                    <TableCell>
+                      {question.is_verified ? (
+                        <Badge className="bg-green-500">Verified</Badge>
+                      ) : (
+                        <Badge variant="outline">Pending</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingQuestion(question);
+                            setQuestionForm({
+                              chapter_id: "",
+                              topic_id: question.topic_id || "",
+                              question_text: question.question_text,
+                              question_format: question.question_format,
+                              difficulty: question.difficulty,
+                              options: question.options || {},
+                              correct_answer: question.correct_answer,
+                              explanation: question.explanation || "",
+                              marks: question.marks,
+                              contains_formula: question.contains_formula,
+                              formula_type: (question.formula_type as any) || "plain",
+                              question_image_url: question.question_image_url || "",
+                              option_images: question.option_images || {},
+                            });
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteQuestionId(question.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <Brain className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>No questions added yet</p>
+              <p className="text-sm mt-2">Click "Add Question" to get started</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteQuestionId} onOpenChange={() => setDeleteQuestionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Question?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the question. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteQuestion}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Rephrase Modal */}
+      <AIRephraseModal
+        open={rephraseModalOpen}
+        onOpenChange={setRephraseModalOpen}
+        originalText={rephraseText}
+        type={rephraseType}
+        onAccept={handleRephraseAccept}
+      />
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        open={isExcelImportOpen}
+        onOpenChange={setIsExcelImportOpen}
+        title="Import Questions"
+        templateUrl="#"
+        onImport={handleExcelImport}
+        instructions={[
+          "Download the template and fill in question details",
+          "Supported formats: single_choice, multiple_choice, true_false, fill_blank, numerical, subjective",
+          "For multiple correct answers in multiple_choice, separate with semicolon (A;C)",
+          "Mark contains_formula as TRUE if question has formulas",
+          "Provide image URLs in respective columns",
+          "Save as .xlsx file before uploading",
+        ]}
+      />
     </div>
   );
 }

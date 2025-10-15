@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 export interface SubjectQuestion {
   id: string;
@@ -88,10 +88,10 @@ export const useCreateQuestion = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
-      toast.success("Question created successfully");
+      toast({ title: "Success", description: "Question created successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to create question: " + error.message);
+      toast({ title: "Error", description: "Failed to create question: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -119,10 +119,10 @@ export const useUpdateQuestion = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
-      toast.success("Question updated successfully");
+      toast({ title: "Success", description: "Question updated successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to update question: " + error.message);
+      toast({ title: "Error", description: "Failed to update question: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -138,10 +138,10 @@ export const useDeleteQuestion = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
-      toast.success("Question deleted successfully");
+      toast({ title: "Success", description: "Question deleted successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to delete question: " + error.message);
+      toast({ title: "Error", description: "Failed to delete question: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -166,7 +166,7 @@ export const useUploadQuestionImage = () => {
       return publicUrl;
     },
     onError: (error: Error) => {
-      toast.error("Failed to upload image: " + error.message);
+      toast({ title: "Error", description: "Failed to upload image: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -202,13 +202,14 @@ export const useBulkImportQuestions = () => {
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["subject-questions"] });
-      toast.success(
-        `Imported ${results.success} questions` +
+      toast({
+        title: "Import Complete",
+        description: `Imported ${results.success} questions` +
           (results.errors.length > 0 ? ` with ${results.errors.length} batch errors` : "")
-      );
+      });
     },
     onError: (error: Error) => {
-      toast.error("Bulk import failed: " + error.message);
+      toast({ title: "Error", description: "Bulk import failed: " + error.message, variant: "destructive" });
     },
   });
 };

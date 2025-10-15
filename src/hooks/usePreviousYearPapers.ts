@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 export interface PreviousYearPaper {
   id: string;
@@ -48,10 +48,10 @@ export const useCreatePreviousYearPaper = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["previous-year-papers", data.subject_id] });
-      toast.success("Previous year paper added successfully");
+      toast({ title: "Success", description: "Previous year paper added successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to add paper: " + error.message);
+      toast({ title: "Error", description: "Failed to add paper: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -79,10 +79,10 @@ export const useUpdatePreviousYearPaper = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["previous-year-papers", data.subject_id] });
-      toast.success("Paper updated successfully");
+      toast({ title: "Success", description: "Paper updated successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to update paper: " + error.message);
+      toast({ title: "Error", description: "Failed to update paper: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -102,10 +102,10 @@ export const useDeletePreviousYearPaper = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["previous-year-papers", data.subjectId] });
-      toast.success("Paper deleted successfully");
+      toast({ title: "Success", description: "Paper deleted successfully" });
     },
     onError: (error: Error) => {
-      toast.error("Failed to delete paper: " + error.message);
+      toast({ title: "Error", description: "Failed to delete paper: " + error.message, variant: "destructive" });
     },
   });
 };
@@ -130,7 +130,7 @@ export const useUploadPaperPDF = () => {
       return publicUrl;
     },
     onError: (error: Error) => {
-      toast.error("Failed to upload PDF: " + error.message);
+      toast({ title: "Error", description: "Failed to upload PDF: " + error.message, variant: "destructive" });
     },
   });
 };
