@@ -77,7 +77,7 @@ export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstruc
                     <SelectContent className="bg-background z-50">
                       {availableInstructors?.map((instructor) => (
                         <SelectItem key={instructor.id} value={instructor.id}>
-                          {instructor.full_name} ({instructor.department_name || "No Department"})
+                          {instructor.full_name} ({instructor.department?.name || "No Department"})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -108,10 +108,10 @@ export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstruc
             <TableBody>
               {subjectInstructors.map((si) => (
                 <TableRow key={si.id}>
-                  <TableCell className="font-medium">{si.profiles?.full_name || "N/A"}</TableCell>
-                  <TableCell>{si.departments?.name || "N/A"}</TableCell>
-                  <TableCell>{si.instructor_email || "N/A"}</TableCell>
-                  <TableCell>{si.profiles?.phone_number || "N/A"}</TableCell>
+                  <TableCell className="font-medium">{si.teacher?.full_name || "N/A"}</TableCell>
+                  <TableCell>{si.teacher?.department?.name || "N/A"}</TableCell>
+                  <TableCell>{si.teacher?.email || "N/A"}</TableCell>
+                  <TableCell>{si.teacher?.phone_number || "N/A"}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"

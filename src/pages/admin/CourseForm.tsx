@@ -48,6 +48,7 @@ export default function CourseForm() {
 
   useEffect(() => {
     if (course) {
+      const courseData = course as any; // Type assertion for new fields not yet in generated types
       setFormData({
         name: course.name || "",
         slug: course.slug || "",
@@ -64,10 +65,10 @@ export default function CourseForm() {
         what_you_learn: course.what_you_learn || [],
         course_includes: course.course_includes || [],
         is_active: course.is_active ?? true,
-        ai_tutoring_enabled: course.ai_tutoring_enabled || false,
-        ai_tutoring_price: course.ai_tutoring_price || 2000,
-        live_classes_enabled: course.live_classes_enabled || false,
-        live_classes_price: course.live_classes_price || 2000,
+        ai_tutoring_enabled: courseData.ai_tutoring_enabled || false,
+        ai_tutoring_price: courseData.ai_tutoring_price || 2000,
+        live_classes_enabled: courseData.live_classes_enabled || false,
+        live_classes_price: courseData.live_classes_price || 2000,
       });
     }
   }, [course]);

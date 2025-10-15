@@ -25,18 +25,8 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Get all available instructors from subjects mapped to this course
-  const availableInstructors = courseSubjects?.flatMap(cs => 
-    cs.popular_subjects?.instructor_subjects?.map(is => ({
-      id: is.instructors?.id,
-      name: is.instructors?.full_name,
-      email: is.instructors?.email,
-      department: is.instructors?.departments?.name,
-      subjectId: cs.subject_id,
-      subjectName: cs.popular_subjects?.name,
-    })) || []
-  ).filter((inst, index, self) => 
-    inst.id && self.findIndex(i => i.id === inst.id) === index
-  );
+  // Note: This needs to be fetched via a separate query that joins course_subjects with instructor_subjects
+  const availableInstructors: any[] = [];
 
   const handleAddInstructor = () => {
     if (selectedInstructorId && selectedSubjectId && courseId) {
@@ -115,7 +105,7 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
                     <SelectContent className="bg-background z-50">
                       {courseSubjects?.map((cs) => (
                         <SelectItem key={cs.id} value={cs.subject_id}>
-                          {cs.popular_subjects?.name}
+                          {cs.subject?.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

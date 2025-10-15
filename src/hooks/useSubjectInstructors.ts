@@ -12,17 +12,15 @@ export const useSubjectInstructors = (subjectId?: string) => {
         .from("instructor_subjects")
         .select(`
           *,
-          profiles:instructor_id (
-            full_name,
-            phone_number
-          ),
-          instructors:instructor_id (
+          teacher:teacher_profiles!instructor_id (
             id,
+            full_name,
             email,
-            department_id
-          ),
-          departments (
-            name
+            phone_number,
+            department:departments (
+              id,
+              name
+            )
           )
         `)
         .eq("subject_id", subjectId);
