@@ -1,27 +1,40 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, BookOpen, FileText, ClipboardList } from "lucide-react";
+import { Calendar, BookOpen, FileText, ClipboardList, CalendarOff } from "lucide-react";
 
 export default function Academics() {
+  const navigate = useNavigate();
+  
   const sections = [
     {
-      title: "Class Schedule",
+      title: "Timetable",
       icon: Calendar,
-      description: "Manage class timetables and schedules",
+      description: "Manage course-based timetables and schedules",
+      path: "/admin/academics/timetable",
+    },
+    {
+      title: "Holidays",
+      icon: CalendarOff,
+      description: "Mark and manage academic holidays",
+      path: "/admin/academics/holidays",
     },
     {
       title: "Curriculum",
       icon: BookOpen,
       description: "Organize course curriculum and syllabus",
+      path: "/admin/academics/curriculum",
     },
     {
       title: "Assignments",
       icon: FileText,
       description: "Create and manage student assignments",
+      path: "/admin/assignments",
     },
     {
       title: "Assessments",
       icon: ClipboardList,
       description: "Set up tests and evaluations",
+      path: "/admin/academics/assessments",
     },
   ];
 
@@ -36,7 +49,11 @@ export default function Academics() {
         {sections.map((section) => {
           const Icon = section.icon;
           return (
-            <Card key={section.title} className="cursor-pointer hover:shadow-lg transition-shadow">
+            <Card 
+              key={section.title} 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => section.path && navigate(section.path)}
+            >
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">

@@ -58,6 +58,8 @@ import DepartmentsManager from "./pages/admin/hr/DepartmentsManager";
 import InstructorsManager from "./pages/admin/hr/InstructorsManager";
 import TimetableManager from "./pages/admin/hr/TimetableManager";
 import LiveClassesManager from "./pages/admin/hr/LiveClassesManager";
+import AcademicsTimetable from "./pages/admin/AcademicsTimetable";
+import HolidaysManager from "./pages/admin/HolidaysManager";
 
 const App = () => (
   <HelmetProvider>
@@ -121,6 +123,8 @@ const App = () => (
                 <Route path="instructors" element={<InstructorsList />} />
                 <Route path="staff" element={<StaffList />} />
                 <Route path="academics" element={<Academics />} />
+                <Route path="academics/timetable" element={<AcademicsTimetable />} />
+                <Route path="academics/holidays" element={<HolidaysManager />} />
                 <Route path="settings" element={<Settings />} />
                 
                 {/* Human Resource Routes */}

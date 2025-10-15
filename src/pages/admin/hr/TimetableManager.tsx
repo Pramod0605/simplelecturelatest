@@ -6,20 +6,52 @@ import { useInstructorTimetable } from "@/hooks/useInstructorTimetable";
 import { TimetableGrid } from "@/components/hr/TimetableGrid";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInstructors } from "@/hooks/useInstructors";
+import { AddTimeSlotDialog } from "@/components/hr/AddTimeSlotDialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function TimetableManager() {
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { data: instructors } = useInstructors();
   const { data: timetable, isLoading } = useInstructorTimetable(selectedInstructorId || undefined);
+
+  const selectedInstructor = instructors?.find(i => i.id === selectedInstructorId);
+
+  // Calculate workload summary
+  const calculateWorkload = () => {
+    if (!timetable || timetable.length === 0) return { totalHours: 0, classesByDay: {} };
+    
+    const classesByDay: Record<number, number> = {};
+    let totalMinutes = 0;
+
+    timetable.forEach(entry => {
+      const start = new Date(`2000-01-01T${entry.start_time}`);
+      const end = new Date(`2000-01-01T${entry.end_time}`);
+      const minutes = (end.getTime() - start.getTime()) / (1000 * 60);
+      totalMinutes += minutes;
+      
+      classesByDay[entry.day_of_week] = (classesByDay[entry.day_of_week] || 0) + 1;
+    });
+
+    return {
+      totalHours: Math.round(totalMinutes / 60 * 10) / 10,
+      classesByDay,
+    };
+  };
+
+  const workload = calculateWorkload();
 
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Timetable Management</h1>
-          <p className="text-muted-foreground">Manage instructor schedules and create timetables</p>
+          <h1 className="text-3xl font-bold">Instructor Timetable</h1>
+          <p className="text-muted-foreground">View and manage individual instructor schedules</p>
         </div>
-        <Button>
+        <Button 
+          onClick={() => setIsAddDialogOpen(true)}
+          disabled={!selectedInstructorId}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Time Slot
         </Button>
@@ -27,7 +59,7 @@ export default function TimetableManager() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filter Timetable</CardTitle>
+          <CardTitle>Select Instructor</CardTitle>
         </CardHeader>
         <CardContent>
           <Select value={selectedInstructorId} onValueChange={setSelectedInstructorId}>
@@ -35,7 +67,6 @@ export default function TimetableManager() {
               <SelectValue placeholder="Select instructor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Instructors</SelectItem>
               {instructors?.map((inst) => (
                 <SelectItem key={inst.id} value={inst.id}>
                   {inst.full_name}
@@ -46,22 +77,76 @@ export default function TimetableManager() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Schedule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p>Loading timetable...</p>
-          ) : selectedInstructorId ? (
-            <TimetableGrid entries={timetable || []} />
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
+      {selectedInstructor && selectedInstructorId && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Instructor Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="font-medium">{selectedInstructor.full_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Subjects</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {selectedInstructor.subjects?.map((subject: any) => (
+                    <Badge key={subject.id} variant="secondary">
+                      {subject.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Classes</p>
+                  <p className="text-2xl font-bold">{timetable?.length || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekly Hours</p>
+                  <p className="text-2xl font-bold">{workload.totalHours}h</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Weekly Schedule</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>Loading timetable...</p>
+              ) : timetable && timetable.length > 0 ? (
+                <TimetableGrid entries={timetable} />
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  No timetable entries found. Click "Add Time Slot" to create one.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {!selectedInstructorId && (
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-muted-foreground text-center">
               Select an instructor to view their timetable
             </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedInstructorId && (
+        <AddTimeSlotDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          instructorId={selectedInstructorId}
+        />
+      )}
     </div>
   );
 }
