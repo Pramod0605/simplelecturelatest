@@ -1564,6 +1564,7 @@ export type Database = {
           description: string | null
           id: string
           notes_markdown: string | null
+          pdf_url: string | null
           sequence_order: number | null
           subject_id: string
           title: string
@@ -1579,6 +1580,7 @@ export type Database = {
           description?: string | null
           id?: string
           notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           subject_id: string
           title: string
@@ -1594,6 +1596,7 @@ export type Database = {
           description?: string | null
           id?: string
           notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           subject_id?: string
           title?: string
