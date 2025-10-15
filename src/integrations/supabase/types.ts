@@ -450,6 +450,44 @@ export type Database = {
           },
         ]
       }
+      course_faqs: {
+        Row: {
+          answer: string
+          course_id: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          question: string
+          updated_at: string | null
+        }
+        Insert: {
+          answer: string
+          course_id: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          question: string
+          updated_at?: string | null
+        }
+        Update: {
+          answer?: string
+          course_id?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          question?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_faqs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_goals: {
         Row: {
           course_id: string
@@ -528,6 +566,45 @@ export type Database = {
           },
         ]
       }
+      course_subjects: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_teachers: {
         Row: {
           assigned_at: string | null
@@ -563,42 +640,154 @@ export type Database = {
           },
         ]
       }
-      courses: {
+      course_timetables: {
         Row: {
+          academic_year: string
+          course_id: string
           created_at: string | null
-          description: string | null
+          day_of_week: number
+          end_time: string
           id: string
+          instructor_id: string | null
           is_active: boolean | null
-          name: string
-          program_id: string
-          sequence_order: number | null
-          slug: string
-          subjects: Json | null
-          thumbnail_url: string | null
+          room_number: string | null
+          start_time: string
+          subject_id: string | null
+          updated_at: string | null
+          valid_from: string
+          valid_until: string | null
         }
         Insert: {
+          academic_year: string
+          course_id: string
           created_at?: string | null
-          description?: string | null
+          day_of_week: number
+          end_time: string
           id?: string
+          instructor_id?: string | null
           is_active?: boolean | null
-          name: string
-          program_id: string
-          sequence_order?: number | null
-          slug: string
-          subjects?: Json | null
-          thumbnail_url?: string | null
+          room_number?: string | null
+          start_time: string
+          subject_id?: string | null
+          updated_at?: string | null
+          valid_from: string
+          valid_until?: string | null
         }
         Update: {
+          academic_year?: string
+          course_id?: string
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean | null
+          room_number?: string | null
+          start_time?: string
+          subject_id?: string | null
+          updated_at?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_timetables_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_timetables_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_timetables_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          course_includes: Json | null
+          created_at: string | null
+          description: string | null
+          detailed_description: string | null
+          duration_months: number | null
+          id: string
+          instructor_avatar_url: string | null
+          instructor_bio: string | null
+          instructor_name: string | null
+          is_active: boolean | null
+          name: string
+          original_price_inr: number | null
+          price_inr: number | null
+          program_id: string
+          rating: number | null
+          review_count: number | null
+          sequence_order: number | null
+          short_description: string | null
+          slug: string
+          student_count: number | null
+          subjects: Json | null
+          thumbnail_url: string | null
+          what_you_learn: Json | null
+        }
+        Insert: {
+          course_includes?: Json | null
           created_at?: string | null
           description?: string | null
+          detailed_description?: string | null
+          duration_months?: number | null
           id?: string
+          instructor_avatar_url?: string | null
+          instructor_bio?: string | null
+          instructor_name?: string | null
           is_active?: boolean | null
-          name?: string
-          program_id?: string
+          name: string
+          original_price_inr?: number | null
+          price_inr?: number | null
+          program_id: string
+          rating?: number | null
+          review_count?: number | null
           sequence_order?: number | null
-          slug?: string
+          short_description?: string | null
+          slug: string
+          student_count?: number | null
           subjects?: Json | null
           thumbnail_url?: string | null
+          what_you_learn?: Json | null
+        }
+        Update: {
+          course_includes?: Json | null
+          created_at?: string | null
+          description?: string | null
+          detailed_description?: string | null
+          duration_months?: number | null
+          id?: string
+          instructor_avatar_url?: string | null
+          instructor_bio?: string | null
+          instructor_name?: string | null
+          is_active?: boolean | null
+          name?: string
+          original_price_inr?: number | null
+          price_inr?: number | null
+          program_id?: string
+          rating?: number | null
+          review_count?: number | null
+          sequence_order?: number | null
+          short_description?: string | null
+          slug?: string
+          student_count?: number | null
+          subjects?: Json | null
+          thumbnail_url?: string | null
+          what_you_learn?: Json | null
         }
         Relationships: [
           {
@@ -851,6 +1040,36 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      holidays: {
+        Row: {
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          name?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -2092,6 +2311,70 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_overrides: {
+        Row: {
+          course_timetable_id: string | null
+          created_at: string | null
+          end_time: string
+          id: string
+          instructor_id: string | null
+          is_cancelled: boolean | null
+          override_date: string
+          reason: string | null
+          room_number: string | null
+          start_time: string
+          subject_id: string | null
+        }
+        Insert: {
+          course_timetable_id?: string | null
+          created_at?: string | null
+          end_time: string
+          id?: string
+          instructor_id?: string | null
+          is_cancelled?: boolean | null
+          override_date: string
+          reason?: string | null
+          room_number?: string | null
+          start_time: string
+          subject_id?: string | null
+        }
+        Update: {
+          course_timetable_id?: string | null
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          instructor_id?: string | null
+          is_cancelled?: boolean | null
+          override_date?: string
+          reason?: string | null
+          room_number?: string | null
+          start_time?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_overrides_course_timetable_id_fkey"
+            columns: ["course_timetable_id"]
+            isOneToOne: false
+            referencedRelation: "course_timetables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_overrides_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_overrides_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
             referencedColumns: ["id"]
           },
         ]
