@@ -1128,16 +1128,21 @@ export type Database = {
       }
       questions: {
         Row: {
+          contains_formula: boolean | null
           correct_answer: string
           created_at: string | null
           difficulty: string | null
           explanation: string | null
+          formula_type: string | null
           id: string
           is_ai_generated: boolean | null
           is_verified: boolean | null
           marks: number | null
+          option_images: Json | null
           options: Json | null
+          previous_year_paper_id: string | null
           question_format: string | null
+          question_image_url: string | null
           question_text: string
           question_type: string
           subtopic_id: string | null
@@ -1145,16 +1150,21 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          contains_formula?: boolean | null
           correct_answer: string
           created_at?: string | null
           difficulty?: string | null
           explanation?: string | null
+          formula_type?: string | null
           id?: string
           is_ai_generated?: boolean | null
           is_verified?: boolean | null
           marks?: number | null
+          option_images?: Json | null
           options?: Json | null
+          previous_year_paper_id?: string | null
           question_format?: string | null
+          question_image_url?: string | null
           question_text: string
           question_type: string
           subtopic_id?: string | null
@@ -1162,16 +1172,21 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          contains_formula?: boolean | null
           correct_answer?: string
           created_at?: string | null
           difficulty?: string | null
           explanation?: string | null
+          formula_type?: string | null
           id?: string
           is_ai_generated?: boolean | null
           is_verified?: boolean | null
           marks?: number | null
+          option_images?: Json | null
           options?: Json | null
+          previous_year_paper_id?: string | null
           question_format?: string | null
+          question_image_url?: string | null
           question_text?: string
           question_type?: string
           subtopic_id?: string | null
@@ -1179,6 +1194,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "questions_previous_year_paper_id_fkey"
+            columns: ["previous_year_paper_id"]
+            isOneToOne: false
+            referencedRelation: "subject_previous_year_papers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "questions_subtopic_id_fkey"
             columns: ["subtopic_id"]
@@ -1452,6 +1474,171 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      subject_categories: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_categories_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_chapters: {
+        Row: {
+          chapter_number: number
+          created_at: string | null
+          description: string | null
+          id: string
+          sequence_order: number | null
+          subject_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_number: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          sequence_order?: number | null
+          subject_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_number?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          sequence_order?: number | null
+          subject_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_previous_year_papers: {
+        Row: {
+          created_at: string | null
+          exam_name: string
+          id: string
+          paper_type: string | null
+          pdf_url: string | null
+          subject_id: string
+          total_questions: number | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          exam_name: string
+          id?: string
+          paper_type?: string | null
+          pdf_url?: string | null
+          subject_id: string
+          total_questions?: number | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          exam_name?: string
+          id?: string
+          paper_type?: string | null
+          pdf_url?: string | null
+          subject_id?: string
+          total_questions?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_previous_year_papers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_topics: {
+        Row: {
+          chapter_id: string
+          content_markdown: string | null
+          created_at: string | null
+          estimated_duration_minutes: number | null
+          id: string
+          sequence_order: number | null
+          title: string
+          topic_number: number
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          chapter_id: string
+          content_markdown?: string | null
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title: string
+          topic_number: number
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          chapter_id?: string
+          content_markdown?: string | null
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          sequence_order?: number | null
+          title?: string
+          topic_number?: number
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_topics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subtopics: {
         Row: {

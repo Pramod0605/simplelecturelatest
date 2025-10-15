@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,14 +19,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, BookOpen, List, Brain } from "lucide-react";
+import { ArrowLeft, BookOpen, List, Brain, FileText, Tag } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useAdminSubject,
   useCreateSubject,
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
+import {
+  useAllCategoriesHierarchy,
+  useSubjectCategories,
+  useUpdateSubjectCategories,
+} from "@/hooks/useSubjectManagement";
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
+import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTab";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -42,10 +50,14 @@ export default function SubjectForm() {
   const { id } = useParams();
   const isEdit = !!id;
   const [activeTab, setActiveTab] = useState("basic");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const { data: subject } = useAdminSubject(id);
   const createSubject = useCreateSubject();
   const updateSubject = useUpdateSubject();
+  const { data: allCategories } = useAllCategoriesHierarchy();
+  const { data: subjectCategories } = useSubjectCategories(id);
+  const updateCategories = useUpdateSubjectCategories();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -70,6 +82,12 @@ export default function SubjectForm() {
     }
   }, [subject, form]);
 
+  useEffect(() => {
+    if (subjectCategories) {
+      setSelectedCategories(subjectCategories.map((sc) => sc.category_id));
+    }
+  }, [subjectCategories]);
+
   const nameValue = form.watch("name");
   useEffect(() => {
     if (nameValue && !isEdit) {
@@ -87,18 +105,37 @@ export default function SubjectForm() {
         { id, ...data },
         {
           onSuccess: () => {
-            // Stay on form to allow editing other tabs
+            // Update categories separately
+            updateCategories.mutate({
+              subjectId: id,
+              categoryIds: selectedCategories,
+            });
           },
         }
       );
     } else {
       createSubject.mutate(data as any, {
         onSuccess: (newSubject) => {
+          // Update categories for new subject
+          if (selectedCategories.length > 0) {
+            updateCategories.mutate({
+              subjectId: newSubject.id,
+              categoryIds: selectedCategories,
+            });
+          }
           // Redirect to edit mode after creation
           navigate(`/admin/subjects/${newSubject.id}/edit`);
         },
       });
     }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
 
   return (
@@ -118,7 +155,7 @@ export default function SubjectForm() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Basic Info
@@ -130,6 +167,10 @@ export default function SubjectForm() {
           <TabsTrigger value="questions" disabled={!isEdit} className="gap-2">
             <Brain className="h-4 w-4" />
             Questions
+          </TabsTrigger>
+          <TabsTrigger value="previous-year" disabled={!isEdit} className="gap-2">
+            <FileText className="h-4 w-4" />
+            Previous Year Papers
           </TabsTrigger>
         </TabsList>
 
@@ -235,6 +276,34 @@ export default function SubjectForm() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Category Mapping */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      <Label className="text-base font-semibold">Categories</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Select which categories this subject belongs to
+                    </p>
+                    <div className="rounded-lg border p-4 max-h-64 overflow-y-auto space-y-2">
+                      {allCategories?.map((category) => (
+                        <div key={category.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`category-${category.id}`}
+                            checked={selectedCategories.includes(category.id)}
+                            onCheckedChange={() => toggleCategory(category.id)}
+                          />
+                          <label
+                            htmlFor={`category-${category.id}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {category.displayName}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -282,6 +351,19 @@ export default function SubjectForm() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 Save the subject first to manage questions
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 4: Previous Year Papers */}
+        <TabsContent value="previous-year">
+          {isEdit && id ? (
+            <SubjectPreviousYearTab subjectId={id} subjectName={subject?.name || ""} />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Save the subject first to manage previous year papers
               </CardContent>
             </Card>
           )}
