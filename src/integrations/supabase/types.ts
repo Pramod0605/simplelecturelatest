@@ -90,6 +90,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          chapter_id: string | null
           course_id: string | null
           created_at: string | null
           description: string | null
@@ -102,9 +103,11 @@ export type Database = {
           questions: Json
           submission_date: string | null
           title: string
+          topic_id: string | null
           total_marks: number | null
         }
         Insert: {
+          chapter_id?: string | null
           course_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -117,9 +120,11 @@ export type Database = {
           questions: Json
           submission_date?: string | null
           title: string
+          topic_id?: string | null
           total_marks?: number | null
         }
         Update: {
+          chapter_id?: string | null
           course_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -132,14 +137,29 @@ export type Database = {
           questions?: Json
           submission_date?: string | null
           title?: string
+          topic_id?: string | null
           total_marks?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "assignments_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assignments_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
         ]

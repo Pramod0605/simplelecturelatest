@@ -53,6 +53,7 @@ import BatchesList from "./pages/admin/BatchesList";
 import BatchForm from "./pages/admin/BatchForm";
 import SubjectForm from "./pages/admin/SubjectForm";
 import QuestionBank from "./pages/admin/QuestionBank";
+import AssignmentManager from "./pages/admin/AssignmentManager";
 
 const App = () => (
   <HelmetProvider>
@@ -102,7 +103,8 @@ const App = () => (
                 <Route path="popular-subjects" element={<PopularSubjectsList />} />
                 <Route path="subjects/add" element={<SubjectForm />} />
                 <Route path="subjects/:id/edit" element={<SubjectForm />} />
-                <Route path="question-bank" element={<QuestionBank />} />
+              <Route path="question-bank" element={<QuestionBank />} />
+              <Route path="assignments" element={<AssignmentManager />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
                 <Route path="programs" element={<ProgramsList />} />

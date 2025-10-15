@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Calculator, Beaker, DollarSign } from "lucide-react";
+import { Calculator, Beaker, DollarSign, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { processPastedContent } from "@/lib/wordPasteHandler";
 
 interface FormulaEditorProps {
   value: string;
@@ -14,6 +16,31 @@ interface FormulaEditorProps {
 
 export const FormulaEditor = ({ value, onChange, formulaType = "plain" }: FormulaEditorProps) => {
   const [activeTab, setActiveTab] = useState<"plain" | "latex" | "accounting">(formulaType);
+  const { toast } = useToast();
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    
+    try {
+      const result = await processPastedContent(e.nativeEvent as ClipboardEvent);
+      
+      if (result.hasFormula) {
+        setActiveTab(result.formulaType);
+        onChange(value + result.text, result.formulaType);
+        toast({
+          title: "Formula Detected",
+          description: `Detected ${result.formulaType} format. Tab switched automatically.`,
+        });
+      } else {
+        onChange(value + result.text, activeTab);
+      }
+    } catch (error) {
+      console.error('Paste error:', error);
+      // Fallback to default paste behavior
+      const text = e.clipboardData.getData('text/plain');
+      onChange(value + text, activeTab);
+    }
+  };
 
   const latexSymbols = [
     { symbol: "\\frac{a}{b}", label: "Fraction" },
@@ -69,10 +96,15 @@ export const FormulaEditor = ({ value, onChange, formulaType = "plain" }: Formul
 
         <TabsContent value="plain" className="space-y-2">
           <Label>Plain Text</Label>
+          <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            Paste from Word documents - formulas will be detected automatically
+          </div>
           <Textarea
             value={value}
             onChange={(e) => onChange(e.target.value, "plain")}
-            placeholder="Enter your text here..."
+            onPaste={handlePaste}
+            placeholder="Enter your text here or paste from Word..."
             rows={6}
           />
         </TabsContent>
@@ -80,9 +112,14 @@ export const FormulaEditor = ({ value, onChange, formulaType = "plain" }: Formul
         <TabsContent value="latex" className="space-y-4">
           <div>
             <Label className="mb-2 block">LaTeX Formula</Label>
+            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Paste math equations from Word - they'll be auto-converted to LaTeX
+            </div>
             <Textarea
               value={value}
               onChange={(e) => onChange(e.target.value, "latex")}
+              onPaste={handlePaste}
               placeholder="Enter LaTeX formula... e.g., E = mc^{2}"
               rows={6}
               className="font-mono"
@@ -132,9 +169,14 @@ export const FormulaEditor = ({ value, onChange, formulaType = "plain" }: Formul
         <TabsContent value="accounting" className="space-y-4">
           <div>
             <Label className="mb-2 block">Accounting Format</Label>
+            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Paste journal entries from Word documents
+            </div>
             <Textarea
               value={value}
               onChange={(e) => onChange(e.target.value, "accounting")}
+              onPaste={handlePaste}
               placeholder="Enter accounting entry..."
               rows={8}
               className="font-mono"

@@ -16,7 +16,8 @@ import {
   UsersRound,
   ShieldCheck,
   Calendar,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,6 +176,19 @@ export const AdminSidebar = () => {
               }
             >
               Question Bank
+            </NavLink>
+            <NavLink
+              to="/admin/assignments"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Assignments
             </NavLink>
           </CollapsibleContent>
         </Collapsible>

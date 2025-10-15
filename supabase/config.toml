@@ -11,3 +11,12 @@ verify_jwt = true
 
 [functions.ai-rephrase]
 verify_jwt = true
+
+[functions.ai-generate-video]
+verify_jwt = true
+
+[functions.ai-generate-podcast]
+verify_jwt = true
+
+[functions.create-payment-order]
+verify_jwt = false
