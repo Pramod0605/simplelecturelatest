@@ -52,6 +52,7 @@ import {
   useBulkImportQuestions,
 } from "@/hooks/useSubjectQuestions";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
+import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { ExcelImportModal } from "./ExcelImportModal";
 import { FormulaEditor } from "./FormulaEditor";
@@ -129,55 +130,165 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   };
 
   const handleCreateQuestion = () => {
+    // Comprehensive validation
+    if (!questionForm.question_text.trim()) {
+      console.error("❌ Validation failed: Question text is empty");
+      toast({
+        title: "Validation Error",
+        description: "Question text is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!questionForm.correct_answer) {
+      console.error("❌ Validation failed: Correct answer not set");
+      toast({
+        title: "Validation Error",
+        description: "Please specify the correct answer",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Make topic selection required for better organization
+    if (!questionForm.topic_id) {
+      console.error("❌ Validation failed: No topic selected");
+      toast({
+        title: "Validation Error",
+        description: "Please select a topic for this question",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("=== CREATE QUESTION DEBUG ===");
+    console.log("Subject ID:", subjectId);
+    console.log("Question Form Data:", questionForm);
+
     const questionData: any = {
-      topic_id: questionForm.topic_id || undefined,
-      question_text: questionForm.question_text,
+      topic_id: questionForm.topic_id,
+      question_text: questionForm.question_text.trim(),
       question_type: questionForm.question_format,
       question_format: questionForm.question_format,
       options: questionForm.options,
       correct_answer: questionForm.correct_answer,
-      explanation: questionForm.explanation,
+      explanation: questionForm.explanation?.trim() || null,
       marks: questionForm.marks,
       difficulty: questionForm.difficulty,
       is_verified: false,
       is_ai_generated: false,
       contains_formula: questionForm.contains_formula,
-      formula_type: questionForm.contains_formula ? questionForm.formula_type : undefined,
-      question_image_url: questionForm.question_image_url || undefined,
-      option_images: Object.keys(questionForm.option_images).length > 0 ? questionForm.option_images : undefined,
+      formula_type: questionForm.contains_formula ? questionForm.formula_type : null,
+      question_image_url: questionForm.question_image_url || null,
+      option_images: Object.keys(questionForm.option_images).length > 0 
+        ? questionForm.option_images 
+        : null,
     };
 
+    console.log("Final question data to be inserted:", questionData);
+
     createQuestion.mutate(questionData, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log("✅ Question created successfully:", data);
+        toast({
+          title: "Success",
+          description: "Question created successfully",
+        });
         setIsAddManualOpen(false);
         resetForm();
+      },
+      onError: (error: any) => {
+        console.error("❌ Failed to create question:", error);
+        console.error("Error details:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        toast({
+          title: "Error Creating Question",
+          description: error.message || "Failed to create question. Check console for details.",
+          variant: "destructive",
+        });
       },
     });
   };
 
   const handleUpdateQuestion = () => {
-    if (!editingQuestion) return;
+    if (!editingQuestion) {
+      console.error("❌ No question selected for editing");
+      return;
+    }
+
+    // Validation
+    if (!questionForm.question_text.trim()) {
+      console.error("❌ Validation failed: Question text is empty");
+      toast({
+        title: "Validation Error",
+        description: "Question text is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!questionForm.correct_answer) {
+      console.error("❌ Validation failed: Correct answer not set");
+      toast({
+        title: "Validation Error",
+        description: "Please specify the correct answer",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("=== UPDATE QUESTION DEBUG ===");
+    console.log("Question ID:", editingQuestion.id);
+    console.log("Updated Form Data:", questionForm);
     
     const updates: any = {
-      question_text: questionForm.question_text,
+      question_text: questionForm.question_text.trim(),
       question_format: questionForm.question_format,
       options: questionForm.options,
       correct_answer: questionForm.correct_answer,
-      explanation: questionForm.explanation,
+      explanation: questionForm.explanation?.trim() || null,
       marks: questionForm.marks,
       difficulty: questionForm.difficulty,
       contains_formula: questionForm.contains_formula,
-      formula_type: questionForm.contains_formula ? questionForm.formula_type : undefined,
-      question_image_url: questionForm.question_image_url || undefined,
-      option_images: Object.keys(questionForm.option_images).length > 0 ? questionForm.option_images : undefined,
+      formula_type: questionForm.contains_formula ? questionForm.formula_type : null,
+      question_image_url: questionForm.question_image_url || null,
+      option_images: Object.keys(questionForm.option_images).length > 0 
+        ? questionForm.option_images 
+        : null,
     };
+
+    console.log("Updates to be applied:", updates);
 
     updateQuestion.mutate(
       { id: editingQuestion.id, updates },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          console.log("✅ Question updated successfully:", data);
+          toast({
+            title: "Success",
+            description: "Question updated successfully",
+          });
           setEditingQuestion(null);
           resetForm();
+        },
+        onError: (error: any) => {
+          console.error("❌ Failed to update question:", error);
+          console.error("Error details:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+          toast({
+            title: "Error Updating Question",
+            description: error.message || "Failed to update question. Check console for details.",
+            variant: "destructive",
+          });
         },
       }
     );
@@ -469,7 +580,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Topic (Optional)</Label>
+                          <Label>Topic *</Label>
                           <Select
                             value={questionForm.topic_id}
                             onValueChange={(value) =>

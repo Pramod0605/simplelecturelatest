@@ -1087,6 +1087,50 @@ export type Database = {
         }
         Relationships: []
       }
+      question_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          options: Json
+          question_format: string
+          subject_id: string | null
+          template_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          options: Json
+          question_format: string
+          subject_id?: string | null
+          template_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          options?: Json
+          question_format?: string
+          subject_id?: string | null
+          template_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_templates_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_uploads: {
         Row: {
           completed_at: string | null
@@ -1513,34 +1557,49 @@ export type Database = {
       }
       subject_chapters: {
         Row: {
+          ai_generated_podcast_url: string | null
+          ai_generated_video_url: string | null
           chapter_number: number
           created_at: string | null
           description: string | null
           id: string
+          notes_markdown: string | null
           sequence_order: number | null
           subject_id: string
           title: string
           updated_at: string | null
+          video_id: string | null
+          video_platform: string | null
         }
         Insert: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           chapter_number: number
           created_at?: string | null
           description?: string | null
           id?: string
+          notes_markdown?: string | null
           sequence_order?: number | null
           subject_id: string
           title: string
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
         }
         Update: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           chapter_number?: number
           created_at?: string | null
           description?: string | null
           id?: string
+          notes_markdown?: string | null
           sequence_order?: number | null
           subject_id?: string
           title?: string
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
         }
         Relationships: [
           {
@@ -1595,39 +1654,57 @@ export type Database = {
       }
       subject_topics: {
         Row: {
+          ai_generated_podcast_url: string | null
+          ai_generated_video_url: string | null
           chapter_id: string
           content_markdown: string | null
           created_at: string | null
           estimated_duration_minutes: number | null
           id: string
+          notes_markdown: string | null
+          pdf_url: string | null
           sequence_order: number | null
           title: string
           topic_number: number
           updated_at: string | null
+          video_id: string | null
+          video_platform: string | null
           video_url: string | null
         }
         Insert: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           chapter_id: string
           content_markdown?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
           id?: string
+          notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           title: string
           topic_number: number
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
           video_url?: string | null
         }
         Update: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           chapter_id?: string
           content_markdown?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
           id?: string
+          notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           title?: string
           topic_number?: number
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
           video_url?: string | null
         }
         Relationships: [
@@ -1642,37 +1719,55 @@ export type Database = {
       }
       subtopics: {
         Row: {
+          ai_generated_podcast_url: string | null
+          ai_generated_video_url: string | null
           content_markdown: string | null
           created_at: string | null
           description: string | null
           estimated_duration_minutes: number | null
           id: string
+          notes_markdown: string | null
+          pdf_url: string | null
           sequence_order: number | null
           title: string
           topic_id: string
           updated_at: string | null
+          video_id: string | null
+          video_platform: string | null
         }
         Insert: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           content_markdown?: string | null
           created_at?: string | null
           description?: string | null
           estimated_duration_minutes?: number | null
           id?: string
+          notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           title: string
           topic_id: string
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
         }
         Update: {
+          ai_generated_podcast_url?: string | null
+          ai_generated_video_url?: string | null
           content_markdown?: string | null
           created_at?: string | null
           description?: string | null
           estimated_duration_minutes?: number | null
           id?: string
+          notes_markdown?: string | null
+          pdf_url?: string | null
           sequence_order?: number | null
           title?: string
           topic_id?: string
           updated_at?: string | null
+          video_id?: string | null
+          video_platform?: string | null
         }
         Relationships: [
           {

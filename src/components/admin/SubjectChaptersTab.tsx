@@ -41,6 +41,7 @@ import {
   useDeleteTopic,
   useBulkImportChapters,
 } from "@/hooks/useSubjectManagement";
+import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { ExcelImportModal } from "./ExcelImportModal";
 import * as XLSX from "xlsx";
@@ -104,19 +105,60 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
   };
 
   const handleCreateChapter = () => {
+    // Validation
+    if (!chapterForm.title.trim()) {
+      console.error("❌ Validation failed: Chapter title is empty");
+      toast({
+        title: "Validation Error",
+        description: "Chapter title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("=== CREATE CHAPTER DEBUG ===");
+    console.log("Subject ID:", subjectId);
+    console.log("Chapter Form Data:", chapterForm);
+    console.log("Current Chapters Count:", chapters?.length);
+
     createChapter.mutate(
       {
         subject_id: subjectId,
         ...chapterForm,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          console.log("✅ Chapter created successfully:", data);
+          toast({
+            title: "Success",
+            description: `Chapter "${chapterForm.title}" created successfully`,
+          });
           setIsAddChapterOpen(false);
           setChapterForm({
             chapter_number: (chapters?.length || 0) + 1,
             title: "",
             description: "",
             sequence_order: (chapters?.length || 0) + 1,
+          });
+        },
+        onError: (error: any) => {
+          console.error("❌ Failed to create chapter:", error);
+          console.error("Error details:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+
+          let errorMessage = error.message || "An unexpected error occurred";
+          if (error.code === "23505") {
+            errorMessage = `A chapter with number ${chapterForm.chapter_number} already exists for this subject`;
+          }
+
+          toast({
+            title: "Error Creating Chapter",
+            description: errorMessage,
+            variant: "destructive",
           });
         },
       }
@@ -155,14 +197,42 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
   };
 
   const handleCreateTopic = () => {
-    if (!selectedChapter) return;
+    if (!selectedChapter) {
+      console.error("❌ No chapter selected for topic creation");
+      toast({
+        title: "Error",
+        description: "No chapter selected. Please select a chapter first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!topicForm.title.trim()) {
+      console.error("❌ Validation failed: Topic title is empty");
+      toast({
+        title: "Validation Error",
+        description: "Topic title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("=== CREATE TOPIC DEBUG ===");
+    console.log("Chapter ID:", selectedChapter);
+    console.log("Topic Form Data:", topicForm);
+
     createTopic.mutate(
       {
         chapter_id: selectedChapter,
         ...topicForm,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          console.log("✅ Topic created successfully:", data);
+          toast({
+            title: "Success",
+            description: `Topic "${topicForm.title}" created successfully`,
+          });
           setIsAddTopicOpen(false);
           setTopicForm({
             topic_number: 1,
@@ -171,6 +241,26 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
             video_url: "",
             content_markdown: "",
             sequence_order: 1,
+          });
+        },
+        onError: (error: any) => {
+          console.error("❌ Failed to create topic:", error);
+          console.error("Error details:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+
+          let errorMessage = error.message || "An unexpected error occurred";
+          if (error.code === "23505") {
+            errorMessage = `A topic with number ${topicForm.topic_number} already exists in this chapter`;
+          }
+
+          toast({
+            title: "Error Creating Topic",
+            description: errorMessage,
+            variant: "destructive",
           });
         },
       }
