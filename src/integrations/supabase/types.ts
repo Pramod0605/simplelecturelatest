@@ -2469,12 +2469,20 @@ export type Database = {
       }
     }
     Functions: {
+      decrement_batch_students: {
+        Args: { batch_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_batch_students: {
+        Args: { batch_id: string }
+        Returns: undefined
       }
       refresh_student_analytics: {
         Args: Record<PropertyKey, never>
