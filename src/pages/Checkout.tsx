@@ -55,7 +55,7 @@ const Checkout = () => {
         {
           body: {
             amount: finalAmount,
-            courses: items.map((item) => item.program_id),
+            courses: items.map((item) => item.course_id),
             customerInfo: formData,
           },
         }
@@ -177,8 +177,8 @@ const Checkout = () => {
                 <div className="space-y-3 mb-4">
                   {items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{item.program_name}</span>
-                      <span>{formatINR(item.program_price)}</span>
+                      <span className="text-muted-foreground">{item.course_name}</span>
+                      <span>{formatINR(item.course_price)}</span>
                     </div>
                   ))}
 

@@ -104,8 +104,8 @@ const Cart = () => {
                   <div className="flex gap-4">
                     <div className="w-24 h-24 bg-muted rounded-lg flex-shrink-0" />
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">{item.program_name}</h3>
-                      <p className="text-2xl font-bold text-primary">{formatINR(item.program_price)}</p>
+                      <h3 className="font-semibold text-lg mb-1">{item.course_name}</h3>
+                      <p className="text-2xl font-bold text-primary">{formatINR(item.course_price)}</p>
                     </div>
                     <Button
                       variant="ghost"

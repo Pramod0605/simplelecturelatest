@@ -117,8 +117,8 @@ const MobileCart = () => {
               <div className="flex gap-3">
                 <div className="w-20 h-20 bg-muted rounded-lg flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold mb-1 line-clamp-2">{item.program_name}</h3>
-                  <p className="text-lg font-bold text-primary">{formatINR(item.program_price)}</p>
+                  <h3 className="font-semibold mb-1 line-clamp-2">{item.course_name}</h3>
+                  <p className="text-lg font-bold text-primary">{formatINR(item.course_price)}</p>
                 </div>
                 <Button
                   variant="ghost"

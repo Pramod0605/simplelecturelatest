@@ -4,10 +4,10 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface CartItem {
   id: string;
-  program_id: string;
-  program_name: string;
-  program_price: number;
-  program_thumbnail?: string;
+  course_id: string;
+  course_name: string;
+  course_price: number;
+  course_thumbnail?: string;
   added_at: string;
 }
 
@@ -32,9 +32,9 @@ export const useCart = () => {
         .from('cart_items')
         .select(`
           id,
-          program_id,
+          course_id,
           added_at,
-          programs (
+          courses (
             name,
             price_inr,
             thumbnail_url
@@ -46,10 +46,10 @@ export const useCart = () => {
 
       const cartItems: CartItem[] = data?.map((item: any) => ({
         id: item.id,
-        program_id: item.program_id,
-        program_name: item.programs.name,
-        program_price: item.programs.price_inr,
-        program_thumbnail: item.programs.thumbnail_url,
+        course_id: item.course_id,
+        course_name: item.courses.name,
+        course_price: item.courses.price_inr,
+        course_thumbnail: item.courses.thumbnail_url,
         added_at: item.added_at,
       })) || [];
 
@@ -61,7 +61,7 @@ export const useCart = () => {
     }
   };
 
-  const addToCart = async (programId: string) => {
+  const addToCart = async (courseId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -75,13 +75,13 @@ export const useCart = () => {
 
       const { error } = await supabase
         .from('cart_items')
-        .insert({ user_id: user.id, program_id: programId });
+        .insert({ user_id: user.id, course_id: courseId });
 
       if (error) {
         if (error.code === '23505') {
           toast({
             title: 'Already in Cart',
-            description: 'This program is already in your cart',
+            description: 'This course is already in your cart',
           });
           return false;
         }
@@ -90,7 +90,7 @@ export const useCart = () => {
 
       toast({
         title: 'Added to Cart',
-        description: 'Program added successfully',
+        description: 'Course added successfully',
       });
 
       await fetchCart();
@@ -117,7 +117,7 @@ export const useCart = () => {
 
       toast({
         title: 'Removed',
-        description: 'Program removed from cart',
+        description: 'Course removed from cart',
       });
 
       await fetchCart();
@@ -148,7 +148,7 @@ export const useCart = () => {
     }
   };
 
-  const total = items.reduce((sum, item) => sum + item.program_price, 0);
+  const total = items.reduce((sum, item) => sum + item.course_price, 0);
 
   return {
     items,

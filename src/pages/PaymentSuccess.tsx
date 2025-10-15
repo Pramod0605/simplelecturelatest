@@ -55,7 +55,7 @@ const PaymentSuccess = () => {
                 {courses?.map((course: any) => (
                   <div key={course.id} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">{course.program_name}</span>
+                    <span className="font-medium">{course.course_name}</span>
                   </div>
                 ))}
               </div>

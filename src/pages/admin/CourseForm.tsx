@@ -52,7 +52,6 @@ export default function CourseForm() {
       setFormData({
         name: course.name || "",
         slug: course.slug || "",
-        program_id: course.program_id || "",
         short_description: course.short_description || "",
         detailed_description: course.detailed_description || "",
         thumbnail_url: course.thumbnail_url || "",

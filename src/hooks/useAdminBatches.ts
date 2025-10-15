@@ -16,7 +16,6 @@ export interface Batch {
   course?: {
     id: string;
     name: string;
-    program_id: string;
   };
 }
 
@@ -28,7 +27,7 @@ export const useAdminBatches = (courseId?: string) => {
         .from("batches")
         .select(`
           *,
-          course:courses(id, name, program_id)
+          course:courses(id, name)
         `)
         .order("created_at", { ascending: false });
 
@@ -38,7 +37,7 @@ export const useAdminBatches = (courseId?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Batch[];
+      return data as any[];
     },
   });
 };
@@ -53,13 +52,13 @@ export const useAdminBatch = (id?: string) => {
         .from("batches")
         .select(`
           *,
-          course:courses(id, name, program_id)
+          course:courses(id, name)
         `)
         .eq("id", id)
         .single();
 
       if (error) throw error;
-      return data as Batch;
+      return data as any;
     },
     enabled: !!id,
   });

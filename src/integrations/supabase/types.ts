@@ -214,23 +214,31 @@ export type Database = {
       cart_items: {
         Row: {
           added_at: string | null
+          course_id: string | null
           id: string
-          program_id: string | null
           user_id: string | null
         }
         Insert: {
           added_at?: string | null
+          course_id?: string | null
           id?: string
-          program_id?: string | null
           user_id?: string | null
         }
         Update: {
           added_at?: string | null
+          course_id?: string | null
           id?: string
-          program_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -724,7 +732,6 @@ export type Database = {
           name: string
           original_price_inr: number | null
           price_inr: number | null
-          program_id: string | null
           rating: number | null
           review_count: number | null
           sequence_order: number | null
@@ -753,7 +760,6 @@ export type Database = {
           name: string
           original_price_inr?: number | null
           price_inr?: number | null
-          program_id?: string | null
           rating?: number | null
           review_count?: number | null
           sequence_order?: number | null
@@ -782,7 +788,6 @@ export type Database = {
           name?: string
           original_price_inr?: number | null
           price_inr?: number | null
-          program_id?: string | null
           rating?: number | null
           review_count?: number | null
           sequence_order?: number | null
@@ -1259,27 +1264,34 @@ export type Database = {
       }
       order_items: {
         Row: {
+          course_id: string | null
           created_at: string | null
           id: string
           payment_id: string | null
           price_inr: number
-          program_id: string | null
         }
         Insert: {
+          course_id?: string | null
           created_at?: string | null
           id?: string
           payment_id?: string | null
           price_inr: number
-          program_id?: string | null
         }
         Update: {
+          course_id?: string | null
           created_at?: string | null
           id?: string
           payment_id?: string | null
           price_inr?: number
-          program_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_payment_id_fkey"
             columns: ["payment_id"]

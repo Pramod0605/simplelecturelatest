@@ -93,8 +93,8 @@ const MobileCheckout = () => {
             <div className="space-y-2 text-sm mb-4">
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between">
-                  <span className="text-muted-foreground line-clamp-1">{item.program_name}</span>
-                  <span className="font-semibold">{formatINR(item.program_price)}</span>
+                  <span className="text-muted-foreground line-clamp-1">{item.course_name}</span>
+                  <span className="font-semibold">{formatINR(item.course_price)}</span>
                 </div>
               ))}
             </div>
