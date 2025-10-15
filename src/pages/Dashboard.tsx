@@ -9,6 +9,7 @@ import { UpcomingClasses } from '@/components/dashboard/UpcomingClasses';
 import { AssignmentsList } from '@/components/dashboard/AssignmentsList';
 import { InstructorsList } from '@/components/dashboard/InstructorsList';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { BatchInfoCard } from '@/components/dashboard/BatchInfoCard';
 import { Footer } from '@/components/Footer';
 
 const Dashboard = () => {
@@ -57,11 +58,14 @@ const Dashboard = () => {
               <AssignmentsList />
             </div>
 
-            {/* Column 4: Instructors (narrow) */}
+          {/* Column 4: Instructors (narrow) */}
             <div className="lg:col-span-3">
               <InstructorsList />
             </div>
           </div>
+
+          {/* Batch Info Card */}
+          <BatchInfoCard />
 
           {/* DPT section is now integrated into StudentIDCard */}
         </div>

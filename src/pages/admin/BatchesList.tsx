@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Users, Edit, Trash2 } from "lucide-react";
+import { Plus, Calendar, Users, Edit, Trash2, UserPlus, Eye } from "lucide-react";
+import { EnrollStudentDialog } from "@/components/admin/EnrollStudentDialog";
 import { useAdminBatches, useDeleteBatch } from "@/hooks/useAdminBatches";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -21,6 +23,7 @@ import { format } from "date-fns";
 export default function BatchesList() {
   const { data: batches, isLoading } = useAdminBatches();
   const deleteBatch = useDeleteBatch();
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
 
   const handleDelete = (id: string) => {
     deleteBatch.mutate(id);
@@ -46,12 +49,18 @@ export default function BatchesList() {
           <h1 className="text-3xl font-bold">Manage Batches</h1>
           <p className="text-muted-foreground">Create and manage course batches</p>
         </div>
-        <Button asChild>
-          <Link to="/admin/batches/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Batch
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setEnrollDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Enroll Student
+          </Button>
+          <Button asChild>
+            <Link to="/admin/batches/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Batch
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {batches && batches.length === 0 ? (
@@ -103,7 +112,13 @@ export default function BatchesList() {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" asChild className="flex-1">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/admin/batches/${batch.id}`}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Students
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
                     <Link to={`/admin/batches/${batch.id}/edit`}>
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
@@ -139,6 +154,11 @@ export default function BatchesList() {
           ))}
         </div>
       )}
+
+      <EnrollStudentDialog 
+        isOpen={enrollDialogOpen} 
+        onClose={() => setEnrollDialogOpen(false)} 
+      />
     </div>
   );
 }
