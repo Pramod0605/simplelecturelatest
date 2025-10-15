@@ -133,10 +133,14 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
 
   // Filter management
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    if (key === "chapterId" && value !== prev.chapterId) {
-      setFilters(prev => ({ ...prev, topicId: "all" }));
-    }
+    setFilters(prev => {
+      const updated = { ...prev, [key]: value };
+      // Reset topic filter when chapter changes
+      if (key === "chapterId" && value !== prev.chapterId) {
+        updated.topicId = "all";
+      }
+      return updated;
+    });
   };
 
   const handleClearFilters = () => {
@@ -232,6 +236,8 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     }
     return true;
   }) || [];
+
+  const resetForm = () => {
     setQuestionForm({
       chapter_id: "",
       topic_id: "",
