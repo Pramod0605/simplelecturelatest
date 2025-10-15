@@ -17,7 +17,11 @@ import {
   ShieldCheck,
   Calendar,
   HelpCircle,
-  FileText
+  FileText,
+  Building2,
+  UserPlus,
+  CalendarDays,
+  Video
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +35,7 @@ export const AdminSidebar = () => {
   const [openCategories, setOpenCategories] = useState(true);
   const [openPrograms, setOpenPrograms] = useState(false);
   const [openUsers, setOpenUsers] = useState(false);
+  const [openHR, setOpenHR] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -254,6 +259,71 @@ export const AdminSidebar = () => {
               }
             >
               Staff
+            </NavLink>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Human Resource */}
+        <Collapsible open={openHR} onOpenChange={setOpenHR}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-md hover:bg-sidebar-accent/50 text-sm font-medium text-sidebar-foreground transition-all">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-4 w-4" />
+              <span>Human Resource</span>
+            </div>
+            <ChevronRight className={cn("h-4 w-4 transition-transform", openHR && "rotate-90")} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-0.5 mt-1 ml-7 pl-3 border-l border-sidebar-border">
+            <NavLink
+              to="/admin/hr/instructors"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Manage Instructors
+            </NavLink>
+            <NavLink
+              to="/admin/hr/departments"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Departments
+            </NavLink>
+            <NavLink
+              to="/admin/hr/timetable"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Timetable
+            </NavLink>
+            <NavLink
+              to="/admin/hr/live-classes"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Manage Live Classes
             </NavLink>
           </CollapsibleContent>
         </Collapsible>

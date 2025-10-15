@@ -54,6 +54,10 @@ import BatchForm from "./pages/admin/BatchForm";
 import SubjectForm from "./pages/admin/SubjectForm";
 import QuestionBank from "./pages/admin/QuestionBank";
 import AssignmentManager from "./pages/admin/AssignmentManager";
+import DepartmentsManager from "./pages/admin/hr/DepartmentsManager";
+import InstructorsManager from "./pages/admin/hr/InstructorsManager";
+import TimetableManager from "./pages/admin/hr/TimetableManager";
+import LiveClassesManager from "./pages/admin/hr/LiveClassesManager";
 
 const App = () => (
   <HelmetProvider>
@@ -118,6 +122,12 @@ const App = () => (
                 <Route path="staff" element={<StaffList />} />
                 <Route path="academics" element={<Academics />} />
                 <Route path="settings" element={<Settings />} />
+                
+                {/* Human Resource Routes */}
+                <Route path="hr/departments" element={<DepartmentsManager />} />
+                <Route path="hr/instructors" element={<InstructorsManager />} />
+                <Route path="hr/timetable" element={<TimetableManager />} />
+                <Route path="hr/live-classes" element={<LiveClassesManager />} />
               </Route>
             </Route>
             

@@ -610,6 +610,44 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          head_of_department: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          head_of_department?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          head_of_department?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_head_of_department_fkey"
+            columns: ["head_of_department"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_codes: {
         Row: {
           code: string
@@ -816,6 +854,125 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      instructor_subjects: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          id: string
+          instructor_id: string | null
+          subject_id: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          instructor_id?: string | null
+          subject_id?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          instructor_id?: string | null
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_subjects_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instructor_timetables: {
+        Row: {
+          academic_year: string
+          chapter_id: string | null
+          created_at: string | null
+          day_of_week: number
+          duration_minutes: number | null
+          end_time: string
+          id: string
+          instructor_id: string | null
+          is_active: boolean | null
+          start_time: string
+          subject_id: string | null
+          updated_at: string | null
+          valid_from: string
+          valid_until: string | null
+        }
+        Insert: {
+          academic_year: string
+          chapter_id?: string | null
+          created_at?: string | null
+          day_of_week: number
+          duration_minutes?: number | null
+          end_time: string
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean | null
+          start_time: string
+          subject_id?: string | null
+          updated_at?: string | null
+          valid_from: string
+          valid_until?: string | null
+        }
+        Update: {
+          academic_year?: string
+          chapter_id?: string | null
+          created_at?: string | null
+          day_of_week?: number
+          duration_minutes?: number | null
+          end_time?: string
+          id?: string
+          instructor_id?: string | null
+          is_active?: boolean | null
+          start_time?: string
+          subject_id?: string | null
+          updated_at?: string | null
+          valid_from?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_timetables_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_timetables_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_timetables_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notice_reads: {
         Row: {
@@ -1333,6 +1490,7 @@ export type Database = {
       }
       scheduled_classes: {
         Row: {
+          chapter_id: string | null
           course_id: string
           created_at: string | null
           duration_minutes: number | null
@@ -1345,8 +1503,10 @@ export type Database = {
           scheduled_at: string
           subject: string
           teacher_id: string | null
+          timetable_entry_id: string | null
         }
         Insert: {
+          chapter_id?: string | null
           course_id: string
           created_at?: string | null
           duration_minutes?: number | null
@@ -1359,8 +1519,10 @@ export type Database = {
           scheduled_at: string
           subject: string
           teacher_id?: string | null
+          timetable_entry_id?: string | null
         }
         Update: {
+          chapter_id?: string | null
           course_id?: string
           created_at?: string | null
           duration_minutes?: number | null
@@ -1373,6 +1535,7 @@ export type Database = {
           scheduled_at?: string
           subject?: string
           teacher_id?: string | null
+          timetable_entry_id?: string | null
         }
         Relationships: [
           {
@@ -1383,10 +1546,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "scheduled_classes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "scheduled_classes_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_classes_timetable_entry_id_fkey"
+            columns: ["timetable_entry_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_timetables"
             referencedColumns: ["id"]
           },
         ]
@@ -1807,11 +1984,15 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string | null
+          date_of_joining: string | null
+          department_id: string | null
           email: string | null
+          employee_id: string | null
           experience_years: number | null
           full_name: string
           id: string
           phone_number: string | null
+          qualification: string | null
           specialization: string[] | null
           updated_at: string | null
         }
@@ -1819,11 +2000,15 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          date_of_joining?: string | null
+          department_id?: string | null
           email?: string | null
+          employee_id?: string | null
           experience_years?: number | null
           full_name: string
           id: string
           phone_number?: string | null
+          qualification?: string | null
           specialization?: string[] | null
           updated_at?: string | null
         }
@@ -1831,15 +2016,27 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
+          date_of_joining?: string | null
+          department_id?: string | null
           email?: string | null
+          employee_id?: string | null
           experience_years?: number | null
           full_name?: string
           id?: string
           phone_number?: string | null
+          qualification?: string | null
           specialization?: string[] | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teacher_profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       test_submissions: {
         Row: {
