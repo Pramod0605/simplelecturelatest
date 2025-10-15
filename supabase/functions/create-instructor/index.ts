@@ -20,17 +20,41 @@ Deno.serve(async (req) => {
 
     const { instructorData } = await req.json();
 
+    // Validate required fields
+    if (!instructorData.email || !instructorData.full_name || !instructorData.password) {
+      return new Response(
+        JSON.stringify({ error: 'Email, full name, and password are required' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
     // Step 1: Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: instructorData.email,
-      password: Math.random().toString(36).slice(-12) + 'Aa1!', // Temporary password
+      password: instructorData.password,
       email_confirm: true,
       user_metadata: {
         full_name: instructorData.full_name,
       },
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      // Handle specific error cases
+      if (authError.message?.includes('email') || authError.status === 422) {
+        return new Response(
+          JSON.stringify({ error: 'A user with this email address already exists. Please use a different email.' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          }
+        );
+      }
+      throw authError;
+    }
+    
     if (!authData.user) throw new Error('Failed to create user account');
 
     const userId = authData.user.id;

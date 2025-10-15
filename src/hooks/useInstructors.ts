@@ -10,7 +10,7 @@ export const useInstructors = () => {
         .from('teacher_profiles')
         .select(`
           *,
-          department:departments(id, name),
+          department:departments!teacher_profiles_department_id_fkey(id, name),
           subjects:instructor_subjects(
             category_id,
             subject_id,
@@ -34,7 +34,7 @@ export const useInstructor = (id: string) => {
         .from('teacher_profiles')
         .select(`
           *,
-          department:departments(id, name),
+          department:departments!teacher_profiles_department_id_fkey(id, name),
           subjects:instructor_subjects(
             id,
             category_id,
@@ -63,14 +63,24 @@ export const useCreateInstructor = () => {
         body: { instructorData: data },
       });
 
-      if (error) throw error;
-      if (!result.success) throw new Error('Failed to create instructor');
+      if (error) {
+        // Handle edge function errors
+        throw new Error(error.message || 'Failed to create instructor');
+      }
+      
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      
+      if (!result?.success) {
+        throw new Error('Failed to create instructor');
+      }
 
       return result.profile;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instructors'] });
-      toast.success('Instructor created successfully. They will receive an email to set their password.');
+      toast.success('Instructor created successfully. They can now log in with their credentials.');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create instructor');
