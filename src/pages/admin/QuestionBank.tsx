@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Download, Upload } from "lucide-react";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
-import { useSubjectChapters } from "@/hooks/useSubjectManagement";
-import { useChapterTopics } from "@/hooks/useSubjectManagement";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubjectQuestions } from "@/hooks/useSubjectQuestions";
 import { QuestionPreview } from "@/components/admin/QuestionPreview";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { EnhancedExcelImportModal } from "@/components/admin/EnhancedExcelImportModal";
+import { QuestionFormDialog } from "@/components/admin/QuestionFormDialog";
+import * as XLSX from 'xlsx';
 
 export default function QuestionBank() {
   // State for filters and search
@@ -22,6 +24,8 @@ export default function QuestionBank() {
   const [difficulty, setDifficulty] = useState<string>("all");
   const [questionFormat, setQuestionFormat] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
 
   const { data: subjects } = useAdminPopularSubjects();
   const { data: chapters } = useSubjectChapters(selectedSubject !== "all" ? selectedSubject : undefined);
@@ -71,10 +75,34 @@ export default function QuestionBank() {
 
   const handleVerifyQuestion = (id: string, verified: boolean) => {
     // TODO: Implement verify mutation
-    toast({
-      title: verified ? "Question Verified" : "Verification Removed",
-      description: `Question ${verified ? "marked as verified" : "unmarked"}`,
-    });
+    toast.success(verified ? "Question verified" : "Verification removed");
+  };
+
+  const handleExport = () => {
+    if (!filteredQuestions || filteredQuestions.length === 0) {
+      toast.error("No questions to export");
+      return;
+    }
+
+    const exportData = filteredQuestions.map(q => ({
+      question_text: q.question_text,
+      question_format: q.question_format,
+      option_a: q.options?.A || "",
+      option_b: q.options?.B || "",
+      option_c: q.options?.C || "",
+      option_d: q.options?.D || "",
+      correct_answer: q.correct_answer,
+      explanation: q.explanation || "",
+      difficulty: q.difficulty,
+      marks: q.marks,
+      question_type: q.question_type,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Questions");
+    XLSX.writeFile(wb, `questions_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success(`Exported ${filteredQuestions.length} questions`);
   };
 
   return (
@@ -88,15 +116,15 @@ export default function QuestionBank() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsAddQuestionOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Question
             </Button>
@@ -269,6 +297,16 @@ export default function QuestionBank() {
             )}
           </CardContent>
         </Card>
+
+        <EnhancedExcelImportModal 
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+        />
+
+        <QuestionFormDialog
+          isOpen={isAddQuestionOpen}
+          onClose={() => setIsAddQuestionOpen(false)}
+        />
       </div>
   );
 }

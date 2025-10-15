@@ -653,6 +653,7 @@ export type Database = {
       course_timetables: {
         Row: {
           academic_year: string
+          batch_id: string | null
           course_id: string
           created_at: string | null
           day_of_week: number
@@ -669,6 +670,7 @@ export type Database = {
         }
         Insert: {
           academic_year: string
+          batch_id?: string | null
           course_id: string
           created_at?: string | null
           day_of_week: number
@@ -685,6 +687,7 @@ export type Database = {
         }
         Update: {
           academic_year?: string
+          batch_id?: string | null
           course_id?: string
           created_at?: string | null
           day_of_week?: number
@@ -700,6 +703,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "course_timetables_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "course_timetables_course_id_fkey"
             columns: ["course_id"]
@@ -982,6 +992,7 @@ export type Database = {
       }
       enrollments: {
         Row: {
+          batch_id: string | null
           course_id: string
           enrolled_at: string | null
           expires_at: string | null
@@ -990,6 +1001,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          batch_id?: string | null
           course_id: string
           enrolled_at?: string | null
           expires_at?: string | null
@@ -998,6 +1010,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          batch_id?: string | null
           course_id?: string
           enrolled_at?: string | null
           expires_at?: string | null
@@ -1006,6 +1019,13 @@ export type Database = {
           student_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "enrollments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "enrollments_course_id_fkey"
             columns: ["course_id"]
@@ -1137,6 +1157,7 @@ export type Database = {
       instructor_timetables: {
         Row: {
           academic_year: string
+          batch_id: string | null
           chapter_id: string | null
           created_at: string | null
           day_of_week: number
@@ -1153,6 +1174,7 @@ export type Database = {
         }
         Insert: {
           academic_year: string
+          batch_id?: string | null
           chapter_id?: string | null
           created_at?: string | null
           day_of_week: number
@@ -1169,6 +1191,7 @@ export type Database = {
         }
         Update: {
           academic_year?: string
+          batch_id?: string | null
           chapter_id?: string | null
           created_at?: string | null
           day_of_week?: number
@@ -1184,6 +1207,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "instructor_timetables_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "instructor_timetables_chapter_id_fkey"
             columns: ["chapter_id"]

@@ -7,6 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
+import { useAdminBatches } from "@/hooks/useAdminBatches";
+import { useCourseSubjects } from "@/hooks/useCourseSubjects";
+import { useCourseInstructors } from "@/hooks/useCourseInstructors";
+import { useSaveTimetable } from "@/hooks/useSaveTimetable";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +19,8 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 export default function AcademicsTimetable() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [selectedBatch, setSelectedBatch] = useState<string>("");
+  const [academicYear, setAcademicYear] = useState("2025");
   const [generatorSettings, setGeneratorSettings] = useState({
     startTime: "09:00",
     duration: "45",
@@ -24,6 +30,10 @@ export default function AcademicsTimetable() {
 
   const { data: categories } = useAdminCategories();
   const { data: allCourses } = useCourses();
+  const { data: batches } = useAdminBatches();
+  const { data: courseSubjects } = useCourseSubjects(selectedCourse);
+  const { data: courseInstructors } = useCourseInstructors(selectedCourse);
+  const saveTimetableMutation = useSaveTimetable();
   
   // Filter courses by selected category  
   const courses = allCourses;
@@ -103,38 +113,41 @@ export default function AcademicsTimetable() {
 
   const handleSaveTimetable = async () => {
     if (!selectedCourse) {
-      toast.error("Please select a course");
+      toast.error("Please select a course first");
+      return;
+    }
+
+    if (!academicYear) {
+      toast.error("Please enter academic year");
       return;
     }
 
     const entries: any[] = [];
     Object.entries(dayEntries).forEach(([day, dayEntriesList]) => {
       dayEntriesList.forEach((entry) => {
-        if (entry.subject_id && entry.instructor_id) {
+        if (entry.subject_id && entry.start_time && entry.end_time) {
           entries.push({
             course_id: selectedCourse,
+            batch_id: selectedBatch || null,
             subject_id: entry.subject_id,
-            instructor_id: entry.instructor_id,
+            instructor_id: entry.instructor_id || null,
             day_of_week: parseInt(day),
             start_time: entry.start_time,
             end_time: entry.end_time,
-            room_number: entry.room_number,
-            academic_year: "2024-2025",
-            valid_from: new Date().toISOString().split("T")[0],
-            is_active: true,
+            room_number: entry.room_number || null,
+            valid_from: new Date().toISOString().split('T')[0],
+            academic_year: academicYear,
           });
         }
       });
     });
 
     if (entries.length === 0) {
-      toast.error("Please add at least one complete entry");
+      toast.info("No timetable entries to save");
       return;
     }
 
-    // TODO: Implement save after Supabase types are regenerated
-    toast.info("Timetable save will be implemented after database sync");
-    console.log("Entries to save:", entries);
+    await saveTimetableMutation.mutateAsync(entries);
   };
 
   return (
@@ -166,8 +179,11 @@ export default function AcademicsTimetable() {
               </Select>
             </div>
             <div>
-              <Label>Course</Label>
-              <Select value={selectedCourse} onValueChange={setSelectedCourse} disabled={!selectedCategory}>
+              <Label>Course *</Label>
+              <Select value={selectedCourse} onValueChange={(value) => {
+                setSelectedCourse(value);
+                setSelectedBatch("");
+              }} disabled={!selectedCategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select course" />
                 </SelectTrigger>
@@ -179,6 +195,29 @@ export default function AcademicsTimetable() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Batch (Optional)</Label>
+              <Select value={selectedBatch} onValueChange={setSelectedBatch} disabled={!selectedCourse}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select batch" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {batches?.filter(b => b.course_id === selectedCourse).map((batch) => (
+                    <SelectItem key={batch.id} value={batch.id}>
+                      {batch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Academic Year *</Label>
+              <Input
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                placeholder="e.g., 2025"
+              />
             </div>
           </div>
         </CardContent>
@@ -260,19 +299,39 @@ export default function AcademicsTimetable() {
                           <div key={entryIdx} className="grid grid-cols-6 gap-2 items-end p-3 border rounded">
                             <div>
                               <Label className="text-xs">Subject</Label>
-                              <Input
-                                placeholder="Subject ID"
+                              <Select
                                 value={entry.subject_id}
-                                onChange={(e) => updateEntry(dayOfWeek, entryIdx, "subject_id", e.target.value)}
-                              />
+                                onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'subject_id', v)}
+                              >
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select subject" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background z-50">
+                                  {courseSubjects?.map((cs) => (
+                                    <SelectItem key={cs.subject_id} value={cs.subject_id}>
+                                      {cs.subject?.name || "Unknown"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
-                              <Label className="text-xs">Teacher</Label>
-                              <Input
-                                placeholder="Teacher ID"
+                              <Label className="text-xs">Instructor</Label>
+                              <Select
                                 value={entry.instructor_id}
-                                onChange={(e) => updateEntry(dayOfWeek, entryIdx, "instructor_id", e.target.value)}
-                              />
+                                onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'instructor_id', v)}
+                              >
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select instructor" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background z-50">
+                                  {courseInstructors?.map((ci) => (
+                                    <SelectItem key={ci.teacher_id} value={ci.teacher_id}>
+                                      {ci.teacher?.full_name || "Unknown"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
                               <Label className="text-xs">Time From</Label>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTimetableEntry } from "@/hooks/useInstructorTimetable";
 import { useInstructorSubjects } from "@/hooks/useInstructors";
+import { useAdminBatches } from "@/hooks/useAdminBatches";
 
 interface AddTimeSlotDialogProps {
   open: boolean;
@@ -17,10 +18,12 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 
 export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeSlotDialogProps) => {
   const { data: instructorSubjects } = useInstructorSubjects(instructorId);
+  const { data: batches } = useAdminBatches();
   const createEntry = useCreateTimetableEntry();
   
   const [formData, setFormData] = useState({
     subject_id: "",
+    batch_id: "",
     day_of_week: "",
     start_time: "",
     end_time: "",
@@ -36,6 +39,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
     await createEntry.mutateAsync({
       instructor_id: instructorId,
       subject_id: formData.subject_id || null,
+      batch_id: formData.batch_id || null,
       day_of_week: parseInt(formData.day_of_week),
       start_time: formData.start_time,
       end_time: formData.end_time,
@@ -49,6 +53,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
     onOpenChange(false);
     setFormData({
       subject_id: "",
+      batch_id: "",
       day_of_week: "",
       start_time: "",
       end_time: "",
@@ -117,6 +122,22 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <Label>Batch (Optional)</Label>
+            <Select value={formData.batch_id} onValueChange={(val) => setFormData({ ...formData, batch_id: val })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select batch" />
+              </SelectTrigger>
+              <SelectContent>
+                {batches?.map((batch) => (
+                  <SelectItem key={batch.id} value={batch.id}>
+                    {batch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
