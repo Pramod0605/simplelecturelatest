@@ -12,10 +12,14 @@ export const useCourseInstructors = (courseId?: string) => {
         .from("course_instructors")
         .select(`
           *,
-          teachers:teacher_id (
+          teacher:teacher_profiles!course_instructors_teacher_id_fkey (
             id,
             full_name,
             email
+          ),
+          subject:popular_subjects (
+            id,
+            name
           )
         `)
         .eq("course_id", courseId);
@@ -45,6 +49,7 @@ export const useAddCourseInstructor = () => {
         .insert({
           course_id: courseId,
           teacher_id: instructorId,
+          subject_id: subjectId,
           role: "instructor",
           is_primary: false,
         })
@@ -73,17 +78,16 @@ export const useRemoveCourseInstructor = () => {
 
   return useMutation({
     mutationFn: async ({
+      id,
       courseId,
-      instructorId,
     }: {
+      id: string;
       courseId: string;
-      instructorId: string;
     }) => {
       const { error } = await supabase
         .from("course_instructors")
         .delete()
-        .eq("course_id", courseId)
-        .eq("teacher_id", instructorId);
+        .eq("id", id);
 
       if (error) throw error;
       return { courseId };

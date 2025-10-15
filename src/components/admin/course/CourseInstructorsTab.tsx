@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useCourseInstructors, useAddCourseInstructor, useRemoveCourseInstructor } from "@/hooks/useCourseInstructors";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface CourseInstructorsTabProps {
   courseId?: string;
@@ -24,9 +26,52 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Get all available instructors from subjects mapped to this course
-  // Note: This needs to be fetched via a separate query that joins course_subjects with instructor_subjects
-  const availableInstructors: any[] = [];
+  // Fetch available instructors based on course subjects
+  const subjectIds = courseSubjects?.map((cs: any) => cs.subject_id) || [];
+  
+  const { data: availableInstructors = [] } = useQuery({
+    queryKey: ["available-instructors", courseId, subjectIds],
+    queryFn: async () => {
+      if (!courseId || subjectIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from("instructor_subjects")
+        .select(`
+          instructor_id,
+          subject_id,
+          instructor:teacher_profiles!instructor_subjects_instructor_id_fkey (
+            id,
+            full_name,
+            email
+          ),
+          subject:popular_subjects (
+            id,
+            name
+          )
+        `)
+        .in("subject_id", subjectIds);
+
+      if (error) throw error;
+
+      // Deduplicate and format
+      const instructorMap = new Map();
+      data?.forEach((item: any) => {
+        const key = `${item.instructor?.id}-${item.subject?.id}`;
+        if (!instructorMap.has(key) && item.instructor && item.subject) {
+          instructorMap.set(key, {
+            id: item.instructor.id,
+            name: item.instructor.full_name,
+            email: item.instructor.email,
+            subjectId: item.subject.id,
+            subjectName: item.subject.name,
+          });
+        }
+      });
+
+      return Array.from(instructorMap.values());
+    },
+    enabled: !!courseId && subjectIds.length > 0,
+  });
 
   const handleAddInstructor = () => {
     if (selectedInstructorId && selectedSubjectId && courseId) {
@@ -43,9 +88,9 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
     }
   };
 
-  const handleRemoveInstructor = (instructorId: string) => {
+  const handleRemoveInstructor = (id: string) => {
     if (courseId) {
-      removeInstructor.mutate({ courseId, instructorId });
+      removeInstructor.mutate({ id, courseId });
     }
   };
 
@@ -88,11 +133,13 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
                       <SelectValue placeholder="Choose an instructor" />
                     </SelectTrigger>
                     <SelectContent className="bg-background z-50">
-                      {availableInstructors?.map((instructor) => (
-                        <SelectItem key={instructor.id} value={instructor.id!}>
-                          {instructor.name} - {instructor.subjectName}
-                        </SelectItem>
-                      ))}
+                      {availableInstructors
+                        .filter((i) => i.subjectId === selectedSubjectId)
+                        .map((instructor) => (
+                          <SelectItem key={`${instructor.id}-${instructor.subjectId}`} value={instructor.id}>
+                            {instructor.name} - {instructor.email}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -130,6 +177,7 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
             <TableHeader>
               <TableRow>
                 <TableHead>Instructor Name</TableHead>
+                <TableHead>Subject</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Primary</TableHead>
@@ -139,8 +187,9 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
             <TableBody>
               {courseInstructors.map((ci) => (
                 <TableRow key={ci.id}>
-                  <TableCell className="font-medium">{ci.teachers?.full_name || "N/A"}</TableCell>
-                  <TableCell>{ci.teachers?.email || "N/A"}</TableCell>
+                  <TableCell className="font-medium">{ci.teacher?.full_name || "N/A"}</TableCell>
+                  <TableCell>{ci.subject?.name || "N/A"}</TableCell>
+                  <TableCell>{ci.teacher?.email || "N/A"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{ci.role || "instructor"}</Badge>
                   </TableCell>
@@ -151,7 +200,7 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleRemoveInstructor(ci.teacher_id)}
+                      onClick={() => handleRemoveInstructor(ci.id)}
                       disabled={removeInstructor.isPending}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />

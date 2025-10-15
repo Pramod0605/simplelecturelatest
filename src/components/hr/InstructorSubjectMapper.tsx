@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
-import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
+import { useSubjectsByCategory } from "@/hooks/useSubjectsByCategory";
 import { useInstructorSubjects, useUpdateInstructorSubjects } from "@/hooks/useInstructors";
 import { Badge } from "@/components/ui/badge";
 
@@ -18,9 +18,16 @@ export const InstructorSubjectMapper = ({ instructorId }: InstructorSubjectMappe
   const [mappedSubjects, setMappedSubjects] = useState<any[]>([]);
 
   const { data: categories } = useAdminCategories();
-  const { data: subjects } = useAdminPopularSubjects();
+  const { data: subjects } = useSubjectsByCategory(selectedCategory);
   const { data: existingSubjects, refetch } = useInstructorSubjects(instructorId);
   const updateSubjects = useUpdateInstructorSubjects();
+
+  // Get category display with parent name
+  const getCategoryDisplay = (categoryId: string) => {
+    const category = categories?.find((c) => c.id === categoryId);
+    if (!category) return "";
+    return category.parent_name ? `${category.name} - ${category.parent_name}` : category.name;
+  };
 
   useEffect(() => {
     if (existingSubjects) {
@@ -77,24 +84,34 @@ export const InstructorSubjectMapper = ({ instructorId }: InstructorSubjectMappe
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select 
+            value={selectedCategory} 
+            onValueChange={(val) => {
+              setSelectedCategory(val);
+              setSelectedSubject(""); // Reset subject when category changes
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               {categories?.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
+                  {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+          <Select 
+            value={selectedSubject} 
+            onValueChange={setSelectedSubject}
+            disabled={!selectedCategory}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Select subject" />
+              <SelectValue placeholder={selectedCategory ? "Select subject" : "Select category first"} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               {subjects?.map((subj) => (
                 <SelectItem key={subj.id} value={subj.id}>
                   {subj.name}

@@ -531,6 +531,7 @@ export type Database = {
           id: string
           is_primary: boolean | null
           role: string | null
+          subject_id: string | null
           teacher_id: string
         }
         Insert: {
@@ -539,6 +540,7 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           role?: string | null
+          subject_id?: string | null
           teacher_id: string
         }
         Update: {
@@ -547,6 +549,7 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           role?: string | null
+          subject_id?: string | null
           teacher_id?: string
         }
         Relationships: [
@@ -555,6 +558,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_instructors_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
             referencedColumns: ["id"]
           },
           {

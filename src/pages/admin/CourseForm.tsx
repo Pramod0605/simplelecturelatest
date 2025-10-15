@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAdminCourse, useCreateCourse, useUpdateCourse } from "@/hooks/useAdminCourses";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { CourseGeneralTab } from "@/components/admin/course/CourseGeneralTab";
 import { CourseCategoriesTab } from "@/components/admin/course/CourseCategoriesTab";
 import { CourseSubjectsTab } from "@/components/admin/course/CourseSubjectsTab";
@@ -24,7 +26,6 @@ export default function CourseForm() {
   const [formData, setFormData] = useState<any>({
     name: "",
     slug: "",
-    program_id: "",
     short_description: "",
     detailed_description: "",
     thumbnail_url: "",
@@ -45,6 +46,27 @@ export default function CourseForm() {
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("general");
+
+  // Fetch existing course categories
+  const { data: courseCategories } = useQuery({
+    queryKey: ["course-categories", courseId],
+    queryFn: async () => {
+      if (!courseId) return [];
+      const { data } = await supabase
+        .from("course_categories")
+        .select("category_id")
+        .eq("course_id", courseId);
+      return data || [];
+    },
+    enabled: !!courseId,
+  });
+
+  // Prefill selected categories when course loads
+  useEffect(() => {
+    if (courseCategories) {
+      setSelectedCategories(courseCategories.map((cc) => cc.category_id));
+    }
+  }, [courseCategories]);
 
   useEffect(() => {
     if (course) {
@@ -82,6 +104,27 @@ export default function CourseForm() {
     }
   };
 
+  const saveCourseCategories = async (cId: string) => {
+    try {
+      // Delete existing mappings
+      await supabase.from("course_categories").delete().eq("course_id", cId);
+      
+      // Insert new mappings
+      if (selectedCategories.length > 0) {
+        const { error } = await supabase.from("course_categories").insert(
+          selectedCategories.map((categoryId) => ({
+            course_id: cId,
+            category_id: categoryId,
+          }))
+        );
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      toast.error("Failed to save course categories: " + error.message);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -90,26 +133,31 @@ export default function CourseForm() {
       return;
     }
 
-    // For now, use a default program_id if not set
-    const dataToSubmit = {
-      ...formData,
-      program_id: formData.program_id || "00000000-0000-0000-0000-000000000000",
-    };
-
     if (courseId) {
       updateCourse.mutate(
-        { id: courseId, ...dataToSubmit },
+        { id: courseId, ...formData },
         {
-          onSuccess: () => {
-            toast.success("Course updated successfully");
+          onSuccess: async () => {
+            try {
+              await saveCourseCategories(courseId);
+              toast.success("Course and categories updated successfully");
+            } catch {
+              toast.error("Course updated but categories failed to save");
+            }
           },
         }
       );
     } else {
-      createCourse.mutate(dataToSubmit, {
-        onSuccess: (data) => {
-          toast.success("Course created successfully");
-          navigate(`/admin/courses/${data.id}/edit`);
+      createCourse.mutate(formData, {
+        onSuccess: async (data) => {
+          try {
+            await saveCourseCategories(data.id);
+            toast.success("Course and categories created successfully");
+            navigate(`/admin/courses/${data.id}/edit`);
+          } catch {
+            toast.error("Course created but categories failed to save");
+            navigate(`/admin/courses/${data.id}/edit`);
+          }
         },
       });
     }
