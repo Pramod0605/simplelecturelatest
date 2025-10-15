@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-payment-order]
 verify_jwt = false
+
+[functions.ai-generate-course-content]
+verify_jwt = true

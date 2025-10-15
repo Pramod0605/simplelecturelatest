@@ -43,6 +43,7 @@ import PopularSubjectsList from "./pages/admin/PopularSubjectsList";
 import PopularSubjectsForm from "./pages/admin/PopularSubjectsForm";
 import ProgramsList from "./pages/admin/ProgramsList";
 import CoursesList from "./pages/admin/CoursesList";
+import CourseForm from "./pages/admin/CourseForm";
 import UsersList from "./pages/admin/UsersList";
 import ParentsList from "./pages/admin/ParentsList";
 import InstructorsList from "./pages/admin/InstructorsList";
@@ -115,6 +116,8 @@ const App = () => (
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />
                 <Route path="programs" element={<ProgramsList />} />
                 <Route path="courses" element={<CoursesList />} />
+                <Route path="courses/new" element={<CourseForm />} />
+                <Route path="courses/:courseId/edit" element={<CourseForm />} />
                 <Route path="batches" element={<BatchesList />} />
                 <Route path="batches/new" element={<BatchForm />} />
                 <Route path="batches/:id/edit" element={<BatchForm />} />
