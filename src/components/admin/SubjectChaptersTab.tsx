@@ -7,6 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -41,6 +48,8 @@ import {
   useDeleteTopic,
   useBulkImportChapters,
 } from "@/hooks/useSubjectManagement";
+import { FileUploadWidget } from "./FileUploadWidget";
+import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { ExcelImportModal } from "./ExcelImportModal";
@@ -74,14 +83,21 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
     title: "",
     description: "",
     sequence_order: 1,
+    video_id: "",
+    video_platform: "",
+    notes_markdown: "",
+    pdf_url: "",
   });
 
   const [topicForm, setTopicForm] = useState({
     topic_number: 1,
     title: "",
     estimated_duration_minutes: 60,
-    video_url: "",
+    video_id: "",
+    video_platform: "",
+    notes_markdown: "",
     content_markdown: "",
+    pdf_url: "",
     sequence_order: 1,
   });
 
@@ -139,6 +155,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
             title: "",
             description: "",
             sequence_order: (chapters?.length || 0) + 1,
+            video_id: "",
+            video_platform: "",
+            notes_markdown: "",
+            pdf_url: "",
           });
         },
         onError: (error: any) => {
@@ -180,6 +200,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
             title: "",
             description: "",
             sequence_order: 1,
+            video_id: "",
+            video_platform: "",
+            notes_markdown: "",
+            pdf_url: "",
           });
         },
       }
@@ -238,8 +262,11 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
             topic_number: 1,
             title: "",
             estimated_duration_minutes: 60,
-            video_url: "",
+            video_id: "",
+            video_platform: "",
+            notes_markdown: "",
             content_markdown: "",
+            pdf_url: "",
             sequence_order: 1,
           });
         },
@@ -281,8 +308,11 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
             topic_number: 1,
             title: "",
             estimated_duration_minutes: 60,
-            video_url: "",
+            video_id: "",
+            video_platform: "",
+            notes_markdown: "",
             content_markdown: "",
+            pdf_url: "",
             sequence_order: 1,
           });
         },
@@ -412,6 +442,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                       title: "",
                       description: "",
                       sequence_order: 1,
+                      video_id: "",
+                      video_platform: "",
+                      notes_markdown: "",
+                      pdf_url: "",
                     });
                   }
                 }}
@@ -502,6 +536,66 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                         }
                       />
                     </div>
+
+                    {/* Video Upload Section */}
+                    <div className="space-y-4 border-t pt-4">
+                      <h4 className="text-sm font-medium">Media & Resources</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Video Platform</Label>
+                          <Select
+                            value={chapterForm.video_platform}
+                            onValueChange={(value) =>
+                              setChapterForm({ ...chapterForm, video_platform: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select platform" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="youtube">YouTube</SelectItem>
+                              <SelectItem value="vimeo">Vimeo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Video ID</Label>
+                          <Input
+                            placeholder="e.g., dQw4w9WgXcQ"
+                            value={chapterForm.video_id}
+                            onChange={(e) =>
+                              setChapterForm({ ...chapterForm, video_id: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>PDF Document</Label>
+                        <FileUploadWidget
+                          bucket="chapter-pdfs"
+                          currentFileUrl={chapterForm.pdf_url}
+                          onFileUploaded={(url) =>
+                            setChapterForm({ ...chapterForm, pdf_url: url })
+                          }
+                          label="Upload Chapter PDF"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Notes (Markdown)</Label>
+                        <Textarea
+                          placeholder="# Chapter notes in markdown format..."
+                          rows={4}
+                          value={chapterForm.notes_markdown}
+                          onChange={(e) =>
+                            setChapterForm({ ...chapterForm, notes_markdown: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button
@@ -558,6 +652,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                       title: chapter.title,
                       description: chapter.description || "",
                       sequence_order: chapter.sequence_order,
+                      video_id: chapter.video_id || "",
+                      video_platform: chapter.video_platform || "",
+                      notes_markdown: chapter.notes_markdown || "",
+                      pdf_url: chapter.pdf_url || "",
                     });
                   }}
                   onDelete={() => setDeleteChapterId(chapter.id)}
@@ -572,8 +670,11 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                       topic_number: topic.topic_number,
                       title: topic.title,
                       estimated_duration_minutes: topic.estimated_duration_minutes || 60,
-                      video_url: topic.video_url || "",
+                      video_id: topic.video_id || "",
+                      video_platform: topic.video_platform || "",
+                      notes_markdown: topic.notes_markdown || "",
                       content_markdown: topic.content_markdown || "",
+                      pdf_url: topic.pdf_url || "",
                       sequence_order: topic.sequence_order,
                     });
                   }}
@@ -604,8 +705,11 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
               topic_number: 1,
               title: "",
               estimated_duration_minutes: 60,
-              video_url: "",
+              video_id: "",
+              video_platform: "",
+              notes_markdown: "",
               content_markdown: "",
+              pdf_url: "",
               sequence_order: 1,
             });
           }
@@ -676,12 +780,41 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="topic-video">Video URL (Optional)</Label>
+              <Label htmlFor="topic-video-platform">Video Platform</Label>
+              <Select
+                value={topicForm.video_platform}
+                onValueChange={(value) =>
+                  setTopicForm({ ...topicForm, video_platform: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="vimeo">Vimeo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="topic-video">Video ID</Label>
               <Input
                 id="topic-video"
-                placeholder="https://youtube.com/..."
-                value={topicForm.video_url}
-                onChange={(e) => setTopicForm({ ...topicForm, video_url: e.target.value })}
+                placeholder="e.g., dQw4w9WgXcQ"
+                value={topicForm.video_id}
+                onChange={(e) => setTopicForm({ ...topicForm, video_id: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="topic-notes">Notes (Markdown)</Label>
+              <Textarea
+                id="topic-notes"
+                placeholder="# Notes for students..."
+                rows={3}
+                value={topicForm.notes_markdown}
+                onChange={(e) =>
+                  setTopicForm({ ...topicForm, notes_markdown: e.target.value })
+                }
               />
             </div>
             <div className="space-y-2">
@@ -694,6 +827,19 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                 onChange={(e) =>
                   setTopicForm({ ...topicForm, content_markdown: e.target.value })
                 }
+              />
+            </div>
+
+            {/* PDF Upload for Topics */}
+            <div className="space-y-2">
+              <Label>Topic PDF Document</Label>
+              <FileUploadWidget
+                bucket="chapter-pdfs"
+                currentFileUrl={topicForm.pdf_url}
+                onFileUploaded={(url) =>
+                  setTopicForm({ ...topicForm, pdf_url: url })
+                }
+                label="Upload Topic PDF"
               />
             </div>
           </div>
@@ -862,6 +1008,23 @@ function ChapterItem({
                               Duration: {topic.estimated_duration_minutes} mins
                             </p>
                           )}
+                          <div className="flex gap-2 mt-2">
+                            {topic.video_id && (
+                              <Badge variant="secondary" className="text-xs">
+                                Video: {topic.video_platform}
+                              </Badge>
+                            )}
+                            {topic.pdf_url && (
+                              <Badge variant="secondary" className="text-xs">
+                                Has PDF
+                              </Badge>
+                            )}
+                            {topic.notes_markdown && (
+                              <Badge variant="secondary" className="text-xs">
+                                Has Notes
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -880,6 +1043,12 @@ function ChapterItem({
                           </Button>
                         </div>
                       </div>
+                      
+                      {/* Subtopics Section */}
+                      <SubjectSubtopicsSection
+                        topicId={topic.id}
+                        topicTitle={topic.title}
+                      />
                     </CardContent>
                   </Card>
                 ))}
