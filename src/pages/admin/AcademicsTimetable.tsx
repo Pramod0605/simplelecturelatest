@@ -7,8 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
-import { useCourseTimetable, useCreateCourseTimetableEntry, useDeleteCourseTimetableEntry } from "@/hooks/useCourseTimetable";
-import { useInstructorSubjects } from "@/hooks/useInstructors";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,8 +29,6 @@ export default function AcademicsTimetable() {
   const courses = allCourses?.filter(course => 
     !selectedCategory || course.program?.category === selectedCategory
   );
-  const createEntry = useCreateCourseTimetableEntry();
-  const deleteEntry = useDeleteCourseTimetableEntry();
 
   const [dayEntries, setDayEntries] = useState<Record<number, any[]>>({
     1: [],
@@ -138,12 +134,9 @@ export default function AcademicsTimetable() {
       return;
     }
 
-    for (const entry of entries) {
-      await createEntry.mutateAsync(entry);
-    }
-
-    setDayEntries({});
-    toast.success("Timetable saved successfully");
+    // TODO: Implement save after Supabase types are regenerated
+    toast.info("Timetable save will be implemented after database sync");
+    console.log("Entries to save:", entries);
   };
 
   return (
@@ -165,10 +158,10 @@ export default function AcademicsTimetable() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {categories?.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -180,7 +173,7 @@ export default function AcademicsTimetable() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select course" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {courses?.map((course) => (
                     <SelectItem key={course.id} value={course.id}>
                       {course.name}
