@@ -770,20 +770,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
       />
 
       {/* Excel Import Modal */}
-      <ExcelImportModal
-        open={isExcelImportOpen}
-        onOpenChange={setIsExcelImportOpen}
-        title="Import Chapters & Topics"
-        templateUrl="#"
-        onImport={handleExcelImport}
-        instructions={[
-          "Download the template and fill in chapter and topic details",
-          "Each row can contain both chapter and topic information",
-          "Topics are grouped by chapter_number",
-          "All fields marked with * are required",
-          "Save as .xlsx or .xls file before uploading",
-        ]}
-      />
+      {/* Excel Import Modal - Remove until chapters import is implemented */}
     </div>
   );
 }

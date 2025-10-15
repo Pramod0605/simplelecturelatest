@@ -1,205 +1,345 @@
-import { useState, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, Loader2, AlertCircle, CheckCircle } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useBulkImportQuestions } from "@/hooks/useSubjectQuestions";
+import { toast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 interface ExcelImportModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  templateUrl: string;
-  onImport: (file: File) => Promise<{ success: number; errors: string[] }>;
-  instructions: string[];
+  isOpen: boolean;
+  onClose: () => void;
+  subjectId: string;
 }
 
-export const ExcelImportModal = ({
-  open,
-  onOpenChange,
-  title,
-  templateUrl,
-  onImport,
-  instructions,
-}: ExcelImportModalProps) => {
+interface QuestionRow {
+  topic_id: string;
+  question_text: string;
+  question_format: string;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  correct_answer: string;
+  explanation?: string;
+  difficulty: string;
+  marks: number;
+  contains_formula?: boolean;
+  formula_type?: string;
+}
+
+export function ExcelImportModal({ isOpen, onClose, subjectId }: ExcelImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [results, setResults] = useState<{ success: number; errors: string[] } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [successCount, setSuccessCount] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const bulkImportMutation = useBulkImportQuestions();
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && (droppedFile.name.endsWith(".xlsx") || droppedFile.name.endsWith(".xls"))) {
-      setFile(droppedFile);
-      setResults(null);
-    }
-  }, []);
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setResults(null);
+      setErrors([]);
+      setSuccessCount(0);
+      setProgress(0);
     }
-  }, []);
+  };
 
-  const handleImport = async () => {
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        topic_id: "Example: 616b36c6-5820-4c1d-8110-ec899a5d232d",
+        question_text: "What is the unit of electric charge?",
+        question_format: "single_choice",
+        option_a: "Ampere",
+        option_b: "Coulomb",
+        option_c: "Volt",
+        option_d: "Ohm",
+        correct_answer: "B",
+        explanation: "Coulomb is the SI unit of electric charge",
+        difficulty: "easy",
+        marks: 1,
+        contains_formula: false,
+        formula_type: "plain"
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Questions Template");
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 40 }, // topic_id
+      { wch: 50 }, // question_text
+      { wch: 15 }, // question_format
+      { wch: 30 }, // option_a
+      { wch: 30 }, // option_b
+      { wch: 30 }, // option_c
+      { wch: 30 }, // option_d
+      { wch: 10 }, // correct_answer
+      { wch: 40 }, // explanation
+      { wch: 10 }, // difficulty
+      { wch: 8 },  // marks
+      { wch: 15 }, // contains_formula
+      { wch: 12 }  // formula_type
+    ];
+    worksheet['!cols'] = colWidths;
+
+    XLSX.writeFile(workbook, "questions_template.xlsx");
+    toast({
+      title: "Template Downloaded",
+      description: "Excel template has been downloaded. Fill it with your questions and upload.",
+    });
+  };
+
+  const processExcelFile = async () => {
     if (!file) return;
 
-    setIsImporting(true);
+    setIsProcessing(true);
+    setProgress(10);
+    setErrors([]);
+
     try {
-      const importResults = await onImport(file);
-      setResults(importResults);
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as QuestionRow[];
+
+      setProgress(30);
+
+      if (jsonData.length === 0) {
+        throw new Error("No data found in Excel file");
+      }
+
+      // Validate and transform data
+      const questions = jsonData.map((row, index) => {
+        if (!row.topic_id || !row.question_text || !row.correct_answer) {
+          throw new Error(`Row ${index + 1}: Missing required fields (topic_id, question_text, correct_answer)`);
+        }
+
+        const options: Record<string, any> = {};
+        if (row.option_a) options.A = { text: row.option_a };
+        if (row.option_b) options.B = { text: row.option_b };
+        if (row.option_c) options.C = { text: row.option_c };
+        if (row.option_d) options.D = { text: row.option_d };
+
+        return {
+          topic_id: row.topic_id,
+          question_text: row.question_text,
+          question_type: row.question_format === "true_false" ? "true_false" : 
+                        (row.question_format === "single_choice" || row.question_format === "multiple_choice") ? "mcq" : "subjective",
+          question_format: row.question_format || "single_choice",
+          options: Object.keys(options).length > 0 ? options : null,
+          correct_answer: row.correct_answer,
+          explanation: row.explanation || null,
+          difficulty: row.difficulty || "medium",
+          marks: row.marks || 1,
+          is_verified: false,
+          is_ai_generated: false,
+          contains_formula: row.contains_formula || false,
+          formula_type: row.formula_type || null,
+          question_image_url: null,
+          option_images: null,
+        };
+      });
+
+      setProgress(60);
+
+      // Import questions
+      const result = await bulkImportMutation.mutateAsync({ questions });
+      
+      setProgress(100);
+      setSuccessCount(result.success);
+      setErrors(result.errors);
+
+      if (result.errors.length === 0) {
+        toast({
+          title: "Import Successful",
+          description: `Successfully imported ${result.success} questions`,
+        });
+        setTimeout(() => {
+          onClose();
+          resetForm();
+        }, 2000);
+      } else {
+        toast({
+          title: "Import Completed with Errors",
+          description: `Imported ${result.success} questions, but ${result.errors.length} batches failed`,
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      setErrors([errorMessage]);
+      toast({
+        title: "Import Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
-      setIsImporting(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFile(null);
+    setProgress(0);
+    setErrors([]);
+    setSuccessCount(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleClose = () => {
-    setFile(null);
-    setResults(null);
-    onOpenChange(false);
+    if (!isProcessing) {
+      onClose();
+      resetForm();
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Import Questions from Excel
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Instructions */}
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-semibold">Instructions:</p>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  {instructions.map((instruction, index) => (
-                    <li key={index}>{instruction}</li>
-                  ))}
-                </ul>
-              </div>
-            </AlertDescription>
-          </Alert>
-
+        <div className="space-y-6">
           {/* Download Template */}
-          <Button variant="outline" className="w-full" asChild>
-            <a href={templateUrl} download>
-              <Download className="h-4 w-4 mr-2" />
-              Download Excel Template
-            </a>
-          </Button>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Step 1: Download Template</CardTitle>
+              <CardDescription>
+                Download the Excel template to see the required format
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={downloadTemplate} variant="outline" className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                Download Excel Template
+              </Button>
+            </CardContent>
+          </Card>
 
-          {/* File Upload */}
-          {!file && (
-            <Card
-              className={cn(
-                "border-2 border-dashed p-8 text-center cursor-pointer transition-colors",
-                isDragging && "border-primary bg-primary/5"
-              )}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById("excel-file-input")?.click()}
-            >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-2">
-                Drag & drop your Excel file here or click to browse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Supports .xlsx and .xls files
-              </p>
-              <input
-                id="excel-file-input"
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleFileInput}
-              />
-            </Card>
-          )}
-
-          {/* Selected File */}
-          {file && !results && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Upload className="h-5 w-5" />
-                  <div>
-                    <p className="font-medium">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024).toFixed(2)} KB
-                    </p>
+          {/* Upload File */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Step 2: Upload Your File</CardTitle>
+              <CardDescription>
+                Upload your completed Excel file with questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Label htmlFor="excel-file">Excel File (.xlsx)</Label>
+                <Input
+                  ref={fileInputRef}
+                  id="excel-file"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelect}
+                  disabled={isProcessing}
+                />
+                {file && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    {file.name}
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFile(null)}
-                >
-                  Remove
-                </Button>
+                )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Import Progress */}
+          {isProcessing && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Import Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-sm text-muted-foreground">
+                    {progress < 30 ? "Reading file..." :
+                     progress < 60 ? "Validating data..." :
+                     progress < 100 ? "Importing questions..." : "Complete!"}
+                  </p>
+                </div>
+              </CardContent>
             </Card>
           )}
 
-          {/* Import Results */}
-          {results && (
-            <div className="space-y-2">
-              <Alert className="border-green-500">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <AlertDescription>
-                  Successfully imported {results.success} items
-                </AlertDescription>
-              </Alert>
-
-              {results.errors.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <p className="font-semibold mb-2">Errors ({results.errors.length}):</p>
-                    <ul className="list-disc list-inside text-xs space-y-1 max-h-40 overflow-y-auto">
-                      {results.errors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
+          {/* Results */}
+          {(successCount > 0 || errors.length > 0) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Import Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {successCount > 0 && (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4" />
+                    <AlertDescription>
+                      Successfully imported {successCount} questions
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {errors.map((error, index) => (
+                  <Alert key={index} variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ))}
+              </CardContent>
+            </Card>
           )}
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            {results ? "Close" : "Cancel"}
-          </Button>
-          {file && !results && (
-            <Button onClick={handleImport} disabled={isImporting}>
-              {isImporting ? (
+          {/* Action Buttons */}
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isProcessing}
+            >
+              <X className="h-4 w-4 mr-2" />
+              {isProcessing ? "Processing..." : "Cancel"}
+            </Button>
+            
+            <Button
+              onClick={processExcelFile}
+              disabled={!file || isProcessing}
+            >
+              {isProcessing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Importing...
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import Data
+                  Import Questions
                 </>
               )}
             </Button>
-          )}
-        </DialogFooter>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
-};
+}

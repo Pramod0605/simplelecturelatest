@@ -1011,19 +1011,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
 
       {/* Excel Import Modal */}
       <ExcelImportModal
-        open={isExcelImportOpen}
-        onOpenChange={setIsExcelImportOpen}
-        title="Import Questions"
-        templateUrl="#"
-        onImport={handleExcelImport}
-        instructions={[
-          "Download the template and fill in question details",
-          "Supported formats: single_choice, multiple_choice, true_false, fill_blank, numerical, subjective",
-          "For multiple correct answers in multiple_choice, separate with semicolon (A;C)",
-          "Mark contains_formula as TRUE if question has formulas",
-          "Provide image URLs in respective columns",
-          "Save as .xlsx file before uploading",
-        ]}
+        isOpen={isExcelImportOpen}
+        onClose={() => setIsExcelImportOpen(false)}
+        subjectId={subjectId}
       />
     </div>
   );
