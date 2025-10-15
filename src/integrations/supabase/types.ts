@@ -230,15 +230,7 @@ export type Database = {
           program_id?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       categories: {
         Row: {
@@ -732,7 +724,7 @@ export type Database = {
           name: string
           original_price_inr: number | null
           price_inr: number | null
-          program_id: string
+          program_id: string | null
           rating: number | null
           review_count: number | null
           sequence_order: number | null
@@ -761,7 +753,7 @@ export type Database = {
           name: string
           original_price_inr?: number | null
           price_inr?: number | null
-          program_id: string
+          program_id?: string | null
           rating?: number | null
           review_count?: number | null
           sequence_order?: number | null
@@ -790,7 +782,7 @@ export type Database = {
           name?: string
           original_price_inr?: number | null
           price_inr?: number | null
-          program_id?: string
+          program_id?: string | null
           rating?: number | null
           review_count?: number | null
           sequence_order?: number | null
@@ -801,15 +793,7 @@ export type Database = {
           thumbnail_url?: string | null
           what_you_learn?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "courses_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       departments: {
         Row: {
@@ -1303,13 +1287,6 @@ export type Database = {
             referencedRelation: "payments"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_items_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
         ]
       }
       payments: {
@@ -1432,66 +1409,6 @@ export type Database = {
           id?: string
           phone_number?: string | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      programs: {
-        Row: {
-          category: string | null
-          created_at: string | null
-          description: string | null
-          duration_months: number | null
-          features: Json | null
-          id: string
-          instructor_bio: string | null
-          instructor_name: string | null
-          is_active: boolean | null
-          name: string
-          price_inr: number | null
-          program_type: Database["public"]["Enums"]["program_type"] | null
-          slug: string
-          sub_category: string | null
-          thumbnail_url: string | null
-          updated_at: string | null
-          what_you_learn: string[] | null
-        }
-        Insert: {
-          category?: string | null
-          created_at?: string | null
-          description?: string | null
-          duration_months?: number | null
-          features?: Json | null
-          id?: string
-          instructor_bio?: string | null
-          instructor_name?: string | null
-          is_active?: boolean | null
-          name: string
-          price_inr?: number | null
-          program_type?: Database["public"]["Enums"]["program_type"] | null
-          slug: string
-          sub_category?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          what_you_learn?: string[] | null
-        }
-        Update: {
-          category?: string | null
-          created_at?: string | null
-          description?: string | null
-          duration_months?: number | null
-          features?: Json | null
-          id?: string
-          instructor_bio?: string | null
-          instructor_name?: string | null
-          is_active?: boolean | null
-          name?: string
-          price_inr?: number | null
-          program_type?: Database["public"]["Enums"]["program_type"] | null
-          slug?: string
-          sub_category?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string | null
-          what_you_learn?: string[] | null
         }
         Relationships: []
       }
