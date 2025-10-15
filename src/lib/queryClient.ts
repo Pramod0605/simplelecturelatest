@@ -23,16 +23,14 @@ export const prefetchCourses = async (category?: string) => {
     queryFn: async () => {
       const { supabase } = await import("@/integrations/supabase/client");
       
-      let query = supabase
+      const query: any = supabase
         .from("courses")
         .select("*")
         .eq("is_active", true);
       
-      if (category) {
-        query = query.eq("category", category);
-      }
+      const finalQuery = category ? query.eq("category", category) : query;
+      const { data, error } = await finalQuery;
       
-      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },

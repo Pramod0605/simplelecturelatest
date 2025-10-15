@@ -717,6 +717,7 @@ export type Database = {
         Row: {
           ai_tutoring_enabled: boolean | null
           ai_tutoring_price: number | null
+          category: string | null
           course_includes: Json | null
           created_at: string | null
           description: string | null
@@ -745,6 +746,7 @@ export type Database = {
         Insert: {
           ai_tutoring_enabled?: boolean | null
           ai_tutoring_price?: number | null
+          category?: string | null
           course_includes?: Json | null
           created_at?: string | null
           description?: string | null
@@ -773,6 +775,7 @@ export type Database = {
         Update: {
           ai_tutoring_enabled?: boolean | null
           ai_tutoring_price?: number | null
+          category?: string | null
           course_includes?: Json | null
           created_at?: string | null
           description?: string | null

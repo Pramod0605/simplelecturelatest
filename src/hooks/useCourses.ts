@@ -15,21 +15,19 @@ export const useCourses = (category?: string) => {
   return useQuery({
     queryKey: category ? courseKeys.list(category) : courseKeys.lists(),
     queryFn: async () => {
-      let query = supabase
+      const query: any = supabase
         .from("courses")
         .select("*")
         .eq("is_active", true)
         .order("sequence_order");
       
-      if (category) {
-        query = query.eq("category", category);
-      }
+      const finalQuery = category ? query.eq("category", category) : query;
+      const { data, error } = await finalQuery;
       
-      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
 };
 
