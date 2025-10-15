@@ -1256,7 +1256,7 @@ export type Database = {
             foreignKeyName: "questions_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
-            referencedRelation: "topics"
+            referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
         ]
