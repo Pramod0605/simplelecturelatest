@@ -58,18 +58,19 @@ export const useCreateInstructor = () => {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const { data: profile, error } = await supabase
-        .from('teacher_profiles')
-        .insert(data)
-        .select()
-        .single();
-      
+      // Call edge function to create instructor with proper auth user
+      const { data: result, error } = await supabase.functions.invoke('create-instructor', {
+        body: { instructorData: data },
+      });
+
       if (error) throw error;
-      return profile;
+      if (!result.success) throw new Error('Failed to create instructor');
+
+      return result.profile;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instructors'] });
-      toast.success('Instructor created successfully');
+      toast.success('Instructor created successfully. They will receive an email to set their password.');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create instructor');
