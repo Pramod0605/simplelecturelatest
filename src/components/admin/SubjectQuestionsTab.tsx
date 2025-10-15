@@ -419,22 +419,42 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                     />
                   )}
                 </div>
-                <Input
-                  placeholder={`Enter option ${optionKey}`}
-                  value={questionForm.options[optionKey]?.text || ""}
-                  onChange={(e) =>
-                    setQuestionForm({
-                      ...questionForm,
-                      options: {
-                        ...questionForm.options,
-                        [optionKey]: {
-                          ...questionForm.options[optionKey],
-                          text: e.target.value,
+                {questionForm.contains_formula ? (
+                  <FormulaEditor
+                    value={questionForm.options[optionKey]?.text || ""}
+                    onChange={(value, type) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        formula_type: type,
+                        options: {
+                          ...questionForm.options,
+                          [optionKey]: {
+                            ...questionForm.options[optionKey],
+                            text: value,
+                          },
                         },
-                      },
-                    })
-                  }
-                />
+                      })
+                    }
+                    formulaType={questionForm.formula_type}
+                  />
+                ) : (
+                  <Input
+                    placeholder={`Enter option ${optionKey}`}
+                    value={questionForm.options[optionKey]?.text || ""}
+                    onChange={(e) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        options: {
+                          ...questionForm.options,
+                          [optionKey]: {
+                            ...questionForm.options[optionKey],
+                            text: e.target.value,
+                          },
+                        },
+                      })
+                    }
+                  />
+                )}
                 <ImageUploadWidget
                   label={`Option ${optionKey} Image (Optional)`}
                   value={questionForm.option_images[optionKey]}
@@ -475,18 +495,28 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
         return (
           <div className="space-y-2">
             <Label>Correct Answer</Label>
-            <Input
-              placeholder={
-                questionForm.question_format === "numerical"
-                  ? "Enter numerical answer (e.g., 42)"
-                  : "Enter the correct answer"
-              }
-              type={questionForm.question_format === "numerical" ? "number" : "text"}
-              value={questionForm.correct_answer}
-              onChange={(e) =>
-                setQuestionForm({ ...questionForm, correct_answer: e.target.value })
-              }
-            />
+            {questionForm.contains_formula ? (
+              <FormulaEditor
+                value={questionForm.correct_answer}
+                onChange={(value, type) =>
+                  setQuestionForm({ ...questionForm, correct_answer: value, formula_type: type })
+                }
+                formulaType={questionForm.formula_type}
+              />
+            ) : (
+              <Input
+                placeholder={
+                  questionForm.question_format === "numerical"
+                    ? "Enter numerical answer (e.g., 42)"
+                    : "Enter the correct answer"
+                }
+                type={questionForm.question_format === "numerical" ? "number" : "text"}
+                value={questionForm.correct_answer}
+                onChange={(e) =>
+                  setQuestionForm({ ...questionForm, correct_answer: e.target.value })
+                }
+              />
+            )}
           </div>
         );
 
@@ -724,14 +754,24 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                             AI Rephrase
                           </Button>
                         </div>
-                        <Textarea
-                          placeholder="Provide detailed explanation for the answer..."
-                          rows={4}
-                          value={questionForm.explanation}
-                          onChange={(e) =>
-                            setQuestionForm({ ...questionForm, explanation: e.target.value })
-                          }
-                        />
+                        {questionForm.contains_formula ? (
+                          <FormulaEditor
+                            value={questionForm.explanation}
+                            onChange={(value, type) =>
+                              setQuestionForm({ ...questionForm, explanation: value, formula_type: type })
+                            }
+                            formulaType={questionForm.formula_type}
+                          />
+                        ) : (
+                          <Textarea
+                            placeholder="Provide detailed explanation for the answer..."
+                            rows={4}
+                            value={questionForm.explanation}
+                            onChange={(e) =>
+                              setQuestionForm({ ...questionForm, explanation: e.target.value })
+                            }
+                          />
+                        )}
                       </div>
 
                       {/* Difficulty and Marks */}

@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, type } = await req.json();
+    const { text, type, prompt, count } = await req.json();
 
     if (!text || !type) {
       return new Response(
@@ -20,6 +20,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const variantCount = Math.min(Math.max(Number(count) || 1, 1), 5);
+    const customInstructions = typeof prompt === "string" && prompt.trim().length > 0 ? prompt.trim() : null;
 
     // Get AI settings to determine which model to use
     const supabaseClient = createClient(
@@ -61,15 +64,15 @@ serve(async (req) => {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      }),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: `${systemPrompt}\n\nWhen multiple suggestions are requested, return ONLY a pure JSON array of strings (no markdown, no code fences).` },
+            { role: "user", content: `Original Text:\n${text}\n\n${customInstructions ? `Additional Instructions:\n${customInstructions}\n\n` : ""}Please provide ${variantCount} high-quality rephrased variant${variantCount>1?"s":""}. Keep within constraints.` },
+          ],
+          temperature: 0.7,
+          max_tokens: 600,
+        }),
     });
 
     if (!response.ok) {
@@ -94,16 +97,31 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const rephrased = data.choices?.[0]?.message?.content?.trim();
+    const raw = data.choices?.[0]?.message?.content?.trim();
 
-    if (!rephrased) {
+    if (!raw) {
       throw new Error("No response from AI");
     }
 
+    let suggestions: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        suggestions = parsed.map((s) => String(s).trim()).filter(Boolean);
+      }
+    } catch (_) {
+      // Fallback: single suggestion
+    }
+
+    if (suggestions.length === 0) {
+      suggestions = [raw];
+    }
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         original: text,
-        rephrased,
+        rephrased: suggestions[0], // backward compatibility
+        suggestions,
         type,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

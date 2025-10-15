@@ -9,12 +9,16 @@ export const useAIRephrase = () => {
     mutationFn: async ({
       text,
       type,
+      prompt,
+      count,
     }: {
       text: string;
       type: RephraseType;
+      prompt?: string;
+      count?: number;
     }) => {
       const { data, error } = await supabase.functions.invoke("ai-rephrase", {
-        body: { text, type },
+        body: { text, type, prompt, count },
       });
 
       if (error) throw error;
