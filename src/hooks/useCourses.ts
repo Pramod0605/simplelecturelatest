@@ -15,19 +15,24 @@ export const useCourses = (category?: string) => {
   return useQuery({
     queryKey: category ? courseKeys.list(category) : courseKeys.lists(),
     queryFn: async () => {
-      let query = supabase
-        .from("courses")
-        .select("*")
-        .eq("is_active", true)
-        .order("sequence_order");
-
       if (category) {
-        query = query.eq("category", category);
+        const result: any = await supabase
+          .from("courses")
+          .select("*")
+          .eq("is_active", true)
+          .eq("category", category)
+          .order("sequence_order");
+        if (result.error) throw result.error;
+        return result.data as any[];
+      } else {
+        const result: any = await supabase
+          .from("courses")
+          .select("*")
+          .eq("is_active", true)
+          .order("sequence_order");
+        if (result.error) throw result.error;
+        return result.data as any[];
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
     },
     staleTime: 1000 * 60 * 10, // Cache for 10 minutes
   });

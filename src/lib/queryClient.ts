@@ -22,17 +22,21 @@ export const prefetchCourses = async (category?: string) => {
     queryKey: category ? ["courses", "list", { filters: category }] : ["courses", "list"],
     queryFn: async () => {
       const { supabase } = await import("@/integrations/supabase/client");
-      let query = supabase
-        .from("courses")
-        .select("*")
-        .eq("is_active", true);
       
       if (category) {
-        query = query.eq("category", category);
+        const result: any = await supabase
+          .from("courses")
+          .select("*")
+          .eq("is_active", true)
+          .eq("category", category);
+        return result.data as any[];
+      } else {
+        const result: any = await supabase
+          .from("courses")
+          .select("*")
+          .eq("is_active", true);
+        return result.data as any[];
       }
-      
-      const { data } = await query;
-      return data;
     },
   });
 };
