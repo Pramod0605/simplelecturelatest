@@ -1,5 +1,128 @@
 export const mockStudents = [
   {
+    id: "pramod-001",
+    full_name: "Pramod Kumar",
+    email: "pramod0605@gmail.com",
+    phone: "+91-9876500605",
+    avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Pramod",
+    enrollment_date: "2024-01-10",
+    last_active: "2025-10-16T17:45:00",
+    status: "active",
+    courses: [
+      {
+        id: "course-1",
+        name: "JEE Main 2025 Complete",
+        subjects: ["Physics", "Chemistry", "Mathematics"],
+        progress: 85,
+        enrolled_at: "2024-01-10"
+      },
+      {
+        id: "course-2",
+        name: "Advanced Mathematics",
+        subjects: ["Calculus", "Algebra", "Trigonometry"],
+        progress: 92,
+        enrolled_at: "2024-02-15"
+      }
+    ],
+    total_progress: 88.5,
+    tests_taken: 58,
+    avg_test_score: 87,
+    ai_queries: 345,
+    areas_of_improvement: ["Electrochemistry", "Complex Numbers"],
+    followups_pending: 1,
+    at_risk: false,
+    live_classes: {
+      total_scheduled: 60,
+      attended: 54,
+      attendance_percentage: 90,
+      missed: 6,
+      upcoming: 5,
+      recent_classes: [
+        { id: "lc-p001", subject: "Physics", topic: "Modern Physics", date: "2025-10-16", attended: true, duration_minutes: 90 },
+        { id: "lc-p002", subject: "Chemistry", topic: "Electrochemistry", date: "2025-10-15", attended: true, duration_minutes: 90 },
+        { id: "lc-p003", subject: "Mathematics", topic: "Complex Numbers", date: "2025-10-14", attended: true, duration_minutes: 90 },
+        { id: "lc-p004", subject: "Physics", topic: "Atomic Structure", date: "2025-10-13", attended: true, duration_minutes: 90 },
+        { id: "lc-p005", subject: "Calculus", topic: "Differential Equations", date: "2025-10-12", attended: false, duration_minutes: 90 }
+      ]
+    },
+    ai_video_usage: {
+      total_videos: 178,
+      watched_count: 156,
+      total_watch_time_minutes: 7020,
+      completion_rate: 88,
+      recent_videos: [
+        { title: "Quantum Mechanics Basics", subject: "Physics", duration: 55, watched_percentage: 100, date: "2025-10-16" },
+        { title: "Electrochemistry Advanced", subject: "Chemistry", duration: 60, watched_percentage: 95, date: "2025-10-15" },
+        { title: "Complex Numbers Mastery", subject: "Mathematics", duration: 50, watched_percentage: 100, date: "2025-10-14" }
+      ]
+    },
+    podcast_usage: {
+      total_listened: 52,
+      total_time_minutes: 1560,
+      favorite_topics: ["Physics Concepts", "JEE Strategy", "Math Problem Solving"],
+      recent_podcasts: [
+        { title: "Modern Physics Insights", subject: "Physics", duration: 35, date: "2025-10-15" },
+        { title: "JEE Exam Strategy 2025", subject: "General", duration: 30, date: "2025-10-13" },
+        { title: "Complex Numbers Tips", subject: "Mathematics", duration: 28, date: "2025-10-12" }
+      ]
+    },
+    mcq_practice: {
+      total_attempted: 780,
+      total_correct: 679,
+      accuracy_percentage: 87,
+      by_subject: {
+        Physics: { attempted: 260, correct: 234, accuracy: 90 },
+        Chemistry: { attempted: 260, correct: 218, accuracy: 84 },
+        Mathematics: { attempted: 260, correct: 227, accuracy: 87 }
+      },
+      recent_sessions: [
+        { subject: "Physics", questions: 25, correct: 23, date: "2025-10-16" },
+        { subject: "Chemistry", questions: 25, correct: 21, date: "2025-10-15" },
+        { subject: "Mathematics", questions: 30, correct: 27, date: "2025-10-14" }
+      ]
+    },
+    doubt_clearing: {
+      total_doubts: 48,
+      resolved: 45,
+      pending: 3,
+      avg_resolution_time_minutes: 20,
+      by_subject: { Physics: 18, Chemistry: 17, Mathematics: 13 },
+      recent_doubts: [
+        { question: "Explain Compton Effect in detail", subject: "Physics", status: "resolved", date: "2025-10-16" },
+        { question: "Nernst Equation applications", subject: "Chemistry", status: "pending", date: "2025-10-15" },
+        { question: "De Moivre's theorem proof", subject: "Mathematics", status: "resolved", date: "2025-10-14" }
+      ]
+    },
+    activity_score: 88,
+    activity_breakdown: {
+      live_class_participation: 90,
+      ai_video_engagement: 88,
+      podcast_listening: 85,
+      mcq_practice: 91,
+      doubt_clearing: 86
+    },
+    timetable: [
+      { day: 1, subject: "Physics", topic: "Modern Physics", start_time: "09:00", end_time: "10:30", instructor: "Dr. Sharma", type: "live_class" },
+      { day: 1, subject: "Chemistry", topic: "Electrochemistry", start_time: "11:00", end_time: "12:30", instructor: "Prof. Gupta", type: "live_class" },
+      { day: 1, subject: "Mathematics", topic: "Complex Numbers", start_time: "14:00", end_time: "15:30", instructor: "Dr. Patel", type: "live_class" },
+      { day: 2, subject: "Physics", topic: "Nuclear Physics", start_time: "09:00", end_time: "10:30", instructor: "Dr. Sharma", type: "live_class" },
+      { day: 2, subject: "Chemistry", topic: "Surface Chemistry", start_time: "11:00", end_time: "12:30", instructor: "Prof. Gupta", type: "live_class" },
+      { day: 3, subject: "Mathematics", topic: "Calculus Advanced", start_time: "09:00", end_time: "10:30", instructor: "Dr. Patel", type: "live_class" },
+      { day: 3, subject: "Physics", topic: "Semiconductor Devices", start_time: "14:00", end_time: "15:30", instructor: "Dr. Sharma", type: "live_class" },
+      { day: 4, subject: "Chemistry", topic: "Chemical Kinetics", start_time: "11:00", end_time: "12:30", instructor: "Prof. Gupta", type: "live_class" },
+      { day: 4, subject: "Mathematics", topic: "Probability Theory", start_time: "14:00", end_time: "15:30", instructor: "Dr. Patel", type: "live_class" },
+      { day: 5, subject: "Physics", topic: "Quantum Mechanics", start_time: "09:00", end_time: "10:30", instructor: "Dr. Sharma", type: "live_class" },
+      { day: 5, subject: "Chemistry", topic: "Coordination Chemistry", start_time: "11:00", end_time: "12:30", instructor: "Prof. Gupta", type: "live_class" }
+    ],
+    notifications: [
+      { id: "notif-p001", type: "class" as const, title: "Upcoming Class: Modern Physics", message: "Your Physics class starts in 30 minutes", time: "2025-10-17T09:00:00", read: false, priority: "high" as const },
+      { id: "notif-p002", type: "test" as const, title: "Mock Test Available", message: "JEE Main Mock Test 15 is now available", time: "2025-10-16T18:00:00", read: false, priority: "medium" as const },
+      { id: "notif-p003", type: "assignment" as const, title: "Assignment Due Soon", message: "Chemistry assignment due in 2 days", time: "2025-10-16T15:00:00", read: true, priority: "medium" as const },
+      { id: "notif-p004", type: "doubt" as const, title: "Doubt Resolved", message: "Your doubt on Compton Effect has been answered", time: "2025-10-16T14:30:00", read: true, priority: "low" as const },
+      { id: "notif-p005", type: "achievement" as const, title: "Milestone Achieved!", message: "You've completed 50+ AI videos this month!", time: "2025-10-16T12:00:00", read: false, priority: "low" as const }
+    ]
+  },
+  {
     id: "stu-001",
     full_name: "Aarav Sharma",
     email: "aarav.sharma@email.com",

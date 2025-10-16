@@ -1,0 +1,219 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useCurrentStudent } from "@/hooks/useCurrentStudent";
+import { SEOHead } from "@/components/SEO";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { NotificationBell } from "@/components/student/NotificationBell";
+import { MyOverviewTab } from "@/components/student/tabs/MyOverviewTab";
+import { MyProgressTab } from "@/components/student/tabs/MyProgressTab";
+import { MyTestsTab } from "@/components/student/tabs/MyTestsTab";
+import { AttendanceCalendar } from "@/components/admin/students/AttendanceCalendar";
+import { TimetableTab } from "@/components/admin/students/tabs/TimetableTab";
+import { MyAILearningTab } from "@/components/student/tabs/MyAILearningTab";
+import { EngagementTab } from "@/components/admin/students/tabs/EngagementTab";
+import { Mail, Phone, Calendar, LogOut, User, BarChart3, FileText, CalendarDays, Clock, Brain, Activity } from "lucide-react";
+import { Footer } from "@/components/Footer";
+
+const StudentDashboard = () => {
+  const navigate = useNavigate();
+  const { data: student, isLoading, error } = useCurrentStudent();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/auth");
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <Skeleton className="h-48 w-full mb-6" />
+          <Skeleton className="h-12 w-full mb-4" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !student) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-6 max-w-md">
+          <CardContent className="text-center">
+            <p className="text-lg font-semibold mb-4">Unable to load student data</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {error?.message || "Student profile not found"}
+            </p>
+            <Button onClick={() => navigate("/auth")}>Go to Login</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <SEOHead title="My Dashboard | SimpleLecture" description="Student learning dashboard" />
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={student.avatar_url} />
+                  <AvatarFallback>{student.full_name[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h1 className="text-xl font-bold">{student.full_name}</h1>
+                  <p className="text-sm text-muted-foreground">Student ID: {student.id}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <NotificationBell notifications={student.notifications || []} />
+                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Card */}
+        <div className="container mx-auto px-4 py-6">
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={student.avatar_url} />
+                  <AvatarFallback className="text-2xl">{student.full_name[0]}</AvatarFallback>
+                </Avatar>
+                
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{student.full_name}</h2>
+                    <Badge variant={student.status === "active" ? "default" : "secondary"}>
+                      {student.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{student.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{student.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>Enrolled: {student.enrollment_date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>Last active: {new Date(student.last_active).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tabs */}
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto gap-2">
+              <TabsTrigger value="overview" className="gap-2">
+                <User className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="progress" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                My Progress
+              </TabsTrigger>
+              <TabsTrigger value="tests" className="gap-2">
+                <FileText className="h-4 w-4" />
+                My Tests
+              </TabsTrigger>
+              <TabsTrigger value="attendance" className="gap-2">
+                <CalendarDays className="h-4 w-4" />
+                My Attendance
+              </TabsTrigger>
+              <TabsTrigger value="timetable" className="gap-2">
+                <Clock className="h-4 w-4" />
+                My Timetable
+              </TabsTrigger>
+              <TabsTrigger value="ai-learning" className="gap-2">
+                <Brain className="h-4 w-4" />
+                AI & Learning
+              </TabsTrigger>
+              <TabsTrigger value="engagement" className="gap-2">
+                <Activity className="h-4 w-4" />
+                My Engagement
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview">
+              <MyOverviewTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="progress">
+              <MyProgressTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="tests">
+              <MyTestsTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="attendance">
+              <Card>
+                <CardContent className="p-6">
+                  <AttendanceCalendar 
+                    attendanceData={student.live_classes.recent_classes.map((cls: any) => ({
+                      date: cls.date,
+                      status: cls.attended ? "present" as const : "absent" as const,
+                      subject: cls.subject
+                    }))}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="timetable">
+              <TimetableTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="ai-learning">
+              <MyAILearningTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="engagement">
+              <EngagementTab student={student} />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <Footer />
+      </div>
+    </>
+  );
+};
+
+export default StudentDashboard;
