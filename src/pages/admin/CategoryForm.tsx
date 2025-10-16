@@ -26,6 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
+import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
+import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
+import { Label } from "@/components/ui/label";
 import {
   useAdminCategories,
   useAdminCategory,
@@ -207,22 +210,42 @@ export default function CategoryForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="icon"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Icon (Emoji)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 📚 🩺 ⚙️ 🎯" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Use emoji to represent this category
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="icon"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Icon (Emoji or Image URL)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 📚 🩺 ⚙️ 🎯 or image URL" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Use emoji or provide an image URL
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Image Upload Section */}
+                  <div className="space-y-4">
+                    <Label>Category Image (Optional)</Label>
+                    <ImageUploadWidget
+                      label=""
+                      value={form.watch("icon")?.startsWith("http") ? form.watch("icon") : ""}
+                      onChange={(url) => form.setValue("icon", url)}
+                      onFileSelect={async (file) => { return ""; }}
+                    />
+                  </div>
+
+                  {/* AI Image Generation */}
+                  <div className="space-y-2">
+                    <Label>Or Generate with AI</Label>
+                    <AIImageGenerator
+                      suggestedPrompt={`Icon representing ${form.watch("name") || "category"}, ${form.watch("description") || ""}, minimalist, modern, educational by Simple Lecture`}
+                      onImageGenerated={(url) => form.setValue("icon", url)}
+                    />
+                  </div>
 
               <FormField
                 control={form.control}

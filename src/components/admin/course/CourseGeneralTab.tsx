@@ -155,7 +155,7 @@ export const CourseGeneralTab = ({ formData, onChange }: CourseGeneralTabProps) 
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="thumbnail_url">Thumbnail Image</Label>
+          <Label htmlFor="thumbnail_url">Course Thumbnail</Label>
           <ImageUploadWidget
             label=""
             value={formData.thumbnail_url || ""}
@@ -165,43 +165,12 @@ export const CourseGeneralTab = ({ formData, onChange }: CourseGeneralTabProps) 
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="instructor_avatar_url">Instructor Photo</Label>
-          <ImageUploadWidget
-            label=""
-            value={formData.instructor_avatar_url || ""}
-            onChange={(url) => onChange("instructor_avatar_url", url)}
-            onFileSelect={async (file) => { return ""; }}
+          <Label>AI Generate Thumbnail</Label>
+          <AIImageGenerator
+            suggestedPrompt={`Professional course thumbnail for "${formData.name || 'a course'}" about ${formData.short_description || 'education'}. Modern, vibrant, professional photography style. by simple Lecture`}
+            onImageGenerated={(url) => onChange("thumbnail_url", url)}
           />
         </div>
-      </div>
-
-      <AIImageGenerator
-        suggestedPrompt={`Professional course thumbnail for "${formData.name || 'a course'}" about ${formData.short_description || 'education'}. Modern, vibrant, professional photography style.`}
-        onImageGenerated={(url) => onChange("thumbnail_url", url)}
-      />
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="instructor_name">Instructor Name</Label>
-          <Input
-            id="instructor_name"
-            value={formData.instructor_name || ""}
-            onChange={(e) => onChange("instructor_name", e.target.value)}
-            placeholder="Instructor name"
-          />
-        </div>
-        <div />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instructor_bio">Instructor Bio</Label>
-        <Textarea
-          id="instructor_bio"
-          value={formData.instructor_bio || ""}
-          onChange={(e) => onChange("instructor_bio", e.target.value)}
-          placeholder="Instructor biography"
-          rows={3}
-        />
       </div>
 
       <div className="grid grid-cols-3 gap-4">

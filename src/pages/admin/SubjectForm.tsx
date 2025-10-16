@@ -19,8 +19,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, BookOpen, List, Brain, FileText, Tag, Users, GraduationCap } from "lucide-react";
+import { BookOpen, List, Brain, FileText, Tag, Users, GraduationCap, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
+import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
 import {
   useAdminSubject,
   useCreateSubject,
@@ -41,6 +43,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens only"),
   description: z.string().max(500).optional(),
+  thumbnail_url: z.string().optional(),
   display_order: z.number().int().min(0).default(0),
   is_active: z.boolean().default(true),
 });
@@ -67,6 +70,7 @@ export default function SubjectForm() {
       name: "",
       slug: "",
       description: "",
+      thumbnail_url: "",
       display_order: 0,
       is_active: true,
     },
@@ -78,6 +82,7 @@ export default function SubjectForm() {
         name: subject.name,
         slug: subject.slug,
         description: subject.description || "",
+        thumbnail_url: subject.thumbnail_url || "",
         display_order: subject.display_order,
         is_active: subject.is_active,
       });
@@ -244,6 +249,26 @@ export default function SubjectForm() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Image Upload Section */}
+                  <div className="space-y-4">
+                    <Label>Subject Thumbnail</Label>
+                    <ImageUploadWidget
+                      label=""
+                      value={form.watch("thumbnail_url") || ""}
+                      onChange={(url) => form.setValue("thumbnail_url", url)}
+                      onFileSelect={async (file) => { return ""; }}
+                    />
+                  </div>
+
+                  {/* AI Image Generation */}
+                  <div className="space-y-2">
+                    <Label>Or Generate with AI</Label>
+                    <AIImageGenerator
+                      suggestedPrompt={`Educational illustration for ${form.watch("name") || "subject"}, ${form.watch("description") || ""}, professional, modern, clean design by Simple Lecture`}
+                      onImageGenerated={(url) => form.setValue("thumbnail_url", url)}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}

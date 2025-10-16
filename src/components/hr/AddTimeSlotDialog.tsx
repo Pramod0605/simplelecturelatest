@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateTimetableEntry } from "@/hooks/useInstructorTimetable";
 import { useInstructorSubjects } from "@/hooks/useInstructors";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AddTimeSlotDialogProps {
   open: boolean;
@@ -36,6 +38,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // First create the timetable entry
     await createEntry.mutateAsync({
       instructor_id: instructorId,
       subject_id: formData.subject_id || null,
@@ -49,6 +52,37 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
       valid_until: formData.valid_until || null,
       is_active: true,
     });
+
+    // If subject is selected, auto-map it to the instructor
+    if (formData.subject_id) {
+      try {
+        // Check if mapping already exists
+        const { data: existing } = await supabase
+          .from("instructor_subjects")
+          .select("id")
+          .eq("instructor_id", instructorId)
+          .eq("subject_id", formData.subject_id)
+          .maybeSingle();
+
+        if (!existing) {
+          // Create the mapping
+          const { error } = await supabase
+            .from("instructor_subjects")
+            .insert({
+              instructor_id: instructorId,
+              subject_id: formData.subject_id,
+            });
+
+          if (error) {
+            console.error("Error mapping subject:", error);
+          } else {
+            toast.success("Subject automatically mapped to instructor");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking/creating subject mapping:", error);
+      }
+    }
 
     onOpenChange(false);
     setFormData({

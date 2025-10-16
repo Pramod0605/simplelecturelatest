@@ -1,10 +1,10 @@
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen, List } from "lucide-react";
 
 interface CourseContentTabProps {
   courseId?: string;
@@ -12,12 +12,14 @@ interface CourseContentTabProps {
 
 export const CourseContentTab = ({ courseId }: CourseContentTabProps) => {
   const { data: courseSubjects } = useCourseSubjects(courseId);
-  const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
-  const { data: chapters } = useQuery({
-    queryKey: ["subject-chapters", selectedSubjectId],
+  // Fetch chapters for all subjects at once
+  const { data: allChapters } = useQuery({
+    queryKey: ["all-subject-chapters", courseId],
     queryFn: async () => {
-      if (!selectedSubjectId) return [];
+      if (!courseSubjects || courseSubjects.length === 0) return {};
+      
+      const subjectIds = courseSubjects.map((cs: any) => cs.subject_id);
       
       const { data, error } = await supabase
         .from("subject_chapters")
@@ -25,13 +27,23 @@ export const CourseContentTab = ({ courseId }: CourseContentTabProps) => {
           *,
           subject_topics(*)
         `)
-        .eq("subject_id", selectedSubjectId)
+        .in("subject_id", subjectIds)
         .order("sequence_order");
       
       if (error) throw error;
-      return data;
+      
+      // Group chapters by subject_id
+      const grouped = data.reduce((acc: any, chapter: any) => {
+        if (!acc[chapter.subject_id]) {
+          acc[chapter.subject_id] = [];
+        }
+        acc[chapter.subject_id].push(chapter);
+        return acc;
+      }, {});
+      
+      return grouped;
     },
-    enabled: !!selectedSubjectId,
+    enabled: !!courseId && !!courseSubjects && courseSubjects.length > 0,
   });
 
   if (!courseId) {
@@ -53,52 +65,67 @@ export const CourseContentTab = ({ courseId }: CourseContentTabProps) => {
   return (
     <div className="space-y-6">
       <div>
-        <Label>Select Subject</Label>
-        <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-          <SelectTrigger className="mt-2">
-            <SelectValue placeholder="Select a subject to view content" />
-          </SelectTrigger>
-          <SelectContent className="bg-background z-50">
-            {courseSubjects.map((cs: any) => (
-              <SelectItem key={cs.id} value={cs.subject_id}>
-                {cs.subject?.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label className="text-lg font-semibold">Course Content by Subject</Label>
+        <p className="text-sm text-muted-foreground mt-1">
+          Viewing all chapters and topics for {courseSubjects.length} subject(s)
+        </p>
       </div>
 
-      {selectedSubjectId && (
-        <div>
-          <Label>Chapters & Topics</Label>
-          {chapters && chapters.length > 0 ? (
-            <Accordion type="single" collapsible className="mt-2">
-              {chapters.map((chapter: any) => (
-                <AccordionItem key={chapter.id} value={chapter.id}>
-                  <AccordionTrigger>
-                    Chapter {chapter.chapter_number}: {chapter.title}
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    {chapter.subject_topics && chapter.subject_topics.length > 0 ? (
-                      <ul className="space-y-1 ml-4">
-                        {chapter.subject_topics.map((topic: any) => (
-                          <li key={topic.id} className="text-sm">
-                            • Topic {topic.topic_number}: {topic.title}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-muted-foreground ml-4">No topics yet</p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-            <p className="text-sm text-muted-foreground mt-2">No chapters found for this subject</p>
-          )}
-        </div>
-      )}
+      <div className="space-y-4">
+        {courseSubjects.map((cs: any) => {
+          const chapters = allChapters?.[cs.subject_id] || [];
+          
+          return (
+            <Card key={cs.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                  {cs.subject?.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chapters.length > 0 ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    {chapters.map((chapter: any) => (
+                      <AccordionItem key={chapter.id} value={chapter.id}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center gap-2">
+                            <List className="w-4 h-4" />
+                            <span>Chapter {chapter.chapter_number}: {chapter.title}</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {chapter.subject_topics && chapter.subject_topics.length > 0 ? (
+                            <div className="space-y-2 ml-6 mt-2">
+                              {chapter.subject_topics.map((topic: any) => (
+                                <div key={topic.id} className="flex items-start gap-2 text-sm">
+                                  <span className="text-muted-foreground">•</span>
+                                  <div>
+                                    <span className="font-medium">Topic {topic.topic_number}:</span>{" "}
+                                    {topic.title}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground ml-6 mt-2">
+                              No topics yet for this chapter
+                            </p>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No chapters found for this subject
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };
