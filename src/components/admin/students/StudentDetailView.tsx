@@ -9,6 +9,8 @@ import { TestsTab } from "./tabs/TestsTab";
 import { AIActivityTab } from "./tabs/AIActivityTab";
 import { FollowupsTab } from "./tabs/FollowupsTab";
 import { ActivityLogTab } from "./tabs/ActivityLogTab";
+import { TimetableTab } from "./tabs/TimetableTab";
+import { EngagementTab } from "./tabs/EngagementTab";
 import { format } from "date-fns";
 
 interface StudentDetailViewProps {
@@ -82,10 +84,12 @@ export const StudentDetailView = ({ student, onClose }: StudentDetailViewProps) 
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="progress">Progress</TabsTrigger>
           <TabsTrigger value="tests">Tests</TabsTrigger>
+          <TabsTrigger value="timetable">Timetable</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
           <TabsTrigger value="ai">AI Activity</TabsTrigger>
           <TabsTrigger value="followups">Follow-ups</TabsTrigger>
           <TabsTrigger value="activity">Activity Log</TabsTrigger>
@@ -101,6 +105,14 @@ export const StudentDetailView = ({ student, onClose }: StudentDetailViewProps) 
 
         <TabsContent value="tests" className="space-y-4">
           <TestsTab student={student} />
+        </TabsContent>
+
+        <TabsContent value="timetable" className="space-y-4">
+          <TimetableTab student={student} />
+        </TabsContent>
+
+        <TabsContent value="engagement" className="space-y-4">
+          <EngagementTab student={student} />
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-4">

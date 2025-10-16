@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame, CheckCircle2 } from "lucide-react";
@@ -13,14 +14,90 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { TestsFilters } from "./TestsFilters";
 
 export const TestsTab = ({ student }: { student: any }) => {
   const testHistory = student.testHistory || {};
+  
+  const [selectedCourse, setSelectedCourse] = useState("all");
+  const [selectedSubject, setSelectedSubject] = useState("all");
+  const [selectedDateRange, setSelectedDateRange] = useState("all");
+  const [selectedTestType, setSelectedTestType] = useState("all");
+
+  // Extract unique courses and subjects
+  const courses = useMemo(() => {
+    const uniqueCourses = new Set(student.courses?.map((c: any) => c.name) || []);
+    return Array.from(uniqueCourses);
+  }, [student.courses]);
+
+  const subjects = useMemo(() => {
+    const uniqueSubjects = new Set();
+    testHistory.assignments?.forEach((a: any) => {
+      if (a.subject) uniqueSubjects.add(a.subject);
+    });
+    testHistory.quizzes?.forEach((q: any) => {
+      if (q.subject) uniqueSubjects.add(q.subject);
+    });
+    return Array.from(uniqueSubjects);
+  }, [testHistory]);
+
+  // Filter assignments
+  const filteredAssignments = useMemo(() => {
+    if (!testHistory.assignments) return [];
+    let filtered = testHistory.assignments;
+    
+    if (selectedSubject !== "all") {
+      filtered = filtered.filter((a: any) => a.subject === selectedSubject);
+    }
+    
+    if (selectedDateRange !== "all") {
+      const days = parseInt(selectedDateRange);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      filtered = filtered.filter((a: any) => new Date(a.submitted_at) >= cutoffDate);
+    }
+    
+    return filtered;
+  }, [testHistory.assignments, selectedSubject, selectedDateRange]);
+
+  // Filter quizzes
+  const filteredQuizzes = useMemo(() => {
+    if (!testHistory.quizzes) return [];
+    let filtered = testHistory.quizzes;
+    
+    if (selectedSubject !== "all") {
+      filtered = filtered.filter((q: any) => q.subject === selectedSubject);
+    }
+    
+    return filtered;
+  }, [testHistory.quizzes, selectedSubject]);
+
+  const handleReset = () => {
+    setSelectedCourse("all");
+    setSelectedSubject("all");
+    setSelectedDateRange("all");
+    setSelectedTestType("all");
+  };
 
   return (
     <div className="space-y-6">
+      {/* Filters */}
+      <TestsFilters
+        courses={courses as string[]}
+        subjects={subjects as string[]}
+        selectedCourse={selectedCourse}
+        selectedSubject={selectedSubject}
+        selectedDateRange={selectedDateRange}
+        selectedTestType={selectedTestType}
+        onCourseChange={setSelectedCourse}
+        onSubjectChange={setSelectedSubject}
+        onDateRangeChange={setSelectedDateRange}
+        onTestTypeChange={setSelectedTestType}
+        onReset={handleReset}
+      />
+      
       {/* DPT Performance */}
-      {testHistory.dpt && (
+      {(selectedTestType === "all" || selectedTestType === "dpt") && testHistory.dpt && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -79,14 +156,14 @@ export const TestsTab = ({ student }: { student: any }) => {
       )}
 
       {/* Assignment History */}
-      {testHistory.assignments && (
+      {(selectedTestType === "all" || selectedTestType === "assignment") && filteredAssignments.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Assignment History</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {testHistory.assignments.map((assignment: any) => (
+              {filteredAssignments.map((assignment: any) => (
                 <div
                   key={assignment.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
@@ -114,14 +191,14 @@ export const TestsTab = ({ student }: { student: any }) => {
       )}
 
       {/* Quizzes */}
-      {testHistory.quizzes && (
+      {(selectedTestType === "all" || selectedTestType === "quiz") && filteredQuizzes.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Quiz Results</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={testHistory.quizzes}>
+              <BarChart data={filteredQuizzes}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="title" angle={-45} textAnchor="end" height={100} />
                 <YAxis />

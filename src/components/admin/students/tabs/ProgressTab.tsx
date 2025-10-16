@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle } from "lucide-react";
@@ -18,12 +19,65 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { ProgressFilters } from "./ProgressFilters";
 
 export const ProgressTab = ({ student }: { student: any }) => {
   const progressData = student.progressData || {};
+  
+  const [selectedCourse, setSelectedCourse] = useState("all");
+  const [selectedSubject, setSelectedSubject] = useState("all");
+
+  // Extract unique courses and subjects
+  const courses = useMemo(() => {
+    const uniqueCourses = new Set(student.courses?.map((c: any) => c.name) || []);
+    return Array.from(uniqueCourses);
+  }, [student.courses]);
+
+  const subjects = useMemo(() => {
+    const uniqueSubjects = new Set();
+    progressData.chapter_completion?.forEach((chapter: any) => {
+      uniqueSubjects.add(chapter.subject);
+    });
+    Object.keys(progressData.subject_performance || {}).forEach((subject) => {
+      uniqueSubjects.add(subject);
+    });
+    return Array.from(uniqueSubjects);
+  }, [progressData]);
+
+  // Filter chapter completion
+  const filteredChapters = useMemo(() => {
+    if (!progressData.chapter_completion) return [];
+    return progressData.chapter_completion.filter((chapter: any) => {
+      if (selectedSubject !== "all" && chapter.subject !== selectedSubject) return false;
+      return true;
+    });
+  }, [progressData.chapter_completion, selectedSubject]);
+
+  // Filter subject performance
+  const filteredSubjectPerformance = useMemo(() => {
+    if (!progressData.subject_performance) return [];
+    return Object.entries(progressData.subject_performance)
+      .filter(([subject]) => selectedSubject === "all" || subject === selectedSubject)
+      .map(([subject, score]) => ({ subject, score }));
+  }, [progressData.subject_performance, selectedSubject]);
+
+  const handleReset = () => {
+    setSelectedCourse("all");
+    setSelectedSubject("all");
+  };
 
   return (
     <div className="space-y-6">
+      {/* Filters */}
+      <ProgressFilters
+        courses={courses as string[]}
+        subjects={subjects as string[]}
+        selectedCourse={selectedCourse}
+        selectedSubject={selectedSubject}
+        onCourseChange={setSelectedCourse}
+        onSubjectChange={setSelectedSubject}
+        onReset={handleReset}
+      />
       {/* Overall Progress Timeline */}
       {progressData.overall_progress_timeline && (
         <Card>
@@ -52,7 +106,7 @@ export const ProgressTab = ({ student }: { student: any }) => {
       )}
 
       {/* Subject Performance */}
-      {progressData.subject_performance && (
+      {filteredSubjectPerformance.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -60,14 +114,7 @@ export const ProgressTab = ({ student }: { student: any }) => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={Object.entries(progressData.subject_performance).map(
-                    ([subject, score]) => ({
-                      subject,
-                      score,
-                    })
-                  )}
-                >
+                <BarChart data={filteredSubjectPerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="subject" angle={-45} textAnchor="end" height={100} />
                   <YAxis />
@@ -84,14 +131,7 @@ export const ProgressTab = ({ student }: { student: any }) => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <RadarChart
-                  data={Object.entries(progressData.subject_performance).map(
-                    ([subject, score]) => ({
-                      subject,
-                      score,
-                    })
-                  )}
-                >
+                <RadarChart data={filteredSubjectPerformance}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="subject" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} />
@@ -108,17 +148,23 @@ export const ProgressTab = ({ student }: { student: any }) => {
             </CardContent>
           </Card>
         </div>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No subject performance data available for selected filters.
+          </CardContent>
+        </Card>
       )}
 
       {/* Chapter Completion */}
-      {progressData.chapter_completion && (
+      {filteredChapters.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Chapter-wise Completion</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {progressData.chapter_completion.map((chapter: any, idx: number) => (
+              {filteredChapters.map((chapter: any, idx: number) => (
                 <div key={idx} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -140,6 +186,12 @@ export const ProgressTab = ({ student }: { student: any }) => {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No chapter completion data available for selected filters.
           </CardContent>
         </Card>
       )}
