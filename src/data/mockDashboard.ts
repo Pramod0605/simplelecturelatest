@@ -1,12 +1,25 @@
 export type SubjectStats = { completed: number; total: number; percentage: number };
 
 export const mockSubjectProgress: Record<string, SubjectStats> = {
-  'Physics (101)': { completed: 12, total: 20, percentage: 60 },
-  'Chemistry (102)': { completed: 15, total: 20, percentage: 75 },
-  'Mathematics (110)': { completed: 18, total: 20, percentage: 90 },
-  'Biology (101)': { completed: 14, total: 20, percentage: 70 },
-  'English (210)': { completed: 16, total: 20, percentage: 80 },
-  'Computer Science (220)': { completed: 19, total: 20, percentage: 95 },
+  'Mechanics - Kinematics (PHY-101)': { completed: 8, total: 8, percentage: 100 },
+  'Laws of Motion (PHY-102)': { completed: 8, total: 8, percentage: 100 },
+  'Work, Energy & Power (PHY-103)': { completed: 6, total: 8, percentage: 75 },
+  'Electrostatics (PHY-105)': { completed: 4, total: 8, percentage: 50 },
+  'Current Electricity (PHY-106)': { completed: 7, total: 8, percentage: 88 },
+  'Optics (PHY-108)': { completed: 3, total: 8, percentage: 38 },
+  'Atomic Structure (CHE-101)': { completed: 6, total: 6, percentage: 100 },
+  'Chemical Bonding (CHE-102)': { completed: 5, total: 6, percentage: 83 },
+  'Thermodynamics (CHE-103)': { completed: 4, total: 6, percentage: 67 },
+  'Organic Chemistry (CHE-105)': { completed: 3, total: 6, percentage: 50 },
+  'Complex Numbers (MTH-101)': { completed: 8, total: 8, percentage: 100 },
+  'Quadratic Equations (MTH-102)': { completed: 8, total: 8, percentage: 100 },
+  'Limits & Continuity (MTH-103)': { completed: 7, total: 8, percentage: 88 },
+  'Differentiation (MTH-104)': { completed: 6, total: 8, percentage: 75 },
+  'Integration (MTH-105)': { completed: 5, total: 8, percentage: 63 },
+  'Coordinate Geometry (MTH-106)': { completed: 4, total: 8, percentage: 50 },
+  'Cell Biology (BIO-102)': { completed: 8, total: 8, percentage: 100 },
+  'Human Physiology (BIO-105)': { completed: 6, total: 8, percentage: 75 },
+  'Genetics & Evolution (BIO-107)': { completed: 5, total: 8, percentage: 63 },
 };
 
 export const mockCourses = [
