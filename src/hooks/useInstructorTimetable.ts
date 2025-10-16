@@ -12,7 +12,7 @@ export const useInstructorTimetable = (instructorId?: string) => {
           *,
           instructor:teacher_profiles(id, full_name),
           subject:popular_subjects(id, name),
-          chapter:subject_chapters(id, title, chapter_number)
+          batch:batches(id, name)
         `)
         .eq('is_active', true)
         .order('day_of_week')
