@@ -78,11 +78,12 @@ export default function SubjectForm() {
 
   useEffect(() => {
     if (subject) {
+      const subjectData = subject as any; // Type assertion for new fields not yet in generated types
       form.reset({
         name: subject.name,
         slug: subject.slug,
         description: subject.description || "",
-        thumbnail_url: subject.thumbnail_url || "",
+        thumbnail_url: subjectData.thumbnail_url || "",
         display_order: subject.display_order,
         is_active: subject.is_active,
       });
