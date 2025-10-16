@@ -903,6 +903,45 @@ export type Database = {
         }
         Relationships: []
       }
+      documentation_pages: {
+        Row: {
+          category: string
+          content: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          page_key: string
+          subcategory: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          page_key: string
+          subcategory?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          page_key?: string
+          subcategory?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       doubt_logs: {
         Row: {
           answer: string | null
