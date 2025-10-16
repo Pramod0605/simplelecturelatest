@@ -37,7 +37,16 @@ export const AIImageGenerator = ({ suggestedPrompt = "", onImageGenerated }: AII
       }
     } catch (error: any) {
       console.error("Error generating image:", error);
-      toast.error(error.message || "Failed to generate image");
+      
+      // Check if it's a credits issue
+      if (error.message?.includes("402") || error.message?.includes("credits")) {
+        toast.error(
+          "Not enough Lovable AI credits. Please add credits in Settings → Workspace → Usage.",
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(error.message || "Failed to generate image");
+      }
     } finally {
       setIsGenerating(false);
     }

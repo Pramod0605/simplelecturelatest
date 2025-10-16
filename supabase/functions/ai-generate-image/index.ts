@@ -46,6 +46,21 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI API error:', response.status, errorText);
+      
+      // Return proper status code for payment issues
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Not enough Lovable AI credits. Please add credits to your workspace.',
+            needsCredits: true 
+          }),
+          { 
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
       throw new Error(`AI API returned ${response.status}: ${errorText}`);
     }
 
