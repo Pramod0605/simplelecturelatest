@@ -144,19 +144,6 @@ export const AdminSidebar = () => {
               Subjects
             </NavLink>
             <NavLink
-              to="/admin/batches"
-              className={({ isActive}) =>
-                cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                )
-              }
-            >
-              Batches
-            </NavLink>
-            <NavLink
               to="/admin/question-bank"
               className={({ isActive }) =>
                 cn(
@@ -185,12 +172,12 @@ export const AdminSidebar = () => {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Manage Users */}
+        {/* Enrollments */}
         <Collapsible open={openUsers} onOpenChange={setOpenUsers}>
           <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-md hover:bg-sidebar-accent/50 text-sm font-medium text-sidebar-foreground transition-all">
             <div className="flex items-center gap-3">
               <Users className="h-4 w-4" />
-              <span>Manage Users</span>
+              <span>Enrollments</span>
             </div>
             <ChevronRight className={cn("h-4 w-4 transition-transform", openUsers && "rotate-90")} />
           </CollapsibleTrigger>
@@ -206,7 +193,20 @@ export const AdminSidebar = () => {
                 )
               }
             >
-              Students / Users
+              Student Management
+            </NavLink>
+            <NavLink
+              to="/admin/batches"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Batches
             </NavLink>
             <NavLink
               to="/admin/parents"

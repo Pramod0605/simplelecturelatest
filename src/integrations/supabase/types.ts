@@ -946,34 +946,43 @@ export type Database = {
         Row: {
           answer: string | null
           context_used: string | null
+          conversation_duration_seconds: number | null
           created_at: string | null
           id: string
           model_used: string | null
           question: string
           response_time_ms: number | null
+          satisfaction_rating: number | null
           student_id: string
+          tokens_used: number | null
           topic_id: string | null
         }
         Insert: {
           answer?: string | null
           context_used?: string | null
+          conversation_duration_seconds?: number | null
           created_at?: string | null
           id?: string
           model_used?: string | null
           question: string
           response_time_ms?: number | null
+          satisfaction_rating?: number | null
           student_id: string
+          tokens_used?: number | null
           topic_id?: string | null
         }
         Update: {
           answer?: string | null
           context_used?: string | null
+          conversation_duration_seconds?: number | null
           created_at?: string | null
           id?: string
           model_used?: string | null
           question?: string
           response_time_ms?: number | null
+          satisfaction_rating?: number | null
           student_id?: string
+          tokens_used?: number | null
           topic_id?: string | null
         }
         Relationships: [
@@ -983,6 +992,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doubt_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "doubt_logs_topic_id_fkey"
@@ -1078,6 +1094,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
           },
         ]
       }
@@ -1813,6 +1836,72 @@ export type Database = {
           },
         ]
       }
+      student_activity_log: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          student_id: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          student_id: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          student_id?: string
+        }
+        Relationships: []
+      }
+      student_followups: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          followup_type: Database["public"]["Enums"]["followup_type"]
+          id: string
+          message: string
+          priority: Database["public"]["Enums"]["followup_priority"] | null
+          scheduled_for: string
+          status: Database["public"]["Enums"]["followup_status"] | null
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          followup_type: Database["public"]["Enums"]["followup_type"]
+          id?: string
+          message: string
+          priority?: Database["public"]["Enums"]["followup_priority"] | null
+          scheduled_for: string
+          status?: Database["public"]["Enums"]["followup_status"] | null
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          followup_type?: Database["public"]["Enums"]["followup_type"]
+          id?: string
+          message?: string
+          priority?: Database["public"]["Enums"]["followup_priority"] | null
+          scheduled_for?: string
+          status?: Database["public"]["Enums"]["followup_status"] | null
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       student_progress: {
         Row: {
           chapter_id: string | null
@@ -1867,6 +1956,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "student_progress_topic_id_fkey"
@@ -2333,6 +2429,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "test_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
+          },
+          {
             foreignKeyName: "test_submissions_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
@@ -2507,7 +2610,31 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
+          },
         ]
+      }
+      student_analytics_cache: {
+        Row: {
+          active_enrollments: number | null
+          avatar_url: string | null
+          avg_progress_percentage: number | null
+          avg_test_score: number | null
+          full_name: string | null
+          last_active_at: string | null
+          refresh_at: string | null
+          student_id: string | null
+          total_ai_interactions: number | null
+          total_assignments_submitted: number | null
+          total_courses: number | null
+          total_tests_taken: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -2530,9 +2657,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      refresh_student_analytics_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
+      activity_type:
+        | "login"
+        | "course_access"
+        | "test_start"
+        | "test_complete"
+        | "ai_query"
+        | "live_class_join"
+        | "assignment_submit"
       app_role: "admin" | "teacher" | "student" | "parent"
+      followup_priority: "low" | "medium" | "high"
+      followup_status: "pending" | "completed" | "dismissed"
+      followup_type:
+        | "test_reminder"
+        | "live_class_reminder"
+        | "ai_tutorial_prompt"
+        | "general"
       program_type: "live" | "recorded_ai" | "recorded_video"
     }
     CompositeTypes: {
@@ -2661,7 +2807,24 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_type: [
+        "login",
+        "course_access",
+        "test_start",
+        "test_complete",
+        "ai_query",
+        "live_class_join",
+        "assignment_submit",
+      ],
       app_role: ["admin", "teacher", "student", "parent"],
+      followup_priority: ["low", "medium", "high"],
+      followup_status: ["pending", "completed", "dismissed"],
+      followup_type: [
+        "test_reminder",
+        "live_class_reminder",
+        "ai_tutorial_prompt",
+        "general",
+      ],
       program_type: ["live", "recorded_ai", "recorded_video"],
     },
   },
