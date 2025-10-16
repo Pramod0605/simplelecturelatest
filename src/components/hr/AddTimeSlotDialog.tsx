@@ -38,6 +38,16 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.subject_id) {
+      toast.error("Please select a subject");
+      return;
+    }
+    if (!formData.day_of_week) {
+      toast.error("Please select a day of week");
+      return;
+    }
+    
     // First create the timetable entry
     await createEntry.mutateAsync({
       instructor_id: instructorId,
@@ -106,24 +116,30 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Subject</Label>
-            <Select value={formData.subject_id} onValueChange={(val) => setFormData({ ...formData, subject_id: val })}>
+            <Label>Subject *</Label>
+            <Select value={formData.subject_id} onValueChange={(val) => setFormData({ ...formData, subject_id: val })} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
               <SelectContent>
-                {instructorSubjects?.map((is) => (
-                  <SelectItem key={is.subject_id} value={is.subject_id || ""}>
-                    {is.subject?.name}
-                  </SelectItem>
-                ))}
+                {instructorSubjects && instructorSubjects.length > 0 ? (
+                  instructorSubjects.map((is) => (
+                    <SelectItem key={is.subject_id} value={is.subject_id || ""}>
+                      {is.subject?.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No subjects mapped. Please map subjects first.
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label>Day of Week</Label>
-            <Select value={formData.day_of_week} onValueChange={(val) => setFormData({ ...formData, day_of_week: val })}>
+            <Label>Day of Week *</Label>
+            <Select value={formData.day_of_week} onValueChange={(val) => setFormData({ ...formData, day_of_week: val })} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select day" />
               </SelectTrigger>

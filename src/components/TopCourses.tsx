@@ -184,16 +184,21 @@ export const TopCourses = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-primary">₹{course.price}</span>
-                      <span className="text-lg line-through text-muted-foreground">
-                        ₹{course.originalPrice.toLocaleString()}
-                      </span>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-primary">₹{course.price}</span>
+                        <span className="text-lg line-through text-muted-foreground">
+                          ₹{course.originalPrice.toLocaleString()}
+                        </span>
+                      </div>
+                      <Badge className="bg-success text-white">
+                        {Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)}% OFF
+                      </Badge>
                     </div>
-                    <Badge className="bg-success text-white">
-                      {Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)}% OFF
-                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      + Optional AI Tutoring & Live Classes add-ons available
+                    </p>
                   </div>
                 </CardContent>
 
