@@ -12,10 +12,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { InstructorSubjectMapper } from "@/components/hr/InstructorSubjectMapper";
+import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
+import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
+import { AddTimeSlotDialog } from "@/components/hr/AddTimeSlotDialog";
+import { InstructorTimetableView } from "@/components/hr/InstructorTimetableView";
+import { useInstructorTimetable } from "@/hooks/useInstructorTimetable";
 
 export default function InstructorsManager() {
   const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [showTimeSlotDialog, setShowTimeSlotDialog] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -265,6 +271,25 @@ export default function InstructorsManager() {
                     />
 
                     <div>
+                      <Label htmlFor="avatar_url">Instructor Photo</Label>
+                      <ImageUploadWidget
+                        label=""
+                        value={formData.avatar_url}
+                        onChange={(url) => setFormData({ ...formData, avatar_url: url })}
+                        onFileSelect={async (file) => { return ""; }}
+                      />
+                    </div>
+
+                    {editMode && (
+                      <>
+                        <AIImageGenerator
+                          suggestedPrompt={`Professional instructor photo for ${formData.full_name || 'teacher'}. Modern classroom setting, professional photography style, warm lighting.`}
+                          onImageGenerated={(url) => setFormData({ ...formData, avatar_url: url })}
+                        />
+                      </>
+                    )}
+
+                    <div>
                       <Label htmlFor="qualification">Qualification</Label>
                       <Input
                         id="qualification"
@@ -313,14 +338,23 @@ export default function InstructorsManager() {
                 <TabsContent value="timetable">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Instructor Timetable</CardTitle>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Instructor Timetable</CardTitle>
+                        <Button onClick={() => setShowTimeSlotDialog(true)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Time Slot
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-muted-foreground">
-                        Timetable management for this instructor. Go to HR → Timetable for full schedule management.
-                      </p>
+                      <InstructorTimetableView instructorId={selectedInstructorId} />
                     </CardContent>
                   </Card>
+                  <AddTimeSlotDialog
+                    open={showTimeSlotDialog}
+                    onOpenChange={setShowTimeSlotDialog}
+                    instructorId={selectedInstructorId}
+                  />
                 </TabsContent>
               </>
             )}

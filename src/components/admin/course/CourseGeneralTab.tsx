@@ -7,6 +7,8 @@ import { Sparkles, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAICourseContent } from "@/hooks/useAICourseContent";
+import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
+import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
 import { toast } from "sonner";
 
 interface CourseGeneralTabProps {
@@ -153,15 +155,32 @@ export const CourseGeneralTab = ({ formData, onChange }: CourseGeneralTabProps) 
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="thumbnail_url">Thumbnail URL</Label>
-          <Input
-            id="thumbnail_url"
+          <Label htmlFor="thumbnail_url">Thumbnail Image</Label>
+          <ImageUploadWidget
+            label=""
             value={formData.thumbnail_url || ""}
-            onChange={(e) => onChange("thumbnail_url", e.target.value)}
-            placeholder="https://..."
+            onChange={(url) => onChange("thumbnail_url", url)}
+            onFileSelect={async (file) => { return ""; }}
           />
         </div>
         
+        <div className="space-y-2">
+          <Label htmlFor="instructor_avatar_url">Instructor Photo</Label>
+          <ImageUploadWidget
+            label=""
+            value={formData.instructor_avatar_url || ""}
+            onChange={(url) => onChange("instructor_avatar_url", url)}
+            onFileSelect={async (file) => { return ""; }}
+          />
+        </div>
+      </div>
+
+      <AIImageGenerator
+        suggestedPrompt={`Professional course thumbnail for "${formData.name || 'a course'}" about ${formData.short_description || 'education'}. Modern, vibrant, professional photography style.`}
+        onImageGenerated={(url) => onChange("thumbnail_url", url)}
+      />
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="instructor_name">Instructor Name</Label>
           <Input
@@ -171,6 +190,7 @@ export const CourseGeneralTab = ({ formData, onChange }: CourseGeneralTabProps) 
             placeholder="Instructor name"
           />
         </div>
+        <div />
       </div>
 
       <div className="space-y-2">

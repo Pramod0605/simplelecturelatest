@@ -18,6 +18,9 @@ verify_jwt = true
 [functions.ai-generate-podcast]
 verify_jwt = true
 
+[functions.ai-generate-image]
+verify_jwt = true
+
 [functions.create-instructor]
 verify_jwt = false
 

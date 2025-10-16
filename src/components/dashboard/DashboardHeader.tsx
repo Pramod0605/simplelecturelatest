@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/website-logo.png";
 import { DashboardMenu } from "./DashboardMenu";
 import { NotificationModal } from "./NotificationModal";
+import { MegaMenu } from "@/components/MegaMenu";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotices } from "@/hooks/useNotices";
@@ -40,6 +41,7 @@ export const DashboardHeader = () => {
           <Link to="/" className="flex items-center">
             <img src={logo} alt="SimpleLecture Logo" className="h-8" />
           </Link>
+          <MegaMenu />
           <div className="relative hidden md:flex w-[360px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search courses, assignments, classes..." className="pl-9" />
