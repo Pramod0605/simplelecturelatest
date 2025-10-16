@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.api]
 verify_jwt = false
+
+[functions.generate-seed-images]
+verify_jwt = false
