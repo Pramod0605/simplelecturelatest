@@ -1,58 +1,71 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Star, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { mockInstructors } from "@/data/mockInstructors";
-import { Mail, GraduationCap } from "lucide-react";
+import { useRef } from "react";
 
-export const InstructorsList = () => {
+const InstructorsList = () => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 320;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GraduationCap className="h-5 w-5" />
-          Instructors
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[500px] pr-4">
-          <div className="space-y-4">
-            {mockInstructors.map((instructor) => (
-              <div
-                key={instructor.id}
-                className="flex flex-col gap-3 p-4 border rounded-lg hover:bg-accent transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={instructor.avatar} />
-                    <AvatarFallback>
-                      {instructor.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-base mb-1">{instructor.name}</h4>
-                    <Badge variant="secondary" className="text-xs mb-2">
-                      {instructor.subject}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-sm text-muted-foreground pl-1">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4" />
-                    <span className="text-xs">{instructor.qualification}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <span className="text-xs">{instructor.experience} of teaching</span>
-                  </div>
-                </div>
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">My Instructors</h2>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => scroll('left')}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => scroll('right')}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <div 
+        ref={scrollContainerRef}
+        className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {mockInstructors.map((instructor) => (
+          <Card 
+            key={instructor.id} 
+            className="flex-shrink-0 w-[300px] p-4 snap-start hover:shadow-lg transition-shadow"
+          >
+            <div className="flex flex-col items-center text-center">
+              <Avatar className="h-20 w-20 mb-3">
+                <AvatarImage src={instructor.avatar} alt={instructor.name} />
+                <AvatarFallback>{instructor.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+              </Avatar>
+              <h3 className="font-semibold text-lg mb-1">{instructor.name}</h3>
+              <Badge variant="secondary" className="mb-2">{instructor.subject}</Badge>
+              <div className="flex items-center gap-1 mb-2">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="text-sm font-medium">{instructor.rating}</span>
+                <span className="text-xs text-muted-foreground">({instructor.studentsCount}+ students)</span>
               </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </CardContent>
+              <p className="text-xs text-muted-foreground mb-1">{instructor.qualification}</p>
+              <p className="text-xs text-muted-foreground mb-3">{instructor.experience} experience</p>
+              <Button size="sm" variant="outline" className="w-full">
+                <MessageCircle className="h-3 w-3 mr-2" />
+                Contact
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
     </Card>
   );
 };
+
+export default InstructorsList;

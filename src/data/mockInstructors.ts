@@ -109,6 +109,7 @@ export const mockUpcomingClasses = [
     instructor: "Dr. Rajesh Kumar Sharma",
     time: "10:00 AM",
     date: "Today",
+    duration: "90 minutes",
     meetingLink: "#"
   },
   {
@@ -118,6 +119,7 @@ export const mockUpcomingClasses = [
     instructor: "Dr. Amit Patel",
     time: "2:00 PM",
     date: "Today",
+    duration: "90 minutes",
     meetingLink: "#"
   },
   {
@@ -127,6 +129,7 @@ export const mockUpcomingClasses = [
     instructor: "Dr. Kavita Iyer",
     time: "4:00 PM",
     date: "Tomorrow",
+    duration: "90 minutes",
     meetingLink: "#"
   }
 ];
@@ -138,7 +141,8 @@ export const mockAssignments = [
     subject: "Physics",
     dueDate: "2025-04-20",
     status: "pending" as const,
-    totalMarks: 50
+    totalMarks: 50,
+    questions: 15
   },
   {
     id: "2",
@@ -146,15 +150,17 @@ export const mockAssignments = [
     subject: "Mathematics",
     dueDate: "2025-04-22",
     status: "pending" as const,
-    totalMarks: 100
+    totalMarks: 100,
+    questions: 20
   },
   {
     id: "3",
     title: "Chemistry - Organic Reactions",
     subject: "Chemistry",
     dueDate: "2025-04-18",
-    status: "submitted" as const,
+    status: "completed" as const,
     totalMarks: 75,
+    questions: 12,
     score: 68
   }
 ];
