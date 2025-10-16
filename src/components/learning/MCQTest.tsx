@@ -1,0 +1,326 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Clock, Flag, CheckCircle, XCircle, Trophy } from "lucide-react";
+import { getQuestionsByTopic } from "@/data/mockLearning";
+import type { MockQuestion } from "@/data/mockLearning";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface MCQTestProps {
+  topicId: string;
+}
+
+export const MCQTest = ({ topicId }: MCQTestProps) => {
+  const allQuestions = getQuestionsByTopic(topicId);
+  
+  const [testState, setTestState] = useState<'setup' | 'testing' | 'results'>('setup');
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [questionCount, setQuestionCount] = useState(5);
+  const [timerMinutes, setTimerMinutes] = useState(15);
+  const [questions, setQuestions] = useState<MockQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
+  const startTest = () => {
+    const filteredQuestions = allQuestions
+      .filter(q => q.difficulty === difficulty)
+      .slice(0, questionCount);
+    
+    if (filteredQuestions.length === 0) {
+      // Fallback to all questions if no match
+      setQuestions(allQuestions.slice(0, questionCount));
+    } else {
+      setQuestions(filteredQuestions);
+    }
+    
+    setTimeRemaining(timerMinutes * 60);
+    setTestState('testing');
+    setAnswers({});
+    setFlagged(new Set());
+    setCurrentQuestionIndex(0);
+  };
+
+  const submitTest = () => {
+    setTestState('results');
+  };
+
+  const handleAnswer = (answer: string) => {
+    setAnswers({ ...answers, [currentQuestionIndex]: answer });
+  };
+
+  const toggleFlag = () => {
+    const newFlagged = new Set(flagged);
+    if (newFlagged.has(currentQuestionIndex)) {
+      newFlagged.delete(currentQuestionIndex);
+    } else {
+      newFlagged.add(currentQuestionIndex);
+    }
+    setFlagged(newFlagged);
+  };
+
+  const calculateScore = () => {
+    let correct = 0;
+    questions.forEach((q, index) => {
+      if (answers[index] === q.correct_answer) {
+        correct++;
+      }
+    });
+    return { correct, total: questions.length, percentage: (correct / questions.length) * 100 };
+  };
+
+  // Setup Screen
+  if (testState === 'setup') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Start MCQ Test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Difficulty Level</Label>
+            <Select value={difficulty} onValueChange={(v: any) => setDifficulty(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Number of Questions</Label>
+            <Select value={questionCount.toString()} onValueChange={(v) => setQuestionCount(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 Questions</SelectItem>
+                <SelectItem value="10">10 Questions</SelectItem>
+                <SelectItem value="15">15 Questions</SelectItem>
+                <SelectItem value="20">20 Questions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Timer</Label>
+            <Select value={timerMinutes.toString()} onValueChange={(v) => setTimerMinutes(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 Minutes</SelectItem>
+                <SelectItem value="30">30 Minutes</SelectItem>
+                <SelectItem value="60">60 Minutes</SelectItem>
+                <SelectItem value="999">Unlimited</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button onClick={startTest} className="w-full" size="lg">
+            Start Test
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Test Screen
+  if (testState === 'testing' && questions.length > 0) {
+    const currentQuestion = questions[currentQuestionIndex];
+    const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+
+    return (
+      <div className="space-y-4">
+        {/* Header */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                <span className="font-semibold">{Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}</span>
+              </div>
+              <Badge variant="secondary">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </Badge>
+            </div>
+            <Progress value={progress} />
+          </CardContent>
+        </Card>
+
+        {/* Question */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <CardTitle className="text-lg flex-1">{currentQuestion.question_text}</CardTitle>
+              <Button
+                variant={flagged.has(currentQuestionIndex) ? "destructive" : "outline"}
+                size="icon"
+                onClick={toggleFlag}
+              >
+                <Flag className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup value={answers[currentQuestionIndex] || ""} onValueChange={handleAnswer}>
+              {currentQuestion.options.map((option, idx) => (
+                <div key={idx} className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer">
+                  <RadioGroupItem value={option} id={`option-${idx}`} />
+                  <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </CardContent>
+        </Card>
+
+        {/* Navigation */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
+            disabled={currentQuestionIndex === 0}
+          >
+            Previous
+          </Button>
+          {currentQuestionIndex < questions.length - 1 ? (
+            <Button
+              className="flex-1"
+              onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+            >
+              Next
+            </Button>
+          ) : (
+            <Button className="flex-1" onClick={submitTest}>
+              Submit Test
+            </Button>
+          )}
+        </div>
+
+        {/* Question Palette */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Question Palette</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-10 gap-2">
+              {questions.map((_, idx) => (
+                <Button
+                  key={idx}
+                  variant={idx === currentQuestionIndex ? "default" : answers[idx] ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentQuestionIndex(idx)}
+                  className="relative"
+                >
+                  {idx + 1}
+                  {flagged.has(idx) && (
+                    <Flag className="h-3 w-3 absolute -top-1 -right-1 text-destructive" />
+                  )}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Results Screen
+  if (testState === 'results') {
+    const score = calculateScore();
+
+    return (
+      <div className="space-y-4">
+        {/* Score Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center flex flex-col items-center gap-2">
+              <Trophy className="h-12 w-12 text-yellow-500" />
+              Test Completed!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="text-4xl font-bold">{score.percentage.toFixed(1)}%</div>
+              <div className="text-muted-foreground">
+                {score.correct} correct out of {score.total} questions
+              </div>
+            </div>
+            <Progress value={score.percentage} className="h-3" />
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => setTestState('setup')}>
+                Retake Test
+              </Button>
+              <Button variant="outline" className="flex-1">
+                Save Results
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Detailed Review */}
+        <div className="space-y-3">
+          {questions.map((question, idx) => {
+            const userAnswer = answers[idx];
+            const isCorrect = userAnswer === question.correct_answer;
+
+            return (
+              <Card key={idx} className={isCorrect ? "border-green-500" : "border-red-500"}>
+                <CardHeader>
+                  <div className="flex items-start gap-2">
+                    {isCorrect ? (
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-1" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 mt-1" />
+                    )}
+                    <div className="flex-1">
+                      <CardTitle className="text-base">Question {idx + 1}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">{question.question_text}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <span className="font-semibold">Your Answer: </span>
+                    <span className={isCorrect ? "text-green-600" : "text-red-600"}>
+                      {userAnswer || "Not answered"}
+                    </span>
+                  </div>
+                  {!isCorrect && (
+                    <div>
+                      <span className="font-semibold">Correct Answer: </span>
+                      <span className="text-green-600">{question.correct_answer}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t">
+                    <span className="font-semibold">Explanation: </span>
+                    <p className="text-sm text-muted-foreground mt-1">{question.explanation}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <p className="text-center text-muted-foreground">No questions available for this topic.</p>
+      </CardContent>
+    </Card>
+  );
+};
