@@ -35,6 +35,37 @@ export default function Settings() {
         <p className="text-muted-foreground">Manage your application settings</p>
       </div>
 
+      {/* Quick Links */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/admin/settings/documentation'}>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <Brain className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Documentation</h3>
+                <p className="text-sm text-muted-foreground">View comprehensive guides</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => window.location.href = '/admin/settings/generate-images'}>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-500/10 rounded-lg">
+                <Sparkles className="h-6 w-6 text-purple-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Generate Images</h3>
+                <p className="text-sm text-muted-foreground">AI image generation for seed data</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>General Settings</CardTitle>

@@ -91,20 +91,29 @@ INSERT INTO batches (id, course_id, name, start_date, end_date, max_students, cu
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Documentation Pages
-INSERT INTO documentation_pages (page_key, title, content, category, subcategory, display_order) VALUES
+INSERT INTO documentation_pages (page_key, title, content, category, subcategory, display_order, is_active) VALUES
   ('api-courses-list', 'Get Course List', 
    E'# Get Course List\n\n## Endpoint\n`GET /api/v1/courses`\n\n## Parameters\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 20)\n- `category` (optional): Filter by category slug\n\n## Response\n```json\n{\n  "data": [...],\n  "page": 1,\n  "limit": 20,\n  "total": 100,\n  "totalPages": 5\n}\n```',
-   'api', 'Courses', 1),
+   'api', 'Courses', 1, true),
   
   ('api-course-detail', 'Get Course Details',
    E'# Get Course Details\n\n## Endpoint\n`GET /api/v1/courses/:id`\n\n## Response\nReturns complete course information including categories, subjects, instructors and FAQs.',
-   'api', 'Courses', 2),
+   'api', 'Courses', 2, true),
+
+  ('api-subjects', 'Subjects API',
+   E'# Subjects API\n\n## Get All Subjects\n`GET /api/v1/subjects`\n\n### Response\n```json\n{\n  "data": [\n    {\n      "id": "uuid",\n      "name": "Physics",\n      "slug": "physics",\n      "description": "...",\n      "thumbnail_url": "...",\n      "is_active": true\n    }\n  ]\n}\n```',
+   'api', 'Subjects', 1, true),
+
+  ('api-instructors', 'Instructors API',
+   E'# Instructors API\n\n## Get All Instructors\n`GET /api/v1/instructors`\n\n### Response\n```json\n{\n  "data": [\n    {\n      "id": "uuid",\n      "full_name": "Dr. John Doe",\n      "email": "...",\n      "subjects": ["Physics", "Chemistry"]\n    }\n  ]\n}\n```',
+   'api', 'Instructors', 1, true),
+
+  ('api-enrollments', 'Enrollments API',
+   E'# Enrollments API\n\n## Get Student Enrollments\n`GET /api/v1/enrollments`\n\nRequires authentication.\n\n### Response\n```json\n{\n  "data": [\n    {\n      "id": "uuid",\n      "course_id": "uuid",\n      "course_name": "...",\n      "batch_name": "...",\n      "enrolled_at": "2025-01-15T10:00:00Z",\n      "expires_at": "2026-01-15T10:00:00Z"\n    }\n  ]\n}\n```',
+   'api', 'Enrollments', 1, true),
   
-  ('inst-courses', 'Managing Courses',
-   E'# Managing Courses\n\n## Creating a New Course\n1. Navigate to Admin > Courses\n2. Click "Add Course" button\n3. Fill in course details in the General tab\n4. Select categories in Categories tab\n5. Add subjects in Subjects tab\n6. Assign instructors in Instructors tab\n7. Set pricing in Pricing tab\n8. Add content structure in Content tab\n9. Add FAQs (or generate with AI)\n10. Click Save\n\n## Tips\n- Use AI to generate course descriptions and FAQs\n- Enable AI tutoring for better student support\n- Set appropriate pricing based on course features',
-   'instruction', 'Courses', 1),
-  
-  ('inst-subjects', 'Managing Subjects',
-   E'# Managing Subjects\n\n## Adding a New Subject\n1. Go to Admin > Subjects\n2. Click "Add Subject"\n3. Enter subject name and description\n4. Generate AI image or upload custom thumbnail\n5. Set display order\n6. Click Save\n\n## Best Practices\n- Use clear, descriptive names\n- Add comprehensive descriptions\n- Generate professional images using AI',
-   'instruction', 'Subjects', 1)
+  -- See full comprehensive documentation at /admin/settings/documentation
+  ('inst-overview', 'Admin Portal Overview',
+   E'# Admin Portal Overview\n\nWelcome to the SimpleLecture Admin Portal. This comprehensive system allows you to manage all aspects of your educational platform.\n\n## Quick Links\n- [Managing Categories](/admin/categories)\n- [Managing Courses](/admin/courses)\n- [Managing Subjects](/admin/popular-subjects)\n- [Question Bank](/admin/question-bank)\n- [Students Management](/admin/users)\n- [Instructor Management](/admin/hr/instructors)\n- [Timetable Management](/admin/hr/timetable)\n\n## Need Help?\nVisit the Documentation section for detailed guides on each feature.',
+   'instruction', 'Getting Started', 1, true)
 ON CONFLICT (page_key) DO NOTHING;

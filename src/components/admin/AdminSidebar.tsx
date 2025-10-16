@@ -331,6 +331,22 @@ export const AdminSidebar = () => {
           <span>Manage Academics</span>
         </NavLink>
 
+        {/* Documentation */}
+        <NavLink
+          to="/admin/settings/documentation"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-medium",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )
+          }
+        >
+          <HelpCircle className="h-4 w-4" />
+          <span>Documentation</span>
+        </NavLink>
+
         {/* Settings */}
         <NavLink
           to="/admin/settings"
