@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentStudent } from "@/hooks/useCurrentStudent";
 import { SEOHead } from "@/components/SEO";
@@ -16,9 +16,11 @@ import { MyTestsTab } from "@/components/student/tabs/MyTestsTab";
 import { AttendanceCalendar } from "@/components/admin/students/AttendanceCalendar";
 import { TimetableTab } from "@/components/admin/students/tabs/TimetableTab";
 import { MyAILearningTab } from "@/components/student/tabs/MyAILearningTab";
+import { MyCoursesTab } from "@/components/student/tabs/MyCoursesTab";
 import { EngagementTab } from "@/components/admin/students/tabs/EngagementTab";
-import { Mail, Phone, Calendar, LogOut, User, BarChart3, FileText, CalendarDays, Clock, Brain, Activity } from "lucide-react";
+import { Mail, Phone, Calendar, LogOut, User, BarChart3, FileText, CalendarDays, Clock, Brain, Activity, ArrowLeft, BookOpen } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -72,32 +74,17 @@ const StudentDashboard = () => {
     <>
       <SEOHead title="My Dashboard | SimpleLecture" description="Student learning dashboard" />
       <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b bg-card">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={student.avatar_url} />
-                  <AvatarFallback>{student.full_name[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h1 className="text-xl font-bold">{student.full_name}</h1>
-                  <p className="text-sm text-muted-foreground">Student ID: {student.id}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <NotificationBell notifications={student.notifications || []} />
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardHeader />
 
         {/* Profile Card */}
         <div className="container mx-auto px-4 py-6">
+          {/* Back to Dashboard Link */}
+          <Link to="/dashboard">
+            <Button variant="outline" className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
@@ -160,6 +147,10 @@ const StudentDashboard = () => {
                 <Clock className="h-4 w-4" />
                 My Timetable
               </TabsTrigger>
+              <TabsTrigger value="courses" className="gap-2">
+                <BookOpen className="h-4 w-4" />
+                My Courses
+              </TabsTrigger>
               <TabsTrigger value="ai-learning" className="gap-2">
                 <Brain className="h-4 w-4" />
                 AI & Learning
@@ -198,6 +189,10 @@ const StudentDashboard = () => {
 
             <TabsContent value="timetable">
               <TimetableTab student={student} />
+            </TabsContent>
+
+            <TabsContent value="courses">
+              <MyCoursesTab student={student} />
             </TabsContent>
 
             <TabsContent value="ai-learning">

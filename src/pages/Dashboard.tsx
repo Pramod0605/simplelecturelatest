@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SEOHead } from '@/components/SEO';
+import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { StudentIDCard } from '@/components/dashboard/StudentIDCard';
 import { SubjectProgressTable } from '@/components/dashboard/SubjectProgressTable';
@@ -38,6 +39,14 @@ const Dashboard = () => {
         <DashboardHeader />
 
         <div className="container mx-auto px-4 py-8 space-y-6">
+          {/* View Detailed Progress Button */}
+          <Link to="/student-dashboard">
+            <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-lg font-semibold shadow-lg">
+              View My Detailed Progress
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+
           {/* Full-width Student ID Card */}
           <StudentIDCard />
 
