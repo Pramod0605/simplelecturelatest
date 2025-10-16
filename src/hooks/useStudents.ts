@@ -33,13 +33,13 @@ export const useStudents = (filters: StudentFilters = {}) => {
         );
       }
 
-      if (filters.course) {
+      if (filters.course && filters.course !== "all") {
         filtered = filtered.filter(s =>
           s.courses.some(c => c.id === filters.course)
         );
       }
 
-      if (filters.status) {
+      if (filters.status && filters.status !== "all") {
         filtered = filtered.filter(s => s.status === filters.status);
       }
 

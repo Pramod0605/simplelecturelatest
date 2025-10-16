@@ -14,8 +14,8 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
   const [isOpen, setIsOpen] = useState(true);
   const [filters, setFilters] = useState({
     search: "",
-    course: "",
-    status: "",
+    course: "all",
+    status: "all",
     enrollmentDateFrom: "",
     enrollmentDateTo: "",
   });
@@ -29,8 +29,8 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
   const handleReset = () => {
     const resetFilters = {
       search: "",
-      course: "",
-      status: "",
+      course: "all",
+      status: "all",
       enrollmentDateFrom: "",
       enrollmentDateTo: "",
     };
@@ -71,7 +71,7 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
                 <SelectValue placeholder="All Courses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Courses</SelectItem>
+                <SelectItem value="all">All Courses</SelectItem>
                 <SelectItem value="course-1">JEE Main 2025 Complete</SelectItem>
                 <SelectItem value="course-2">Advanced Mathematics</SelectItem>
                 <SelectItem value="course-3">NEET 2025 Biology</SelectItem>
@@ -87,7 +87,7 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="at_risk">At Risk</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
