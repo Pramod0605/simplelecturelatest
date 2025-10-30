@@ -57,6 +57,8 @@ export const useAddSubjectInstructor = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subject-instructors", variables.subjectId] });
+      queryClient.invalidateQueries({ queryKey: ["instructor-subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["instructors"] });
       toast({ title: "Success", description: "Instructor added successfully" });
     },
     onError: (error: Error) => {
@@ -91,6 +93,8 @@ export const useRemoveSubjectInstructor = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["subject-instructors", data.subjectId] });
+      queryClient.invalidateQueries({ queryKey: ["instructor-subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["instructors"] });
       toast({ title: "Success", description: "Instructor removed successfully" });
     },
     onError: (error: Error) => {

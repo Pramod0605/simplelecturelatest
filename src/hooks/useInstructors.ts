@@ -157,6 +157,7 @@ export const useUpdateInstructorSubjects = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instructor-subjects'] });
       queryClient.invalidateQueries({ queryKey: ['instructors'] });
+      queryClient.invalidateQueries({ queryKey: ['subject-instructors'] });
       toast.success('Subjects updated successfully');
     },
     onError: (error: any) => {
