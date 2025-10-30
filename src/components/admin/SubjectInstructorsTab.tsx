@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useSubjectInstructors, useAddSubjectInstructor, useRemoveSubjectInstructor } from "@/hooks/useSubjectInstructors";
 import { useInstructors } from "@/hooks/useInstructors";
+import { toast } from "@/hooks/use-toast";
 
 interface SubjectInstructorsTabProps {
   subjectId: string;
@@ -15,8 +17,24 @@ interface SubjectInstructorsTabProps {
 }
 
 export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstructorsTabProps) => {
-  const { data: subjectInstructors, isLoading } = useSubjectInstructors(subjectId);
+  const { data: subjectInstructors, isLoading, error, refetch } = useSubjectInstructors(subjectId);
   const { data: allInstructors } = useInstructors();
+
+  // Show error toast if query fails
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error loading instructors",
+        description: "Failed to fetch subject instructors. Please try again.",
+        variant: "destructive",
+        action: (
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        ),
+      });
+    }
+  }, [error, refetch]);
   const addInstructor = useAddSubjectInstructor();
   const removeInstructor = useRemoveSubjectInstructor();
   
@@ -98,21 +116,29 @@ export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstruc
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Instructor Name</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {subjectInstructors.map((si) => (
                 <TableRow key={si.id}>
                   <TableCell className="font-medium">{si.teacher?.full_name || "N/A"}</TableCell>
-                  <TableCell>{si.teacher?.department?.name || "N/A"}</TableCell>
                   <TableCell>{si.teacher?.email || "N/A"}</TableCell>
                   <TableCell>{si.teacher?.phone_number || "N/A"}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>{si.teacher?.department?.name || "N/A"}</TableCell>
+                  <TableCell>
+                    {si.category ? (
+                      <Badge variant="secondary">{si.category.name}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
