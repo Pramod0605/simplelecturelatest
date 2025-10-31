@@ -9,15 +9,20 @@ export const useCourseInstructors = (courseId?: string) => {
       if (!courseId) return [];
 
       const { data, error } = await supabase
-        .from("course_instructors")
+        .from("instructor_subjects")
         .select(`
           *,
-          teacher:teacher_profiles!course_instructors_teacher_id_fkey (
+          teacher:teacher_profiles!instructor_subjects_instructor_id_fkey (
             id,
             full_name,
-            email
+            email,
+            phone_number,
+            departments (
+              id,
+              name
+            )
           ),
-          subject:popular_subjects (
+          subject:subjects (
             id,
             name
           )
@@ -25,7 +30,7 @@ export const useCourseInstructors = (courseId?: string) => {
         .eq("course_id", courseId);
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!courseId,
   });
@@ -45,13 +50,11 @@ export const useAddCourseInstructor = () => {
       subjectId: string;
     }) => {
       const { data, error } = await supabase
-        .from("course_instructors")
+        .from("instructor_subjects")
         .insert({
           course_id: courseId,
-          teacher_id: instructorId,
+          instructor_id: instructorId,
           subject_id: subjectId,
-          role: "instructor",
-          is_primary: false,
         })
         .select()
         .single();
@@ -61,6 +64,8 @@ export const useAddCourseInstructor = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["course-instructors", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["instructor-subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["instructors"] });
       toast({ title: "Success", description: "Instructor added to course" });
     },
     onError: (error: Error) => {
@@ -85,7 +90,7 @@ export const useRemoveCourseInstructor = () => {
       courseId: string;
     }) => {
       const { error } = await supabase
-        .from("course_instructors")
+        .from("instructor_subjects")
         .delete()
         .eq("id", id);
 
@@ -94,6 +99,8 @@ export const useRemoveCourseInstructor = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["course-instructors", data.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["instructor-subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["instructors"] });
       toast({ title: "Success", description: "Instructor removed from course" });
     },
     onError: (error: Error) => {

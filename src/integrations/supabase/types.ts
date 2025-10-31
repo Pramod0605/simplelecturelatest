@@ -524,58 +524,6 @@ export type Database = {
           },
         ]
       }
-      course_instructors: {
-        Row: {
-          assigned_at: string | null
-          course_id: string
-          id: string
-          is_primary: boolean | null
-          role: string | null
-          subject_id: string | null
-          teacher_id: string
-        }
-        Insert: {
-          assigned_at?: string | null
-          course_id: string
-          id?: string
-          is_primary?: boolean | null
-          role?: string | null
-          subject_id?: string | null
-          teacher_id: string
-        }
-        Update: {
-          assigned_at?: string | null
-          course_id?: string
-          id?: string
-          is_primary?: boolean | null
-          role?: string | null
-          subject_id?: string | null
-          teacher_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_instructors_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_instructors_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "popular_subjects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_instructors_teacher_id_fkey"
-            columns: ["teacher_id"]
-            isOneToOne: false
-            referencedRelation: "teacher_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_subjects: {
         Row: {
           course_id: string
@@ -1173,6 +1121,7 @@ export type Database = {
       instructor_subjects: {
         Row: {
           category_id: string | null
+          course_id: string | null
           created_at: string | null
           id: string
           instructor_id: string | null
@@ -1180,6 +1129,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          course_id?: string | null
           created_at?: string | null
           id?: string
           instructor_id?: string | null
@@ -1187,6 +1137,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          course_id?: string | null
           created_at?: string | null
           id?: string
           instructor_id?: string | null
@@ -1198,6 +1149,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
           {
@@ -2653,14 +2611,8 @@ export type Database = {
         Args: { batch_id: string }
         Returns: undefined
       }
-      refresh_student_analytics: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_student_analytics_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      refresh_student_analytics: { Args: never; Returns: undefined }
+      refresh_student_analytics_cache: { Args: never; Returns: undefined }
     }
     Enums: {
       activity_type:
