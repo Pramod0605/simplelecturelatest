@@ -326,7 +326,7 @@ export default function AcademicsTimetable() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-background z-50">
                                   {courseInstructors?.map((ci) => (
-                                    <SelectItem key={ci.teacher_id} value={ci.teacher_id}>
+                                    <SelectItem key={ci.instructor_id} value={ci.instructor_id}>
                                       {ci.teacher?.full_name || "Unknown"}
                                     </SelectItem>
                                   ))}

@@ -191,10 +191,10 @@ export const CourseInstructorsTab = ({ courseId }: CourseInstructorsTabProps) =>
                   <TableCell>{ci.subject?.name || "N/A"}</TableCell>
                   <TableCell>{ci.teacher?.email || "N/A"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{ci.role || "instructor"}</Badge>
+                    <Badge variant="outline">instructor</Badge>
                   </TableCell>
                   <TableCell>
-                    {ci.is_primary ? <Badge>Primary</Badge> : <Badge variant="secondary">Secondary</Badge>}
+                    <Badge variant="secondary">-</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
