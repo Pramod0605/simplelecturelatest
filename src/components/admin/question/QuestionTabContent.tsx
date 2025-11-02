@@ -10,6 +10,8 @@ import { Sparkles } from "lucide-react";
 interface QuestionTabContentProps {
   formData: any;
   onChange: (field: string, value: any) => void;
+  categories: any[];
+  subjects: any[];
   chapters: any[];
   topics: any[];
   onAIRephrase?: () => void;
@@ -19,6 +21,8 @@ interface QuestionTabContentProps {
 export const QuestionTabContent: React.FC<QuestionTabContentProps> = ({
   formData,
   onChange,
+  categories,
+  subjects,
   chapters,
   topics,
   onAIRephrase,
@@ -26,14 +30,57 @@ export const QuestionTabContent: React.FC<QuestionTabContentProps> = ({
 }) => {
   return (
     <div className="space-y-4">
+      {/* Category Selector */}
+      <div className="space-y-2">
+        <Label>Category *</Label>
+        <Select value={formData.categoryId} onValueChange={(value) => onChange('categoryId', value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select category (e.g., NEET, JEE, Boards)" />
+          </SelectTrigger>
+          <SelectContent className="bg-background z-50">
+            {categories?.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Subject Selector */}
+      <div className="space-y-2">
+        <Label>Subject *</Label>
+        <Select 
+          value={formData.subjectId} 
+          onValueChange={(value) => onChange('subjectId', value)}
+          disabled={!formData.categoryId}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={!formData.categoryId ? "Select category first" : "Select subject"} />
+          </SelectTrigger>
+          <SelectContent className="bg-background z-50">
+            {subjects?.map((subject) => (
+              <SelectItem key={subject.id} value={subject.id}>
+                {subject.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Chapter & Topic in 2-column grid */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Chapter</Label>
-          <Select value={formData.chapter_id} onValueChange={(value) => onChange('chapter_id', value)}>
+          <Label>Chapter *</Label>
+          <Select 
+            value={formData.chapter_id} 
+            onValueChange={(value) => onChange('chapter_id', value)}
+            disabled={!formData.subjectId}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Select chapter" />
+              <SelectValue placeholder={!formData.subjectId ? "Select subject first" : "Select chapter"} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               {chapters?.map((chapter) => (
                 <SelectItem key={chapter.id} value={chapter.id}>
                   {chapter.title}
@@ -44,16 +91,16 @@ export const QuestionTabContent: React.FC<QuestionTabContentProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label>Topic</Label>
+          <Label>Topic *</Label>
           <Select 
             value={formData.topic_id} 
             onValueChange={(value) => onChange('topic_id', value)}
             disabled={!formData.chapter_id}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select topic" />
+              <SelectValue placeholder={!formData.chapter_id ? "Select chapter first" : "Select topic"} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background z-50">
               {topics?.map((topic) => (
                 <SelectItem key={topic.id} value={topic.id}>
                   {topic.title}

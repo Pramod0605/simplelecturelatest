@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateQuestion } from "@/hooks/useSubjectQuestions";
 import { toast } from "sonner";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
-import { useCourses } from "@/hooks/useCourses";
-import { useCourseSubjects } from "@/hooks/useCourseSubjects";
+import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { QuestionTabContent } from "./question/QuestionTabContent";
 import { OptionsTabContent } from "./question/OptionsTabContent";
@@ -22,7 +21,7 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
   const [formData, setFormData] = useState({
     id: "",
     categoryId: "",
-    courseId: "",
+    subjectId: "",
     chapter_id: "",
     topic_id: "",
     question_text: "",
@@ -40,20 +39,34 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
   });
 
   const { data: categories } = useAdminCategories();
-  const { data: allCourses } = useCourses();
-  const { data: courseSubjects } = useCourseSubjects(formData.courseId);
-  const { data: chapters } = useSubjectChapters(courseSubjects?.[0]?.subject_id || "");
+  const { data: allSubjects } = useAdminPopularSubjects();
+  const { data: chapters } = useSubjectChapters(formData.subjectId);
   const { data: topics } = useChapterTopics(formData.chapter_id);
   const createQuestionMutation = useCreateQuestion();
 
-  const courses = allCourses?.filter(course => {
+  // Filter subjects by selected category
+  const subjects = allSubjects?.filter(subject => {
     if (!formData.categoryId) return true;
-    return course.course_categories?.some(cc => cc.category_id === formData.categoryId);
+    return subject.category_id === formData.categoryId;
   });
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
+      
+      // Cascade reset logic - clear dependent fields when parent changes
+      if (field === 'categoryId') {
+        updated.subjectId = "";
+        updated.chapter_id = "";
+        updated.topic_id = "";
+      }
+      if (field === 'subjectId') {
+        updated.chapter_id = "";
+        updated.topic_id = "";
+      }
+      if (field === 'chapter_id') {
+        updated.topic_id = "";
+      }
       
       // Auto-determine question_type based on format
       if (field === 'question_format') {
@@ -85,13 +98,28 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.question_text || !formData.correct_answer) {
-      toast.error("Question text and correct answer are required");
+    if (!formData.categoryId) {
+      toast.error("Please select a category");
+      return;
+    }
+
+    if (!formData.subjectId) {
+      toast.error("Please select a subject");
+      return;
+    }
+
+    if (!formData.chapter_id) {
+      toast.error("Please select a chapter");
       return;
     }
 
     if (!formData.topic_id) {
       toast.error("Please select a topic");
+      return;
+    }
+
+    if (!formData.question_text || !formData.correct_answer) {
+      toast.error("Question text and correct answer are required");
       return;
     }
 
@@ -136,7 +164,7 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
     setFormData({
       id: "",
       categoryId: "",
-      courseId: "",
+      subjectId: "",
       chapter_id: "",
       topic_id: "",
       question_text: "",
@@ -177,6 +205,8 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
               <QuestionTabContent
                 formData={formData}
                 onChange={handleChange}
+                categories={categories || []}
+                subjects={subjects || []}
                 chapters={chapters || []}
                 topics={topics || []}
               />

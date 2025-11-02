@@ -7,6 +7,7 @@ export interface PopularSubject {
   name: string;
   slug: string;
   description?: string;
+  category_id: string;
   display_order: number;
   is_active: boolean;
   created_at: string;
