@@ -29,6 +29,7 @@ import {
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
+// Subject management components
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
 import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTab";
