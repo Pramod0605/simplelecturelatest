@@ -15,17 +15,34 @@ interface QuestionPreviewProps {
 export function QuestionPreview({ question, onEdit, onDelete, onVerify }: QuestionPreviewProps) {
   const [showFullPreview, setShowFullPreview] = useState(false);
 
-  const renderContent = (content: string, containsFormula: boolean) => {
+  const renderContent = (content: string, containsFormula: boolean, images?: string[]) => {
     if (!content) return null;
     
-    // For now, render as-is. In production, you'd parse LaTeX/MathML
+    // Extract image references from text
+    const imagePattern = /\[Image \d+\]/g;
+    const parts = content.split(imagePattern);
+    const imageMatches = content.match(imagePattern) || [];
+    
     return (
-      <div className="prose prose-sm max-w-none">
-        {containsFormula ? (
-          <div className="font-mono bg-muted p-2 rounded text-sm">{content}</div>
-        ) : (
-          <p>{content}</p>
-        )}
+      <div className="prose prose-sm max-w-none space-y-2">
+        {parts.map((part, index) => (
+          <div key={index}>
+            {containsFormula ? (
+              <div className="font-mono bg-muted p-2 rounded text-sm whitespace-pre-wrap">
+                {part.trim()}
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap">{part.trim()}</p>
+            )}
+            {images && images[index] && (
+              <img 
+                src={images[index]} 
+                alt={`Content image ${index + 1}`}
+                className="max-w-full h-auto rounded border my-2"
+              />
+            )}
+          </div>
+        ))}
       </div>
     );
   };
@@ -136,13 +153,10 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
             {/* Question */}
             <div>
               <h4 className="font-semibold mb-2">Question:</h4>
-              {renderContent(question.question_text, question.contains_formula)}
-              {question.question_image_url && (
-                <img 
-                  src={question.question_image_url} 
-                  alt="Question" 
-                  className="mt-2 max-w-full h-auto rounded border"
-                />
+              {renderContent(
+                question.question_text, 
+                question.contains_formula,
+                question.question_image_url ? [question.question_image_url] : []
               )}
             </div>
 
@@ -163,13 +177,10 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
                       <div className="flex items-start gap-2">
                         <span className="font-medium">{key}.</span>
                         <div className="flex-1">
-                          {renderContent(value.text, question.contains_formula)}
-                          {question.option_images?.[key] && (
-                            <img 
-                              src={question.option_images[key]} 
-                              alt={`Option ${key}`} 
-                              className="mt-2 max-w-sm h-auto rounded border"
-                            />
+                          {renderContent(
+                            typeof value === 'string' ? value : value.text, 
+                            question.contains_formula,
+                            question.option_images?.[key] ? [question.option_images[key]] : []
                           )}
                         </div>
                         {key === question.correct_answer && (

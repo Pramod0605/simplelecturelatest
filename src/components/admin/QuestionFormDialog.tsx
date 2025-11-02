@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateQuestion } from "@/hooks/useSubjectQuestions";
 import { toast } from "sonner";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
+import { QuestionTabContent } from "./question/QuestionTabContent";
+import { OptionsTabContent } from "./question/OptionsTabContent";
+import { DetailsTabContent } from "./question/DetailsTabContent";
 
 interface QuestionFormDialogProps {
   isOpen: boolean;
@@ -18,11 +18,13 @@ interface QuestionFormDialogProps {
 }
 
 export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps) {
+  const [activeTab, setActiveTab] = useState("question");
   const [formData, setFormData] = useState({
+    id: "",
     categoryId: "",
     courseId: "",
-    chapterId: "",
-    topicId: "",
+    chapter_id: "",
+    topic_id: "",
     question_text: "",
     question_format: "single_choice",
     question_type: "objective",
@@ -30,17 +32,18 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
     marks: 1,
     correct_answer: "",
     explanation: "",
-    option_a: "",
-    option_b: "",
-    option_c: "",
-    option_d: "",
+    contains_formula: false,
+    options: {} as Record<string, string>,
+    question_images: [] as string[],
+    option_images: {} as Record<string, string[]>,
+    explanation_images: [] as string[],
   });
 
   const { data: categories } = useAdminCategories();
   const { data: allCourses } = useCourses();
   const { data: courseSubjects } = useCourseSubjects(formData.courseId);
   const { data: chapters } = useSubjectChapters(courseSubjects?.[0]?.subject_id || "");
-  const { data: topics } = useChapterTopics(formData.chapterId);
+  const { data: topics } = useChapterTopics(formData.chapter_id);
   const createQuestionMutation = useCreateQuestion();
 
   const courses = allCourses?.filter(course => {
@@ -49,7 +52,34 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
   });
 
   const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-determine question_type based on format
+      if (field === 'question_format') {
+        if (['single_choice', 'multiple_choice', 'true_false'].includes(value)) {
+          updated.question_type = 'objective';
+        } else if (['fill_blank', 'short_answer'].includes(value)) {
+          updated.question_type = 'subjective';
+        }
+      }
+      
+      return updated;
+    });
+  };
+
+  const handleOptionChange = (option: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      options: { ...prev.options, [option]: value }
+    }));
+  };
+
+  const handleOptionImageChange = (option: string, images: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      option_images: { ...prev.option_images, [option]: images }
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,13 +90,23 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
       return;
     }
 
-    const options: any = {};
-    if (formData.option_a) options.A = formData.option_a;
-    if (formData.option_b) options.B = formData.option_b;
-    if (formData.option_c) options.C = formData.option_c;
-    if (formData.option_d) options.D = formData.option_d;
+    if (!formData.topic_id) {
+      toast.error("Please select a topic");
+      return;
+    }
 
     try {
+      // Get primary image URL from images array
+      const question_image_url = formData.question_images?.[0] || null;
+      
+      // Convert option_images arrays to single URLs (first image of each)
+      const option_images_obj: Record<string, string> = {};
+      Object.entries(formData.option_images || {}).forEach(([key, images]) => {
+        if (images && images.length > 0) {
+          option_images_obj[key] = images[0];
+        }
+      });
+
       await createQuestionMutation.mutateAsync({
         question_text: formData.question_text,
         question_format: formData.question_format,
@@ -75,11 +115,13 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
         marks: formData.marks,
         correct_answer: formData.correct_answer.toUpperCase(),
         explanation: formData.explanation || null,
-        options: Object.keys(options).length > 0 ? options : null,
-        topic_id: formData.topicId || null,
+        options: Object.keys(formData.options).length > 0 ? formData.options : null,
+        topic_id: formData.topic_id,
         is_verified: false,
         is_ai_generated: false,
-        contains_formula: false,
+        contains_formula: formData.contains_formula,
+        question_image_url,
+        option_images: Object.keys(option_images_obj).length > 0 ? option_images_obj : null,
       });
 
       toast.success("Question created successfully");
@@ -92,10 +134,11 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
 
   const resetForm = () => {
     setFormData({
+      id: "",
       categoryId: "",
       courseId: "",
-      chapterId: "",
-      topicId: "",
+      chapter_id: "",
+      topic_id: "",
       question_text: "",
       question_format: "single_choice",
       question_type: "objective",
@@ -103,191 +146,67 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
       marks: 1,
       correct_answer: "",
       explanation: "",
-      option_a: "",
-      option_b: "",
-      option_c: "",
-      option_d: "",
+      contains_formula: false,
+      options: {},
+      question_images: [],
+      option_images: {},
+      explanation_images: [],
     });
+    setActiveTab("question");
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Question</DialogTitle>
-          <DialogDescription>Create a new question for the question bank</DialogDescription>
+          <DialogDescription>
+            Create a new question with rich content and image support
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Category & Course */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={formData.categoryId} onValueChange={(v) => handleChange("categoryId", v)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {categories?.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="question">Question</TabsTrigger>
+              <TabsTrigger value="options">Options</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
+            </TabsList>
 
-            <div className="space-y-2">
-              <Label>Course *</Label>
-              <Select value={formData.courseId} onValueChange={(v) => handleChange("courseId", v)} disabled={!formData.categoryId}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select course" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {courses?.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Chapter & Topic */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Chapter (Optional)</Label>
-              <Select value={formData.chapterId} onValueChange={(v) => handleChange("chapterId", v)} disabled={!formData.courseId}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select chapter" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {chapters?.map((ch) => (
-                    <SelectItem key={ch.id} value={ch.id}>{ch.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Topic (Optional)</Label>
-              <Select value={formData.topicId} onValueChange={(v) => handleChange("topicId", v)} disabled={!formData.chapterId}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select topic" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {topics?.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Question Text */}
-          <div className="space-y-2">
-            <Label>Question Text *</Label>
-            <Textarea
-              value={formData.question_text}
-              onChange={(e) => handleChange("question_text", e.target.value)}
-              placeholder="Enter the question"
-              rows={3}
-            />
-          </div>
-
-          {/* Format, Type, Difficulty, Marks */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Format</Label>
-              <Select value={formData.question_format} onValueChange={(v) => handleChange("question_format", v)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="single_choice">Single Choice</SelectItem>
-                  <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                  <SelectItem value="true_false">True/False</SelectItem>
-                  <SelectItem value="fill_blank">Fill Blank</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={formData.question_type} onValueChange={(v) => handleChange("question_type", v)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="objective">Objective</SelectItem>
-                  <SelectItem value="subjective">Subjective</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Difficulty</Label>
-              <Select value={formData.difficulty} onValueChange={(v) => handleChange("difficulty", v)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Marks</Label>
-              <Input
-                type="number"
-                value={formData.marks}
-                onChange={(e) => handleChange("marks", parseInt(e.target.value))}
-                min={1}
+            <TabsContent value="question" className="space-y-4 mt-4">
+              <QuestionTabContent
+                formData={formData}
+                onChange={handleChange}
+                chapters={chapters || []}
+                topics={topics || []}
               />
-            </div>
-          </div>
+            </TabsContent>
 
-          {/* Options */}
-          {formData.question_format !== "fill_blank" && (
-            <div className="space-y-2">
-              <Label>Options</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Input placeholder="Option A" value={formData.option_a} onChange={(e) => handleChange("option_a", e.target.value)} />
-                <Input placeholder="Option B" value={formData.option_b} onChange={(e) => handleChange("option_b", e.target.value)} />
-                <Input placeholder="Option C" value={formData.option_c} onChange={(e) => handleChange("option_c", e.target.value)} />
-                <Input placeholder="Option D" value={formData.option_d} onChange={(e) => handleChange("option_d", e.target.value)} />
-              </div>
-            </div>
-          )}
+            <TabsContent value="options" className="space-y-4 mt-4">
+              <OptionsTabContent
+                formData={formData}
+                onChange={handleChange}
+                onOptionChange={handleOptionChange}
+                onOptionImageChange={handleOptionImageChange}
+              />
+            </TabsContent>
 
-          {/* Correct Answer */}
-          <div className="space-y-2">
-            <Label>Correct Answer *</Label>
-            <Input
-              value={formData.correct_answer}
-              onChange={(e) => handleChange("correct_answer", e.target.value)}
-              placeholder="e.g., A or B,C for multiple choice"
-            />
-          </div>
+            <TabsContent value="details" className="space-y-4 mt-4">
+              <DetailsTabContent
+                formData={formData}
+                onChange={handleChange}
+              />
+            </TabsContent>
+          </Tabs>
 
-          {/* Explanation */}
-          <div className="space-y-2">
-            <Label>Explanation (Optional)</Label>
-            <Textarea
-              value={formData.explanation}
-              onChange={(e) => handleChange("explanation", e.target.value)}
-              placeholder="Explain the correct answer"
-              rows={2}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createQuestionMutation.isPending}>
               {createQuestionMutation.isPending ? "Creating..." : "Create Question"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

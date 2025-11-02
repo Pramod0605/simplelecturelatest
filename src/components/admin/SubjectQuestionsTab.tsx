@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -13,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Upload, Brain, Sparkles, Trash2, Edit, Loader2, Image as ImageIcon } from "lucide-react";
+import { Plus, Upload, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -36,19 +35,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   useSubjectQuestions,
   useCreateQuestion,
   useUpdateQuestion,
   useDeleteQuestion,
-  useUploadQuestionImage,
   useBulkImportQuestions,
   useBulkVerifyQuestions,
   useBulkDeleteQuestions,
@@ -57,8 +47,7 @@ import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManageme
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { ExcelImportModal } from "./ExcelImportModal";
-import { FormulaEditor } from "./FormulaEditor";
-import { ImageUploadWidget } from "./ImageUploadWidget";
+import { RichContentEditor } from "./question/RichContentEditor";
 import { QuestionFilters } from "./QuestionFilters";
 import { QuestionPreview } from "./QuestionPreview";
 import { BulkActionsBar } from "./BulkActionsBar";
@@ -107,8 +96,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     marks: 1,
     contains_formula: false,
     formula_type: "plain" as "plain" | "latex" | "accounting",
-    question_image_url: "",
-    option_images: {} as Record<string, string>,
+    question_images: [] as string[],
+    option_images: {} as Record<string, string[]>,
+    explanation_images: [] as string[],
   });
 
   const { data: chapters } = useSubjectChapters(subjectId);
@@ -126,7 +116,6 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const createQuestion = useCreateQuestion();
   const updateQuestion = useUpdateQuestion();
   const deleteQuestion = useDeleteQuestion();
-  const uploadImage = useUploadQuestionImage();
   const bulkImport = useBulkImportQuestions();
   const bulkVerify = useBulkVerifyQuestions();
   const bulkDelete = useBulkDeleteQuestions();
@@ -250,8 +239,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       marks: 1,
       contains_formula: false,
       formula_type: "plain",
-      question_image_url: "",
+      question_images: [],
       option_images: {},
+      explanation_images: [],
     });
   };
 
@@ -298,6 +288,22 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       question_type: questionForm.question_format,
       question_format: questionForm.question_format,
       options: questionForm.options,
+      correct_answer: questionForm.correct_answer.toUpperCase(),
+      explanation: questionForm.explanation || "",
+      marks: questionForm.marks,
+      difficulty: questionForm.difficulty,
+      is_verified: false,
+      is_ai_generated: false,
+      contains_formula: questionForm.contains_formula,
+      formula_type: questionForm.formula_type,
+      question_image_url: questionForm.question_images?.[0] || null,
+      option_images: Object.entries(questionForm.option_images || {}).reduce((acc, [key, images]) => {
+        if (images && images.length > 0) {
+          acc[key] = images[0];
+        }
+        return acc;
+      }, {} as Record<string, string>),
+    };
       correct_answer: questionForm.correct_answer,
       explanation: questionForm.explanation?.trim() || null,
       marks: questionForm.marks,
