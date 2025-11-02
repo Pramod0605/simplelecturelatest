@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Upload, Loader2 } from "lucide-react";
+import { Plus, Upload, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -304,19 +304,6 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
         return acc;
       }, {} as Record<string, string>),
     };
-      correct_answer: questionForm.correct_answer,
-      explanation: questionForm.explanation?.trim() || null,
-      marks: questionForm.marks,
-      difficulty: questionForm.difficulty,
-      is_verified: false,
-      is_ai_generated: false,
-      contains_formula: questionForm.contains_formula,
-      formula_type: questionForm.contains_formula ? questionForm.formula_type : null,
-      question_image_url: questionForm.question_image_url || null,
-      option_images: Object.keys(questionForm.option_images).length > 0 
-        ? questionForm.option_images 
-        : null,
-    };
 
     console.log("Final question data to be inserted:", questionData);
 
@@ -387,11 +374,14 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       marks: questionForm.marks,
       difficulty: questionForm.difficulty,
       contains_formula: questionForm.contains_formula,
-      formula_type: questionForm.contains_formula ? questionForm.formula_type : null,
-      question_image_url: questionForm.question_image_url || null,
-      option_images: Object.keys(questionForm.option_images).length > 0 
-        ? questionForm.option_images 
-        : null,
+      formula_type: questionForm.formula_type,
+      question_image_url: questionForm.question_images?.[0] || null,
+      option_images: Object.entries(questionForm.option_images || {}).reduce((acc, [key, images]) => {
+        if (images && images.length > 0) {
+          acc[key] = images[0];
+        }
+        return acc;
+      }, {} as Record<string, string>),
     };
 
     console.log("Updates to be applied:", updates);
@@ -449,30 +439,6 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       rephraseCallback(rephrasedText);
     }
     setRephraseModalOpen(false);
-  };
-
-  const handleQuestionImageUpload = async (file: File) => {
-    const url = await uploadImage.mutateAsync({
-      file,
-      questionId: editingQuestion?.id || `temp-${Date.now()}`,
-    });
-    setQuestionForm({ ...questionForm, question_image_url: url });
-    return url;
-  };
-
-  const handleOptionImageUpload = async (file: File, optionKey: string) => {
-    const url = await uploadImage.mutateAsync({
-      file,
-      questionId: editingQuestion?.id || `temp-${Date.now()}`,
-    });
-    setQuestionForm({
-      ...questionForm,
-      option_images: {
-        ...questionForm.option_images,
-        [optionKey]: url,
-      },
-    });
-    return url;
   };
 
   const handleExcelImport = async (file: File) => {
@@ -552,12 +518,11 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                   )}
                 </div>
                 {questionForm.contains_formula ? (
-                  <FormulaEditor
+                  <RichContentEditor
                     value={questionForm.options[optionKey]?.text || ""}
-                    onChange={(value, type) =>
+                    onChange={(value) =>
                       setQuestionForm({
                         ...questionForm,
-                        formula_type: type,
                         options: {
                           ...questionForm.options,
                           [optionKey]: {
@@ -567,37 +532,53 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                         },
                       })
                     }
-                    formulaType={questionForm.formula_type}
+                    onImagesChange={(images) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        option_images: {
+                          ...questionForm.option_images,
+                          [optionKey]: images,
+                        },
+                      })
+                    }
+                    placeholder={`Enter option ${optionKey} text...`}
+                    showFormulaSupport={questionForm.contains_formula}
+                    allowImagePaste={true}
+                    questionId={editingQuestion?.id || 'new'}
+                    imageType={`option_${optionKey.toLowerCase()}` as any}
+                    currentImages={questionForm.option_images[optionKey] || []}
                   />
                 ) : (
-                  <Input
-                    placeholder={`Enter option ${optionKey}`}
+                  <RichContentEditor
                     value={questionForm.options[optionKey]?.text || ""}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setQuestionForm({
                         ...questionForm,
                         options: {
                           ...questionForm.options,
                           [optionKey]: {
                             ...questionForm.options[optionKey],
-                            text: e.target.value,
+                            text: value,
                           },
                         },
                       })
                     }
+                    onImagesChange={(images) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        option_images: {
+                          ...questionForm.option_images,
+                          [optionKey]: images,
+                        },
+                      })
+                    }
+                    placeholder={`Enter option ${optionKey} text...`}
+                    allowImagePaste={true}
+                    questionId={editingQuestion?.id || 'new'}
+                    imageType={`option_${optionKey.toLowerCase()}` as any}
+                    currentImages={questionForm.option_images[optionKey] || []}
                   />
                 )}
-                <ImageUploadWidget
-                  label={`Option ${optionKey} Image (Optional)`}
-                  value={questionForm.option_images[optionKey]}
-                  onChange={(url) => {
-                    if (!url) {
-                      const { [optionKey]: removed, ...rest } = questionForm.option_images;
-                      setQuestionForm({ ...questionForm, option_images: rest });
-                    }
-                  }}
-                  onFileSelect={(file) => handleOptionImageUpload(file, optionKey)}
-                />
               </div>
             ))}
           </div>
@@ -628,12 +609,18 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
           <div className="space-y-2">
             <Label>Correct Answer</Label>
             {questionForm.contains_formula ? (
-              <FormulaEditor
+              <RichContentEditor
                 value={questionForm.correct_answer}
-                onChange={(value, type) =>
-                  setQuestionForm({ ...questionForm, correct_answer: value, formula_type: type })
+                onChange={(value) =>
+                  setQuestionForm({ ...questionForm, correct_answer: value })
                 }
-                formulaType={questionForm.formula_type}
+                placeholder={
+                  questionForm.question_format === "numerical"
+                    ? "Enter numerical answer (e.g., 42)"
+                    : "Enter the correct answer"
+                }
+                showFormulaSupport={true}
+                allowImagePaste={false}
               />
             ) : (
               <Input
@@ -656,13 +643,14 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
         return (
           <div className="space-y-2">
             <Label>Model Answer / Key Points</Label>
-            <Textarea
-              placeholder="Enter model answer or key points for evaluation..."
-              rows={4}
+            <RichContentEditor
               value={questionForm.correct_answer}
-              onChange={(e) =>
-                setQuestionForm({ ...questionForm, correct_answer: e.target.value })
+              onChange={(value) =>
+                setQuestionForm({ ...questionForm, correct_answer: value })
               }
+              placeholder="Enter model answer or key points for evaluation..."
+              showFormulaSupport={questionForm.contains_formula}
+              allowImagePaste={false}
             />
           </div>
         );
@@ -827,38 +815,41 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                           </Button>
                         </div>
                         {questionForm.contains_formula ? (
-                          <FormulaEditor
+                          <RichContentEditor
                             value={questionForm.question_text}
-                            onChange={(value, type) =>
+                            onChange={(value) =>
                               setQuestionForm({
                                 ...questionForm,
                                 question_text: value,
-                                formula_type: type,
                               })
                             }
-                            formulaType={questionForm.formula_type}
+                            onImagesChange={(images) =>
+                              setQuestionForm({ ...questionForm, question_images: images })
+                            }
+                            placeholder="Enter your question..."
+                            showFormulaSupport={true}
+                            allowImagePaste={true}
+                            questionId={editingQuestion?.id || 'new'}
+                            imageType="question"
+                            currentImages={questionForm.question_images}
                           />
                         ) : (
-                          <Textarea
-                            placeholder="Enter your question..."
-                            rows={4}
+                          <RichContentEditor
                             value={questionForm.question_text}
-                            onChange={(e) =>
-                              setQuestionForm({ ...questionForm, question_text: e.target.value })
+                            onChange={(value) =>
+                              setQuestionForm({ ...questionForm, question_text: value })
                             }
+                            onImagesChange={(images) =>
+                              setQuestionForm({ ...questionForm, question_images: images })
+                            }
+                            placeholder="Enter your question... You can paste images directly!"
+                            allowImagePaste={true}
+                            questionId={editingQuestion?.id || 'new'}
+                            imageType="question"
+                            currentImages={questionForm.question_images}
                           />
                         )}
                       </div>
-
-                      {/* Question Image */}
-                      <ImageUploadWidget
-                        label="Question Image (Optional)"
-                        value={questionForm.question_image_url}
-                        onChange={(url) =>
-                          setQuestionForm({ ...questionForm, question_image_url: url || "" })
-                        }
-                        onFileSelect={handleQuestionImageUpload}
-                      />
                     </TabsContent>
 
                     <TabsContent value="options" className="space-y-4">
@@ -887,21 +878,35 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                           </Button>
                         </div>
                         {questionForm.contains_formula ? (
-                          <FormulaEditor
+                          <RichContentEditor
                             value={questionForm.explanation}
-                            onChange={(value, type) =>
-                              setQuestionForm({ ...questionForm, explanation: value, formula_type: type })
+                            onChange={(value) =>
+                              setQuestionForm({ ...questionForm, explanation: value })
                             }
-                            formulaType={questionForm.formula_type}
+                            onImagesChange={(images) =>
+                              setQuestionForm({ ...questionForm, explanation_images: images })
+                            }
+                            placeholder="Provide detailed explanation for the answer..."
+                            showFormulaSupport={true}
+                            allowImagePaste={true}
+                            questionId={editingQuestion?.id || 'new'}
+                            imageType="explanation"
+                            currentImages={questionForm.explanation_images}
                           />
                         ) : (
-                          <Textarea
-                            placeholder="Provide detailed explanation for the answer..."
-                            rows={4}
+                          <RichContentEditor
                             value={questionForm.explanation}
-                            onChange={(e) =>
-                              setQuestionForm({ ...questionForm, explanation: e.target.value })
+                            onChange={(value) =>
+                              setQuestionForm({ ...questionForm, explanation: value })
                             }
+                            onImagesChange={(images) =>
+                              setQuestionForm({ ...questionForm, explanation_images: images })
+                            }
+                            placeholder="Provide detailed explanation for the answer..."
+                            allowImagePaste={true}
+                            questionId={editingQuestion?.id || 'new'}
+                            imageType="explanation"
+                            currentImages={questionForm.explanation_images}
                           />
                         )}
                       </div>
