@@ -40,7 +40,7 @@ export const QuestionTabContent: React.FC<QuestionTabContentProps> = ({
           <SelectContent className="bg-background z-50">
             {categories?.map((category) => (
               <SelectItem key={category.id} value={category.id}>
-                {category.name}
+                {(category as any).display_name || category.name}
               </SelectItem>
             ))}
           </SelectContent>

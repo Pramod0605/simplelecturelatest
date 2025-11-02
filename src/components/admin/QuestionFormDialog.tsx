@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCreateQuestion } from "@/hooks/useSubjectQuestions";
 import { toast } from "sonner";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { QuestionTabContent } from "./question/QuestionTabContent";
@@ -38,7 +38,7 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
     explanation_images: [] as string[],
   });
 
-  const { data: categories } = useAdminCategories();
+  const { data: categories } = useCategoriesWithSubjects();
   const { data: allSubjects } = useAdminPopularSubjects();
   const { data: chapters } = useSubjectChapters(formData.subjectId);
   const { data: topics } = useChapterTopics(formData.chapter_id);
