@@ -28,11 +28,7 @@ import {
   useCreateSubject,
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
-import {
-  useAllCategoriesHierarchy,
-  useSubjectCategories,
-  useUpdateSubjectCategories,
-} from "@/hooks/useSubjectManagement";
+import { useAdminCategories } from "@/hooks/useAdminCategories";
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
 import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTab";
