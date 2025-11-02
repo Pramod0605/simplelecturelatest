@@ -68,7 +68,7 @@ export const OptionsTabContent: React.FC<OptionsTabContentProps> = ({
         <div key={option} className="space-y-2 p-4 border rounded-lg">
           <div className="flex items-center justify-between">
             <Label className="text-lg font-semibold">Option {option}</Label>
-            {isMultipleChoice ? (
+            {isMultipleChoice && (
               <Checkbox
                 checked={formData.correct_answer?.includes(option) || false}
                 onCheckedChange={(checked) => {
@@ -78,12 +78,6 @@ export const OptionsTabContent: React.FC<OptionsTabContentProps> = ({
                     : currentAnswers.filter((a: string) => a !== option);
                   onChange('correct_answer', newAnswers.join(','));
                 }}
-              />
-            ) : (
-              <RadioGroupItem
-                value={option}
-                checked={formData.correct_answer === option}
-                onClick={() => onChange('correct_answer', option)}
               />
             )}
           </div>
