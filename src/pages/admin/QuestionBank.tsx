@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Download, Upload } from "lucide-react";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
+import { useAdminCategories } from "@/hooks/useAdminCategories";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubjectQuestions } from "@/hooks/useSubjectQuestions";
 import { QuestionPreview } from "@/components/admin/QuestionPreview";
@@ -18,6 +19,7 @@ import * as XLSX from 'xlsx';
 
 export default function QuestionBank() {
   // State for filters and search
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedChapter, setSelectedChapter] = useState<string>("all");
   const [selectedTopic, setSelectedTopic] = useState<string>("all");
@@ -27,12 +29,19 @@ export default function QuestionBank() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
 
+  const { data: categories } = useAdminCategories();
   const { data: subjects } = useAdminPopularSubjects();
   const { data: chapters } = useSubjectChapters(selectedSubject !== "all" ? selectedSubject : undefined);
   const { data: topics } = useChapterTopics(selectedChapter !== "all" ? selectedChapter : undefined);
 
   // Prepare filters for questions query
   const questionFilters: any = {};
+  if (selectedCategory !== "all") {
+    questionFilters.categoryId = selectedCategory;
+  }
+  if (selectedSubject !== "all") {
+    questionFilters.subjectId = selectedSubject;
+  }
   if (selectedTopic !== "all") {
     questionFilters.topicId = selectedTopic;
   } else if (selectedChapter !== "all") {
@@ -56,6 +65,7 @@ export default function QuestionBank() {
   });
 
   const activeFilterCount = [
+    selectedCategory !== "all",
     selectedSubject !== "all",
     selectedChapter !== "all",
     selectedTopic !== "all",
@@ -65,6 +75,7 @@ export default function QuestionBank() {
   ].filter(Boolean).length;
 
   const handleClearFilters = () => {
+    setSelectedCategory("all");
     setSelectedSubject("all");
     setSelectedChapter("all");
     setSelectedTopic("all");
@@ -149,7 +160,7 @@ export default function QuestionBank() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
               <div className="space-y-2">
                 <Label>Search</Label>
                 <Input
@@ -160,12 +171,33 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2">
-                <Label>Subject</Label>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <Label>Category</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories?.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Subject</Label>
+                <Select 
+                  value={selectedSubject} 
+                  onValueChange={setSelectedSubject}
+                  disabled={selectedCategory === "all"}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
                     <SelectItem value="all">All Subjects</SelectItem>
                     {subjects?.map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>

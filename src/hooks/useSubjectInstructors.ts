@@ -12,7 +12,7 @@ export const useSubjectInstructors = (subjectId?: string) => {
         // Step 1: Get instructor_subjects rows
         const { data: instructorSubjects, error: isError } = await supabase
           .from("instructor_subjects")
-          .select("id, instructor_id, subject_id, category_id, created_at")
+          .select("id, instructor_id, subject_id, created_at")
           .eq("subject_id", subjectId);
 
         if (isError) throw isError;
@@ -39,24 +39,9 @@ export const useSubjectInstructors = (subjectId?: string) => {
 
         if (teachersError) throw teachersError;
 
-        // Step 4: Get categories if any
-        const categoryIds = [...new Set(instructorSubjects.map(row => row.category_id).filter(Boolean))];
-        let categories = [];
-        if (categoryIds.length > 0) {
-          const { data: cats, error: catsError } = await supabase
-            .from("categories")
-            .select("id, name")
-            .in("id", categoryIds);
-          
-          if (!catsError && cats) {
-            categories = cats;
-          }
-        }
-
-        // Step 5: Map the data to expected shape
+        // Step 4: Map the data to expected shape
         return instructorSubjects.map(is => {
           const teacher = teachers?.find(t => t.id === is.instructor_id);
-          const category = categories.find(c => c.id === is.category_id);
           
           return {
             ...is,
@@ -66,8 +51,7 @@ export const useSubjectInstructors = (subjectId?: string) => {
               email: teacher.email,
               phone_number: teacher.phone_number,
               department: teacher.departments
-            } : null,
-            category: category || null
+            } : null
           };
         });
       } catch (error) {

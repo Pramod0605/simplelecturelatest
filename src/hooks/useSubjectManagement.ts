@@ -59,13 +59,23 @@ export const useSubjectCategories = (subjectId?: string) => {
     queryFn: async () => {
       if (!subjectId) return [];
       
-      const { data, error } = await supabase
-        .from("subject_categories")
-        .select("*, categories(*)")
-        .eq("subject_id", subjectId);
+      const { data: subject, error } = await supabase
+        .from("popular_subjects")
+        .select("category_id, categories(id, name)")
+        .eq("id", subjectId)
+        .single();
 
       if (error) throw error;
-      return data as SubjectCategory[];
+      
+      if (subject?.category_id) {
+        return [{
+          subject_id: subjectId,
+          category_id: subject.category_id,
+          categories: (subject as any).categories
+        }];
+      }
+      
+      return [];
     },
     enabled: !!subjectId,
   });
@@ -117,32 +127,24 @@ export const useUpdateSubjectCategories = () => {
       subjectId: string;
       categoryIds: string[];
     }) => {
-      // Delete existing categories
-      await supabase
-        .from("subject_categories")
-        .delete()
-        .eq("subject_id", subjectId);
-
-      // Insert new categories
-      if (categoryIds.length > 0) {
-        const { error } = await supabase
-          .from("subject_categories")
-          .insert(
-            categoryIds.map(categoryId => ({
-              subject_id: subjectId,
-              category_id: categoryId,
-            }))
-          );
-
-        if (error) throw error;
+      if (categoryIds.length === 0) {
+        throw new Error("Please select a category");
       }
+      
+      const { error } = await supabase
+        .from("popular_subjects")
+        .update({ category_id: categoryIds[0] })
+        .eq("id", subjectId);
+
+      if (error) throw error;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subject-categories", variables.subjectId] });
-      toast({ title: "Success", description: "Subject categories updated" });
+      queryClient.invalidateQueries({ queryKey: ["admin-popular-subjects"] });
+      toast({ title: "Success", description: "Category updated" });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: "Failed to update categories: " + error.message, variant: "destructive" });
+      toast({ title: "Error", description: "Failed to update category: " + error.message, variant: "destructive" });
     },
   });
 };

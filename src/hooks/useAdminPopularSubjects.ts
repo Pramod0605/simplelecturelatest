@@ -52,7 +52,7 @@ export const useCreateSubject = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (subject: Omit<PopularSubject, "id" | "created_at" | "updated_at">) => {
+    mutationFn: async (subject: Omit<PopularSubject, "id" | "created_at" | "updated_at"> & { category_id: string }) => {
       const { data, error } = await supabase
         .from("popular_subjects")
         .insert(subject)

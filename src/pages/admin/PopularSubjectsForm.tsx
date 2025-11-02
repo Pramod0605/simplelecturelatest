@@ -18,16 +18,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ArrowLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useAdminSubject,
   useCreateSubject,
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
+import { useAdminCategories } from "@/hooks/useAdminCategories";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens only"),
   description: z.string().max(500).optional(),
+  category_id: z.string().min(1, "Category is required"),
   display_order: z.number().int().min(0).default(0),
   is_active: z.boolean().default(true),
 });
@@ -42,6 +45,7 @@ export default function PopularSubjectsForm() {
   const { data: subject } = useAdminSubject(id);
   const createSubject = useCreateSubject();
   const updateSubject = useUpdateSubject();
+  const { data: categories } = useAdminCategories();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -49,6 +53,7 @@ export default function PopularSubjectsForm() {
       name: "",
       slug: "",
       description: "",
+      category_id: "",
       display_order: 0,
       is_active: true,
     },
@@ -56,10 +61,12 @@ export default function PopularSubjectsForm() {
 
   useEffect(() => {
     if (subject) {
+      const subjectData = subject as any;
       form.reset({
         name: subject.name,
         slug: subject.slug,
         description: subject.description || "",
+        category_id: subjectData.category_id || "",
         display_order: subject.display_order,
         is_active: subject.is_active,
       });
@@ -140,6 +147,34 @@ export default function PopularSubjectsForm() {
                     </FormControl>
                     <FormDescription>
                       URL-friendly identifier
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-background z-50">
+                        {categories?.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Choose the primary category for this subject
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

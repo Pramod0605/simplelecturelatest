@@ -120,7 +120,6 @@ export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstruc
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Department</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -131,13 +130,6 @@ export const SubjectInstructorsTab = ({ subjectId, subjectName }: SubjectInstruc
                   <TableCell>{si.teacher?.email || "N/A"}</TableCell>
                   <TableCell>{si.teacher?.phone_number || "N/A"}</TableCell>
                   <TableCell>{si.teacher?.department?.name || "N/A"}</TableCell>
-                  <TableCell>
-                    {si.category ? (
-                      <Badge variant="secondary">{si.category.name}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
-                  </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"

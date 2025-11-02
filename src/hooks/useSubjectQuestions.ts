@@ -26,6 +26,7 @@ export interface SubjectQuestion {
 
 export const useSubjectQuestions = (filters?: {
   subjectId?: string;
+  categoryId?: string;
   topicId?: string;
   chapterId?: string;
   difficulty?: string;
@@ -37,10 +38,47 @@ export const useSubjectQuestions = (filters?: {
     queryFn: async () => {
       let query = supabase
         .from("questions")
-        .select("*, subject_topics(*, subject_chapters(subject_id))");
+        .select(`
+          *,
+          subject_topics!inner(
+            id,
+            title,
+            chapter_id,
+            subject_chapters!inner(
+              id,
+              title,
+              subject_id,
+              popular_subjects!inner(
+                id,
+                name,
+                category_id,
+                categories!inner(
+                  id,
+                  name
+                )
+              )
+            )
+          )
+        `);
 
+      // Filter by subject
+      if (filters?.subjectId) {
+        query = query.eq('subject_topics.subject_chapters.subject_id', filters.subjectId);
+      }
+
+      // Filter by category
+      if (filters?.categoryId) {
+        query = query.eq('subject_topics.subject_chapters.popular_subjects.category_id', filters.categoryId);
+      }
+
+      // Filter by topic
       if (filters?.topicId) {
         query = query.eq("topic_id", filters.topicId);
+      }
+
+      // Filter by chapter
+      if (filters?.chapterId) {
+        query = query.eq("subject_topics.chapter_id", filters.chapterId);
       }
 
       if (filters?.difficulty) {
@@ -58,17 +96,8 @@ export const useSubjectQuestions = (filters?: {
       const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
-
-      // Filter by subjectId if provided (through chapter relationship)
-      if (filters?.subjectId) {
-        return (data as any[]).filter(
-          (q) => q.subject_topics?.subject_chapters?.subject_id === filters.subjectId
-        );
-      }
-
       return data as SubjectQuestion[];
     },
-    enabled: !!(filters?.subjectId || filters?.topicId || filters?.chapterId),
   });
 };
 

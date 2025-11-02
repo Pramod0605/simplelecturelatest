@@ -19,8 +19,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BookOpen, List, Brain, FileText, Tag, Users, GraduationCap, ArrowLeft } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
 import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
 import {
@@ -44,6 +44,7 @@ const formSchema = z.object({
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens only"),
   description: z.string().max(500).optional(),
   thumbnail_url: z.string().optional(),
+  category_id: z.string().min(1, "Category is required"),
   display_order: z.number().int().min(0).default(0),
   is_active: z.boolean().default(true),
 });
@@ -55,14 +56,11 @@ export default function SubjectForm() {
   const { id } = useParams();
   const isEdit = !!id;
   const [activeTab, setActiveTab] = useState("basic");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const { data: subject } = useAdminSubject(id);
   const createSubject = useCreateSubject();
   const updateSubject = useUpdateSubject();
-  const { data: allCategories } = useAllCategoriesHierarchy();
-  const { data: subjectCategories } = useSubjectCategories(id);
-  const updateCategories = useUpdateSubjectCategories();
+  const { data: categories } = useAdminCategories();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -71,6 +69,7 @@ export default function SubjectForm() {
       slug: "",
       description: "",
       thumbnail_url: "",
+      category_id: "",
       display_order: 0,
       is_active: true,
     },
@@ -78,23 +77,18 @@ export default function SubjectForm() {
 
   useEffect(() => {
     if (subject) {
-      const subjectData = subject as any; // Type assertion for new fields not yet in generated types
+      const subjectData = subject as any;
       form.reset({
         name: subject.name,
         slug: subject.slug,
         description: subject.description || "",
         thumbnail_url: subjectData.thumbnail_url || "",
+        category_id: subjectData.category_id || "",
         display_order: subject.display_order,
         is_active: subject.is_active,
       });
     }
   }, [subject, form]);
-
-  useEffect(() => {
-    if (subjectCategories) {
-      setSelectedCategories(subjectCategories.map((sc) => sc.category_id));
-    }
-  }, [subjectCategories]);
 
   const nameValue = form.watch("name");
   useEffect(() => {
@@ -112,38 +106,16 @@ export default function SubjectForm() {
       updateSubject.mutate(
         { id, ...data },
         {
-          onSuccess: () => {
-            // Update categories separately
-            updateCategories.mutate({
-              subjectId: id,
-              categoryIds: selectedCategories,
-            });
-          },
+          onSuccess: () => navigate("/admin/popular-subjects"),
         }
       );
     } else {
       createSubject.mutate(data as any, {
         onSuccess: (newSubject) => {
-          // Update categories for new subject
-          if (selectedCategories.length > 0) {
-            updateCategories.mutate({
-              subjectId: newSubject.id,
-              categoryIds: selectedCategories,
-            });
-          }
-          // Redirect to edit mode after creation
           navigate(`/admin/subjects/${newSubject.id}/edit`);
         },
       });
     }
-  };
-
-  const toggleCategory = (categoryId: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
-    );
   };
 
   return (
@@ -313,33 +285,33 @@ export default function SubjectForm() {
                     )}
                   />
 
-                  {/* Category Mapping */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4" />
-                      <Label className="text-base font-semibold">Categories</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Select which categories this subject belongs to
-                    </p>
-                    <div className="rounded-lg border p-4 max-h-64 overflow-y-auto space-y-2">
-                      {allCategories?.map((category) => (
-                        <div key={category.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`category-${category.id}`}
-                            checked={selectedCategories.includes(category.id)}
-                            onCheckedChange={() => toggleCategory(category.id)}
-                          />
-                          <label
-                            htmlFor={`category-${category.id}`}
-                            className="text-sm cursor-pointer flex-1"
-                          >
-                            {category.displayName}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="category_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-background z-50">
+                            {categories?.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose the primary category for this subject
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 

@@ -1120,7 +1120,6 @@ export type Database = {
       }
       instructor_subjects: {
         Row: {
-          category_id: string | null
           course_id: string | null
           created_at: string | null
           id: string
@@ -1128,7 +1127,6 @@ export type Database = {
           subject_id: string | null
         }
         Insert: {
-          category_id?: string | null
           course_id?: string | null
           created_at?: string | null
           id?: string
@@ -1136,7 +1134,6 @@ export type Database = {
           subject_id?: string | null
         }
         Update: {
-          category_id?: string | null
           course_id?: string | null
           created_at?: string | null
           id?: string
@@ -1144,13 +1141,6 @@ export type Database = {
           subject_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "instructor_subjects_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "instructor_subjects_course_id_fkey"
             columns: ["course_id"]
@@ -1426,6 +1416,7 @@ export type Database = {
       }
       popular_subjects: {
         Row: {
+          category_id: string
           created_at: string | null
           description: string | null
           display_order: number | null
@@ -1437,6 +1428,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          category_id: string
           created_at?: string | null
           description?: string | null
           display_order?: number | null
@@ -1448,6 +1440,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          category_id?: string
           created_at?: string | null
           description?: string | null
           display_order?: number | null
@@ -1458,7 +1451,15 @@ export type Database = {
           thumbnail_url?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "popular_subjects_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -2015,42 +2016,6 @@ export type Database = {
         }
         Relationships: []
       }
-      subject_categories: {
-        Row: {
-          category_id: string
-          created_at: string | null
-          id: string
-          subject_id: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string | null
-          id?: string
-          subject_id: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string | null
-          id?: string
-          subject_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subject_categories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subject_categories_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "popular_subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       subject_chapters: {
         Row: {
           ai_generated_podcast_url: string | null
@@ -2294,6 +2259,7 @@ export type Database = {
           qualification: string | null
           specialization: string[] | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -2310,6 +2276,7 @@ export type Database = {
           qualification?: string | null
           specialization?: string[] | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -2326,6 +2293,7 @@ export type Database = {
           qualification?: string | null
           specialization?: string[] | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
