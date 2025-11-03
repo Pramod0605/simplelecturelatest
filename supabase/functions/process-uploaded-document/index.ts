@@ -137,37 +137,15 @@ serve(async (req) => {
       size: fileData.size 
     });
 
-    // Validate file size before processing
-    const maxSizeMB = 10;
-    const fileSizeMB = fileData.size / (1024 * 1024);
-
-    if (fileSizeMB > maxSizeMB) {
-      throw new Error(
-        `File too large (${fileSizeMB.toFixed(2)} MB). Maximum allowed: ${maxSizeMB} MB`
-      );
-    }
-
-    await logJobProgress(job.id, 'info', 'File size validated', { 
-      sizeMB: fileSizeMB.toFixed(2) 
-    });
-
-    // Convert to base64 using chunked approach (safe for large files)
-    await updateJobProgress(job.id, 25, 'Converting file to base64');
+    // Prepare file for multipart upload (no encoding needed)
+    await updateJobProgress(job.id, 25, 'Preparing file for upload');
 
     const fileBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(fileBuffer);
-    const chunkSize = 0x8000; // 32KB chunks
-    let binary = '';
+    const blob = new Blob([fileBuffer], { type: doc.file_type });
 
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
-    }
-
-    const base64Data = btoa(binary);
-
-    await logJobProgress(job.id, 'info', 'Base64 conversion completed', {
-      originalSize: fileBuffer.byteLength,
-      base64Length: base64Data.length
+    await logJobProgress(job.id, 'info', 'File prepared for upload', {
+      size: fileData.size,
+      type: doc.file_type
     });
 
     await updateJobProgress(job.id, 30, 'Uploading to Mathpix API');
@@ -182,21 +160,28 @@ serve(async (req) => {
     // For images: Use /v3/text endpoint (instant response)
     if (isImage) {
       await logJobProgress(job.id, 'info', 'Using /v3/text endpoint for image');
+      await updateJobProgress(job.id, 35, 'Processing image with Mathpix');
+
+      // Prepare multipart form data
+      const formData = new FormData();
+      formData.append('file', blob, doc.file_name);
+      
+      const options = {
+        ocr_engine: "mathpix",
+        formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+        math_inline_delimiters: ["$", "$"],
+        math_display_delimiters: ["$$", "$$"]
+      };
+      formData.append('options_json', JSON.stringify(options));
 
       const mathpixResponse = await fetch('https://api.mathpix.com/v3/text', {
         method: 'POST',
         headers: {
           'app_id': mathpixAppId,
           'app_key': mathpixAppKey,
-          'Content-Type': 'application/json',
+          // DO NOT set Content-Type - FormData sets it automatically with boundary
         },
-        body: JSON.stringify({
-          src: `data:image/${fileExtension};base64,${base64Data}`,
-          ocr_engine: "mathpix",
-          formats: ["markdown", "mmd", "json", "latex_styled", "html"],
-          math_inline_delimiters: ["$", "$"],
-          math_display_delimiters: ["$$", "$$"]
-        }),
+        body: formData,
       });
 
       if (!mathpixResponse.ok) {
@@ -240,21 +225,28 @@ serve(async (req) => {
     // For PDFs: Use /v3/pdf endpoint (async with background polling)
     if (isPDF) {
       await logJobProgress(job.id, 'info', 'Using /v3/pdf endpoint for PDF');
+      await updateJobProgress(job.id, 35, 'Uploading PDF to Mathpix');
+
+      // Prepare multipart form data
+      const formData = new FormData();
+      formData.append('file', blob, doc.file_name);
+      
+      const options = {
+        ocr_engine: "mathpix",
+        formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+        math_inline_delimiters: ["$", "$"],
+        math_display_delimiters: ["$$", "$$"]
+      };
+      formData.append('options_json', JSON.stringify(options));
 
       const mathpixResponse = await fetch('https://api.mathpix.com/v3/pdf', {
         method: 'POST',
         headers: {
           'app_id': mathpixAppId,
           'app_key': mathpixAppKey,
-          'Content-Type': 'application/json',
+          // DO NOT set Content-Type - FormData sets it automatically with boundary
         },
-        body: JSON.stringify({
-          src: `data:application/pdf;base64,${base64Data}`,
-          ocr_engine: "mathpix",
-          formats: ["markdown", "mmd", "json", "latex_styled", "html"],
-          math_inline_delimiters: ["$", "$"],
-          math_display_delimiters: ["$$", "$$"]
-        }),
+        body: formData,
       });
 
       if (!mathpixResponse.ok) {
