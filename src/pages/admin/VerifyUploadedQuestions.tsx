@@ -30,7 +30,7 @@ export default function VerifyUploadedQuestions() {
   const [chapterId, setChapterId] = useState("");
   const [topicId, setTopicId] = useState("");
   const [subtopicId, setSubtopicId] = useState("");
-  const [llmStatusFilter, setLlmStatusFilter] = useState("");
+  const [llmStatusFilter, setLlmStatusFilter] = useState("all");
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
   const { data: categories } = useCategoriesWithSubjects();
@@ -47,7 +47,7 @@ export default function VerifyUploadedQuestions() {
     chapterId,
     topicId,
     subtopicId,
-    llmStatus: llmStatusFilter || undefined,
+    llmStatus: llmStatusFilter && llmStatusFilter !== 'all' ? llmStatusFilter : undefined,
     isApproved: false,
   });
 
@@ -327,7 +327,7 @@ export default function VerifyUploadedQuestions() {
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="correct">🟢 Correct</SelectItem>
                   <SelectItem value="medium">🟠 Needs Review</SelectItem>
                   <SelectItem value="wrong">🔴 Issues Found</SelectItem>
