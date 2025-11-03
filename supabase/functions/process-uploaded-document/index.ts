@@ -137,22 +137,40 @@ serve(async (req) => {
       size: fileData.size 
     });
 
-    // Generate signed URL for Mathpix (60 minute expiry)
-    await updateJobProgress(job.id, 25, 'Generating signed URL');
-    
-    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
-      .from('uploaded-question-documents')
-      .createSignedUrl(storagePath, 3600); // 60 minutes
+    // Validate file size before processing
+    const maxSizeMB = 10;
+    const fileSizeMB = fileData.size / (1024 * 1024);
 
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      throw new Error(`Failed to generate signed URL: ${signedUrlError?.message || 'Unknown error'}`);
+    if (fileSizeMB > maxSizeMB) {
+      throw new Error(
+        `File too large (${fileSizeMB.toFixed(2)} MB). Maximum allowed: ${maxSizeMB} MB`
+      );
     }
 
-    await logJobProgress(job.id, 'info', 'Signed URL generated', { 
-      url: signedUrlData.signedUrl.substring(0, 50) + '...' 
+    await logJobProgress(job.id, 'info', 'File size validated', { 
+      sizeMB: fileSizeMB.toFixed(2) 
     });
 
-    await updateJobProgress(job.id, 30, 'Sending to Mathpix API');
+    // Convert to base64 using chunked approach (safe for large files)
+    await updateJobProgress(job.id, 25, 'Converting file to base64');
+
+    const fileBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(fileBuffer);
+    const chunkSize = 0x8000; // 32KB chunks
+    let binary = '';
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+    }
+
+    const base64Data = btoa(binary);
+
+    await logJobProgress(job.id, 'info', 'Base64 conversion completed', {
+      originalSize: fileBuffer.byteLength,
+      base64Length: base64Data.length
+    });
+
+    await updateJobProgress(job.id, 30, 'Uploading to Mathpix API');
 
     const mathpixAppId = Deno.env.get('MATHPIX_APP_ID');
     const mathpixAppKey = Deno.env.get('MATHPIX_APP_KEY');
@@ -173,7 +191,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: signedUrlData.signedUrl,
+          src: `data:image/${fileExtension};base64,${base64Data}`,
           conversion_formats: {
             md: true,
             mmd: true,
@@ -233,7 +251,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: signedUrlData.signedUrl,
+          src: `data:application/pdf;base64,${base64Data}`,
           conversion_formats: {
             md: true,
             mmd: true,
