@@ -1354,6 +1354,166 @@ export type Database = {
           },
         ]
       }
+      parsed_questions_pending: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_ip_address: unknown
+          category_id: string
+          chapter_id: string
+          contains_formula: boolean | null
+          correct_answer: string
+          created_at: string | null
+          difficulty: string | null
+          document_id: string
+          explanation: string | null
+          explanation_images: string[] | null
+          id: string
+          instructor_comments: string | null
+          is_approved: boolean | null
+          llm_confidence_score: number | null
+          llm_difficulty_reasoning: string | null
+          llm_issues: Json | null
+          llm_suggested_difficulty: string | null
+          llm_verification_comments: string | null
+          llm_verification_status: string | null
+          llm_verified: boolean | null
+          llm_verified_at: string | null
+          marks: number | null
+          option_images: Json | null
+          options: Json | null
+          question_bank_id: string | null
+          question_format: string | null
+          question_images: string[] | null
+          question_text: string
+          question_type: string
+          subject_id: string
+          topic_id: string | null
+          transferred_at: string | null
+          transferred_to_question_bank: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_ip_address?: unknown
+          category_id: string
+          chapter_id: string
+          contains_formula?: boolean | null
+          correct_answer: string
+          created_at?: string | null
+          difficulty?: string | null
+          document_id: string
+          explanation?: string | null
+          explanation_images?: string[] | null
+          id?: string
+          instructor_comments?: string | null
+          is_approved?: boolean | null
+          llm_confidence_score?: number | null
+          llm_difficulty_reasoning?: string | null
+          llm_issues?: Json | null
+          llm_suggested_difficulty?: string | null
+          llm_verification_comments?: string | null
+          llm_verification_status?: string | null
+          llm_verified?: boolean | null
+          llm_verified_at?: string | null
+          marks?: number | null
+          option_images?: Json | null
+          options?: Json | null
+          question_bank_id?: string | null
+          question_format?: string | null
+          question_images?: string[] | null
+          question_text: string
+          question_type: string
+          subject_id: string
+          topic_id?: string | null
+          transferred_at?: string | null
+          transferred_to_question_bank?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_ip_address?: unknown
+          category_id?: string
+          chapter_id?: string
+          contains_formula?: boolean | null
+          correct_answer?: string
+          created_at?: string | null
+          difficulty?: string | null
+          document_id?: string
+          explanation?: string | null
+          explanation_images?: string[] | null
+          id?: string
+          instructor_comments?: string | null
+          is_approved?: boolean | null
+          llm_confidence_score?: number | null
+          llm_difficulty_reasoning?: string | null
+          llm_issues?: Json | null
+          llm_suggested_difficulty?: string | null
+          llm_verification_comments?: string | null
+          llm_verification_status?: string | null
+          llm_verified?: boolean | null
+          llm_verified_at?: string | null
+          marks?: number | null
+          option_images?: Json | null
+          options?: Json | null
+          question_bank_id?: string | null
+          question_format?: string | null
+          question_images?: string[] | null
+          question_text?: string
+          question_type?: string
+          subject_id?: string
+          topic_id?: string | null
+          transferred_at?: string | null
+          transferred_to_question_bank?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parsed_questions_pending_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_question_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_question_bank_id_fkey"
+            columns: ["question_bank_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_inr: number
@@ -2480,6 +2640,110 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploaded_question_documents: {
+        Row: {
+          category_id: string
+          chapter_id: string
+          created_at: string | null
+          error_message: string | null
+          extracted_images: Json | null
+          file_name: string
+          file_size_bytes: number | null
+          file_type: string
+          file_url: string | null
+          id: string
+          mathpix_html: string | null
+          mathpix_json_output: Json | null
+          mathpix_latex: string | null
+          mathpix_markdown: string | null
+          mathpix_pdf_id: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          status: string | null
+          subject_id: string
+          topic_id: string | null
+          updated_at: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          category_id: string
+          chapter_id: string
+          created_at?: string | null
+          error_message?: string | null
+          extracted_images?: Json | null
+          file_name: string
+          file_size_bytes?: number | null
+          file_type: string
+          file_url?: string | null
+          id?: string
+          mathpix_html?: string | null
+          mathpix_json_output?: Json | null
+          mathpix_latex?: string | null
+          mathpix_markdown?: string | null
+          mathpix_pdf_id?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          status?: string | null
+          subject_id: string
+          topic_id?: string | null
+          updated_at?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          category_id?: string
+          chapter_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          extracted_images?: Json | null
+          file_name?: string
+          file_size_bytes?: number | null
+          file_type?: string
+          file_url?: string | null
+          id?: string
+          mathpix_html?: string | null
+          mathpix_json_output?: Json | null
+          mathpix_latex?: string | null
+          mathpix_markdown?: string | null
+          mathpix_pdf_id?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          status?: string | null
+          subject_id?: string
+          topic_id?: string | null
+          updated_at?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploaded_question_documents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
         ]

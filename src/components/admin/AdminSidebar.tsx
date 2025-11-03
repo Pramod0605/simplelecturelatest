@@ -21,7 +21,9 @@ import {
   Building2,
   UserPlus,
   CalendarDays,
-  Video
+  Video,
+  Upload,
+  CheckSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,7 +156,36 @@ export const AdminSidebar = () => {
                 )
               }
             >
+              <HelpCircle className="h-4 w-4" />
               Question Bank
+            </NavLink>
+            <NavLink
+              to="/admin/question-bank/upload"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <Upload className="h-4 w-4" />
+              Upload Questions
+            </NavLink>
+            <NavLink
+              to="/admin/question-bank/verify"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <CheckSquare className="h-4 w-4" />
+              Verify Questions
             </NavLink>
             <NavLink
               to="/admin/assignments"
