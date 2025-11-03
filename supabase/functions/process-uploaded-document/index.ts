@@ -168,7 +168,7 @@ serve(async (req) => {
       
       const options = {
         ocr_engine: "mathpix",
-        formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+        formats: ["mmd", "md"],
         math_inline_delimiters: ["$", "$"],
         math_display_delimiters: ["$$", "$$"]
       };
@@ -233,7 +233,7 @@ serve(async (req) => {
       
       const options = {
         ocr_engine: "mathpix",
-        formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+        formats: ["mmd", "md"],
         math_inline_delimiters: ["$", "$"],
         math_display_delimiters: ["$$", "$$"]
       };
@@ -387,14 +387,155 @@ async function pollMathpixCompletion(
         });
 
       if (conversionData.status === 'completed') {
-        // Success! Store all results
+        await supabase.from('job_logs').insert({
+          job_id: jobId,
+          log_level: 'info',
+          message: 'PDF conversion completed, downloading content',
+          details: { 
+            pdf_id: pdfId,
+            has_mmd_url: !!conversionData.mmd_url,
+            has_md_url: !!conversionData.url,
+            has_direct_mmd: !!conversionData.mmd,
+            has_direct_markdown: !!conversionData.markdown
+          }
+        });
+
+        // Download the actual content from Mathpix URLs
+        let markdownContent = null;
+        let mmdContent = null;
+
+        try {
+          // First, check if content is directly in response (rare, but possible)
+          if (conversionData.mmd) {
+            mmdContent = conversionData.mmd;
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'MMD content found directly in response',
+              details: { length: mmdContent.length }
+            });
+          } else if (conversionData.mmd_url) {
+            // Download .mmd file from URL (Math Markdown - best for parsing questions)
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'Downloading MMD content from URL',
+              details: { url: conversionData.mmd_url }
+            });
+
+            const mmdResponse = await fetch(conversionData.mmd_url, {
+              headers: {
+                'app_id': mathpixAppId!,
+                'app_key': mathpixAppKey!,
+              }
+            });
+            
+            if (mmdResponse.ok) {
+              const contentType = mmdResponse.headers.get('content-type');
+              
+              if (contentType?.includes('zip') || contentType?.includes('application/octet-stream')) {
+                // It's a ZIP file - log for now
+                await supabase.from('job_logs').insert({
+                  job_id: jobId,
+                  log_level: 'warn',
+                  message: 'MMD content is in ZIP format (not yet supported)',
+                  details: { 
+                    url: conversionData.mmd_url,
+                    contentType: contentType
+                  }
+                });
+              } else {
+                // Plain text content
+                mmdContent = await mmdResponse.text();
+                await supabase.from('job_logs').insert({
+                  job_id: jobId,
+                  log_level: 'info',
+                  message: 'MMD content downloaded successfully',
+                  details: { length: mmdContent.length }
+                });
+              }
+            } else {
+              await supabase.from('job_logs').insert({
+                job_id: jobId,
+                log_level: 'warn',
+                message: 'Failed to download MMD content',
+                details: { 
+                  status: mmdResponse.status,
+                  statusText: mmdResponse.statusText
+                }
+              });
+            }
+          }
+
+          // Download plain Markdown as fallback
+          if (conversionData.markdown) {
+            markdownContent = conversionData.markdown;
+          } else if (conversionData.url) {
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'Downloading Markdown content from URL',
+              details: { url: conversionData.url }
+            });
+
+            const mdResponse = await fetch(conversionData.url, {
+              headers: {
+                'app_id': mathpixAppId!,
+                'app_key': mathpixAppKey!,
+              }
+            });
+            
+            if (mdResponse.ok) {
+              const contentType = mdResponse.headers.get('content-type');
+              if (!contentType?.includes('zip')) {
+                markdownContent = await mdResponse.text();
+                await supabase.from('job_logs').insert({
+                  job_id: jobId,
+                  log_level: 'info',
+                  message: 'Markdown content downloaded successfully',
+                  details: { length: markdownContent.length }
+                });
+              }
+            }
+          }
+
+          // Final validation
+          if (!mmdContent && !markdownContent) {
+            throw new Error('No content could be downloaded from Mathpix');
+          }
+
+          await supabase.from('job_logs').insert({
+            job_id: jobId,
+            log_level: 'info',
+            message: 'Content download completed',
+            details: { 
+              has_mmd: !!mmdContent,
+              has_markdown: !!markdownContent,
+              mmd_length: mmdContent?.length || 0,
+              markdown_length: markdownContent?.length || 0
+            }
+          });
+
+        } catch (downloadError) {
+          const errorMsg = downloadError instanceof Error ? downloadError.message : 'Unknown download error';
+          await supabase.from('job_logs').insert({
+            job_id: jobId,
+            log_level: 'error',
+            message: 'Failed to download content from Mathpix',
+            details: { error: errorMsg }
+          });
+          
+          console.error('Download error:', errorMsg);
+        }
+
+        // Store results with downloaded content
         await supabase
           .from('uploaded_question_documents')
           .update({
             mathpix_pdf_id: pdfId,
             mathpix_json_output: conversionData,
-            mathpix_markdown: conversionData.markdown || conversionData.text,
-            mathpix_mmd: conversionData.mmd,
+            mathpix_markdown: markdownContent,
+            mathpix_mmd: mmdContent,
             mathpix_latex: conversionData.latex_styled,
             mathpix_html: conversionData.html,
             status: 'completed',
@@ -416,7 +557,11 @@ async function pollMathpixCompletion(
           job_id: jobId,
           log_level: 'info',
           message: 'PDF conversion completed successfully',
-          details: { pdf_id: pdfId }
+          details: { 
+            pdf_id: pdfId,
+            has_mmd: !!mmdContent,
+            has_markdown: !!markdownContent
+          }
         });
 
         return;

@@ -44,6 +44,12 @@ export const useUploadedDocuments = (filters: {
       if (error) throw error;
       return data;
     },
+    refetchInterval: (query) => {
+      const hasProcessingDocs = query.state.data?.some(
+        (doc: any) => doc.status === 'processing' || doc.status === 'pending'
+      );
+      return hasProcessingDocs ? 3000 : false;
+    },
   });
 };
 
