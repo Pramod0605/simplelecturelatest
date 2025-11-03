@@ -6,6 +6,8 @@ export const usePendingQuestions = (filters: {
   categoryId?: string;
   subjectId?: string;
   chapterId?: string;
+  topicId?: string;
+  subtopicId?: string;
   documentId?: string;
   llmStatus?: string;
   isApproved?: boolean;
@@ -21,6 +23,7 @@ export const usePendingQuestions = (filters: {
           popular_subjects(name),
           subject_chapters(title),
           subject_topics(title),
+          subtopics(title),
           uploaded_question_documents(file_name, file_type),
           teacher_profiles!approved_by(full_name)
         `);
@@ -33,6 +36,12 @@ export const usePendingQuestions = (filters: {
       }
       if (filters.chapterId) {
         query = query.eq('chapter_id', filters.chapterId);
+      }
+      if (filters.topicId) {
+        query = query.eq('topic_id', filters.topicId);
+      }
+      if (filters.subtopicId) {
+        query = query.eq('subtopic_id', filters.subtopicId);
       }
       if (filters.documentId) {
         query = query.eq('document_id', filters.documentId);

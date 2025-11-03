@@ -12,7 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
-import { useSubjectChapters } from "@/hooks/useSubjectManagement";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
+import { useSubtopics } from "@/hooks/useSubtopics";
 import { 
   usePendingQuestions, 
   useUpdateQuestionDifficulty, 
@@ -27,12 +28,16 @@ export default function VerifyUploadedQuestions() {
   const [categoryId, setCategoryId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [chapterId, setChapterId] = useState("");
+  const [topicId, setTopicId] = useState("");
+  const [subtopicId, setSubtopicId] = useState("");
   const [llmStatusFilter, setLlmStatusFilter] = useState("");
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
   const { data: categories } = useCategoriesWithSubjects();
   const { data: allSubjects } = useAdminPopularSubjects();
   const { data: chapters } = useSubjectChapters(subjectId);
+  const { data: topics } = useChapterTopics(chapterId);
+  const { data: subtopics } = useSubtopics(topicId);
 
   const subjects = allSubjects?.filter((s) => s.category_id === categoryId) || [];
 
@@ -40,6 +45,8 @@ export default function VerifyUploadedQuestions() {
     categoryId,
     subjectId,
     chapterId,
+    topicId,
+    subtopicId,
     llmStatus: llmStatusFilter || undefined,
     isApproved: false,
   });
@@ -212,15 +219,17 @@ export default function VerifyUploadedQuestions() {
         <Card>
           <CardHeader>
             <CardTitle>Filters</CardTitle>
-            <CardDescription>Filter questions by category, subject, chapter, and LLM status</CardDescription>
+            <CardDescription>Filter questions by complete hierarchy and LLM status</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-4">
+          <CardContent className="grid gap-4 md:grid-cols-6">
             <div className="space-y-2">
               <Label>Category</Label>
               <Select value={categoryId} onValueChange={(value) => {
                 setCategoryId(value);
                 setSubjectId("");
                 setChapterId("");
+                setTopicId("");
+                setSubtopicId("");
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
@@ -240,6 +249,8 @@ export default function VerifyUploadedQuestions() {
               <Select value={subjectId} onValueChange={(value) => {
                 setSubjectId(value);
                 setChapterId("");
+                setTopicId("");
+                setSubtopicId("");
               }} disabled={!categoryId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select subject" />
@@ -256,7 +267,11 @@ export default function VerifyUploadedQuestions() {
 
             <div className="space-y-2">
               <Label>Chapter</Label>
-              <Select value={chapterId} onValueChange={setChapterId} disabled={!subjectId}>
+              <Select value={chapterId} onValueChange={(value) => {
+                setChapterId(value);
+                setTopicId("");
+                setSubtopicId("");
+              }} disabled={!subjectId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select chapter" />
                 </SelectTrigger>
@@ -264,6 +279,41 @@ export default function VerifyUploadedQuestions() {
                   {chapters?.map((chapter) => (
                     <SelectItem key={chapter.id} value={chapter.id}>
                       {chapter.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Topic</Label>
+              <Select value={topicId} onValueChange={(value) => {
+                setTopicId(value);
+                setSubtopicId("");
+              }} disabled={!chapterId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select topic" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {topics?.map((topic) => (
+                    <SelectItem key={topic.id} value={topic.id}>
+                      {topic.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Subtopic</Label>
+              <Select value={subtopicId} onValueChange={setSubtopicId} disabled={!topicId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subtopic" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {subtopics?.map((subtopic) => (
+                    <SelectItem key={subtopic.id} value={subtopic.id}>
+                      {subtopic.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -334,14 +384,32 @@ export default function VerifyUploadedQuestions() {
               <Card key={question.id} className="relative">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1">
                       <Checkbox
                         checked={selectedQuestions.includes(question.id)}
                         onCheckedChange={(checked) => handleSelectQuestion(question.id, checked as boolean)}
                       />
-                      <div>
+                      <div className="flex-1">
                         <CardTitle className="text-lg">Q{index + 1}</CardTitle>
                         <CardDescription>{question.question_format.replace('_', ' ').toUpperCase()}</CardDescription>
+                        {/* Hierarchy Breadcrumb */}
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {question.categories?.name}
+                            {' > '}
+                            {question.popular_subjects?.name}
+                            {' > '}
+                            {question.subject_chapters?.title}
+                            {' > '}
+                            <span className="font-semibold">{question.subject_topics?.title}</span>
+                            {question.subtopics?.title && (
+                              <>
+                                {' > '}
+                                <span className="text-muted-foreground">{question.subtopics.title}</span>
+                              </>
+                            )}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
 

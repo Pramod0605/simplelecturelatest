@@ -1388,6 +1388,7 @@ export type Database = {
           question_text: string
           question_type: string
           subject_id: string
+          subtopic_id: string | null
           topic_id: string | null
           transferred_at: string | null
           transferred_to_question_bank: boolean | null
@@ -1426,6 +1427,7 @@ export type Database = {
           question_text: string
           question_type: string
           subject_id: string
+          subtopic_id?: string | null
           topic_id?: string | null
           transferred_at?: string | null
           transferred_to_question_bank?: boolean | null
@@ -1464,6 +1466,7 @@ export type Database = {
           question_text?: string
           question_type?: string
           subject_id?: string
+          subtopic_id?: string | null
           topic_id?: string | null
           transferred_at?: string | null
           transferred_to_question_bank?: boolean | null
@@ -1503,6 +1506,13 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parsed_questions_pending_subtopic_id_fkey"
+            columns: ["subtopic_id"]
+            isOneToOne: false
+            referencedRelation: "subtopics"
             referencedColumns: ["id"]
           },
           {
@@ -1694,45 +1704,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      question_uploads: {
-        Row: {
-          completed_at: string | null
-          created_at: string | null
-          error_log: Json | null
-          failed_questions: number | null
-          file_name: string
-          id: string
-          processed_questions: number | null
-          status: string | null
-          total_questions: number
-          uploaded_by: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string | null
-          error_log?: Json | null
-          failed_questions?: number | null
-          file_name: string
-          id?: string
-          processed_questions?: number | null
-          status?: string | null
-          total_questions: number
-          uploaded_by: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string | null
-          error_log?: Json | null
-          failed_questions?: number | null
-          file_name?: string
-          id?: string
-          processed_questions?: number | null
-          status?: string | null
-          total_questions?: number
-          uploaded_by?: string
-        }
-        Relationships: []
       }
       questions: {
         Row: {
@@ -2665,6 +2636,7 @@ export type Database = {
           processing_started_at: string | null
           status: string | null
           subject_id: string
+          subtopic_id: string | null
           topic_id: string | null
           updated_at: string | null
           uploaded_by: string
@@ -2689,6 +2661,7 @@ export type Database = {
           processing_started_at?: string | null
           status?: string | null
           subject_id: string
+          subtopic_id?: string | null
           topic_id?: string | null
           updated_at?: string | null
           uploaded_by: string
@@ -2713,6 +2686,7 @@ export type Database = {
           processing_started_at?: string | null
           status?: string | null
           subject_id?: string
+          subtopic_id?: string | null
           topic_id?: string | null
           updated_at?: string | null
           uploaded_by?: string
@@ -2737,6 +2711,13 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_subtopic_id_fkey"
+            columns: ["subtopic_id"]
+            isOneToOne: false
+            referencedRelation: "subtopics"
             referencedColumns: ["id"]
           },
           {

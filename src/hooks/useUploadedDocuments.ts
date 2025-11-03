@@ -6,6 +6,7 @@ export const useUploadedDocuments = (filters: {
   categoryId?: string;
   subjectId?: string;
   chapterId?: string;
+  topicId?: string;
   status?: string;
 }) => {
   return useQuery({
@@ -17,7 +18,9 @@ export const useUploadedDocuments = (filters: {
           *,
           categories(name),
           popular_subjects(name),
-          subject_chapters(title)
+          subject_chapters(title),
+          subject_topics(title),
+          subtopics(title)
         `);
 
       if (filters.categoryId) {
@@ -28,6 +31,9 @@ export const useUploadedDocuments = (filters: {
       }
       if (filters.chapterId) {
         query = query.eq('chapter_id', filters.chapterId);
+      }
+      if (filters.topicId) {
+        query = query.eq('topic_id', filters.topicId);
       }
       if (filters.status) {
         query = query.eq('status', filters.status);
@@ -51,12 +57,14 @@ export const useUploadDocument = () => {
       subjectId,
       chapterId,
       topicId,
+      subtopicId,
     }: {
       file: File;
       categoryId: string;
       subjectId: string;
       chapterId: string;
-      topicId?: string;
+      topicId: string;
+      subtopicId?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -84,6 +92,7 @@ export const useUploadDocument = () => {
           subject_id: subjectId,
           chapter_id: chapterId,
           topic_id: topicId,
+          subtopic_id: subtopicId,
           uploaded_by: user.id,
           file_name: file.name,
           file_type: fileExt === 'pdf' ? 'pdf' : fileExt === 'docx' ? 'word' : fileExt === 'json' ? 'json' : 'image',

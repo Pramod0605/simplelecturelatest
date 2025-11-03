@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Loader2, Download, Eye } from "lucide-react";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
-import { useSubjectChapters } from "@/hooks/useSubjectManagement";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
+import { useSubtopics } from "@/hooks/useSubtopics";
 import { useUploadedDocuments, useUploadDocument, useProcessDocument, useExtractQuestions } from "@/hooks/useUploadedDocuments";
 import { toast } from "sonner";
 
@@ -19,6 +20,7 @@ export default function UploadQuestionBank() {
   const [subjectId, setSubjectId] = useState("");
   const [chapterId, setChapterId] = useState("");
   const [topicId, setTopicId] = useState("");
+  const [subtopicId, setSubtopicId] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<'image' | 'pdf' | 'word' | 'json'>('pdf');
@@ -26,6 +28,8 @@ export default function UploadQuestionBank() {
   const { data: categories } = useCategoriesWithSubjects();
   const { data: allSubjects } = useAdminPopularSubjects();
   const { data: chapters } = useSubjectChapters(subjectId);
+  const { data: topics } = useChapterTopics(chapterId);
+  const { data: subtopics } = useSubtopics(topicId);
   
   const subjects = allSubjects?.filter((s) => s.category_id === categoryId) || [];
 
@@ -33,6 +37,7 @@ export default function UploadQuestionBank() {
     categoryId,
     subjectId,
     chapterId,
+    topicId,
   });
 
   const uploadMutation = useUploadDocument();
@@ -54,8 +59,8 @@ export default function UploadQuestionBank() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !categoryId || !subjectId || !chapterId) {
-      toast.error("Please select file and all required fields");
+    if (!selectedFile || !categoryId || !subjectId || !chapterId || !topicId) {
+      toast.error("Please select file, category, subject, chapter, and topic");
       return;
     }
 
@@ -64,7 +69,8 @@ export default function UploadQuestionBank() {
       categoryId,
       subjectId,
       chapterId,
-      topicId: topicId || undefined,
+      topicId,
+      subtopicId: subtopicId || undefined,
     });
 
     setIsUploadOpen(false);
@@ -99,13 +105,15 @@ export default function UploadQuestionBank() {
           <CardTitle>Filters</CardTitle>
           <CardDescription>Select category and subject to view uploaded documents</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
+        <CardContent className="grid gap-4 md:grid-cols-5">
           <div className="space-y-2">
             <Label>Category</Label>
             <Select value={categoryId} onValueChange={(value) => {
               setCategoryId(value);
               setSubjectId("");
               setChapterId("");
+              setTopicId("");
+              setSubtopicId("");
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
@@ -125,6 +133,8 @@ export default function UploadQuestionBank() {
             <Select value={subjectId} onValueChange={(value) => {
               setSubjectId(value);
               setChapterId("");
+              setTopicId("");
+              setSubtopicId("");
             }} disabled={!categoryId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select subject" />
@@ -141,7 +151,11 @@ export default function UploadQuestionBank() {
 
           <div className="space-y-2">
             <Label>Chapter</Label>
-            <Select value={chapterId} onValueChange={setChapterId} disabled={!subjectId}>
+            <Select value={chapterId} onValueChange={(value) => {
+              setChapterId(value);
+              setTopicId("");
+              setSubtopicId("");
+            }} disabled={!subjectId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select chapter" />
               </SelectTrigger>
@@ -155,7 +169,44 @@ export default function UploadQuestionBank() {
             </Select>
           </div>
 
-          <div className="flex items-end">
+          <div className="space-y-2">
+            <Label>Topic *</Label>
+            <Select value={topicId} onValueChange={(value) => {
+              setTopicId(value);
+              setSubtopicId("");
+            }} disabled={!chapterId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select topic" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {topics?.map((topic) => (
+                  <SelectItem key={topic.id} value={topic.id}>
+                    {topic.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Subtopic (Optional)</Label>
+            <Select value={subtopicId} onValueChange={setSubtopicId} disabled={!topicId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select subtopic" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {subtopics?.map((subtopic) => (
+                  <SelectItem key={subtopic.id} value={subtopic.id}>
+                    {subtopic.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+        
+        <CardContent className="pt-0">
+          <div className="flex justify-end">
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full">
@@ -235,8 +286,7 @@ export default function UploadQuestionBank() {
                 <TableRow>
                   <TableHead>File Name</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Chapter</TableHead>
+                  <TableHead>Hierarchy</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Uploaded</TableHead>
                   <TableHead>Actions</TableHead>
@@ -249,8 +299,25 @@ export default function UploadQuestionBank() {
                     <TableCell>
                       <Badge variant="outline">{doc.file_type.toUpperCase()}</Badge>
                     </TableCell>
-                    <TableCell>{doc.popular_subjects?.name}</TableCell>
-                    <TableCell>{doc.subject_chapters?.title}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">{doc.popular_subjects?.name}</span>
+                        {' > '}
+                        <span className="text-muted-foreground">{doc.subject_chapters?.title}</span>
+                        {doc.subject_topics?.title && (
+                          <>
+                            {' > '}
+                            <span className="font-medium">{doc.subject_topics.title}</span>
+                          </>
+                        )}
+                        {doc.subtopics?.title && (
+                          <>
+                            {' > '}
+                            <span className="text-xs">{doc.subtopics.title}</span>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getStatusBadge(doc.status)}</TableCell>
                     <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>

@@ -53,6 +53,7 @@ serve(async (req) => {
         .from('questions')
         .insert({
           topic_id: question.topic_id,
+          subtopic_id: question.subtopic_id, // Add subtopic transfer
           question_text: question.question_text,
           question_format: question.question_format,
           question_type: question.question_type,
@@ -98,7 +99,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error approving questions:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

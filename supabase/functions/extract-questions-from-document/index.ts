@@ -97,6 +97,7 @@ Return JSON array:
       subject_id: document.subject_id,
       chapter_id: document.chapter_id,
       topic_id: document.topic_id,
+      subtopic_id: document.subtopic_id, // Add subtopic support
       question_text: q.question_text,
       question_format: q.question_format || 'single_choice',
       question_type: q.question_type || 'objective',
@@ -127,7 +128,7 @@ Return JSON array:
   } catch (error) {
     console.error('Error extracting questions:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

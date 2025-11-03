@@ -129,13 +129,13 @@ serve(async (req) => {
         .from('uploaded_question_documents')
         .update({
           status: 'failed',
-          error_message: error.message
+          error_message: error instanceof Error ? error.message : 'Unknown error'
         })
         .eq('id', documentId);
     }
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
