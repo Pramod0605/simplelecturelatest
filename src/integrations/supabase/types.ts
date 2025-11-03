@@ -2744,6 +2744,7 @@ export type Database = {
           mathpix_json_output: Json | null
           mathpix_latex: string | null
           mathpix_markdown: string | null
+          mathpix_mmd: string | null
           mathpix_pdf_id: string | null
           processing_completed_at: string | null
           processing_started_at: string | null
@@ -2770,6 +2771,7 @@ export type Database = {
           mathpix_json_output?: Json | null
           mathpix_latex?: string | null
           mathpix_markdown?: string | null
+          mathpix_mmd?: string | null
           mathpix_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
@@ -2796,6 +2798,7 @@ export type Database = {
           mathpix_json_output?: Json | null
           mathpix_latex?: string | null
           mathpix_markdown?: string | null
+          mathpix_mmd?: string | null
           mathpix_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null

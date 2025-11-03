@@ -11,12 +11,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let documentId: string | undefined;
+
   try {
-    const { documentId } = await req.json();
-    
+    const { documentId: docId } = await req.json();
+    documentId = docId;
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
     // Get auth user
@@ -36,7 +39,6 @@ serve(async (req) => {
         message,
         details: details || null
       });
-      console.log(`[${level.toUpperCase()}] ${message}`, details);
     };
 
     const updateJobProgress = async (jobId: string, percentage: number, step: string, data?: any) => {
@@ -72,7 +74,7 @@ serve(async (req) => {
 
     await logJobProgress(job.id, 'info', 'Starting LLM question extraction');
 
-    // Fetch document
+    // Fetch document with MMD and JSON
     const { data: document, error: fetchError } = await supabaseAdmin
       .from('uploaded_question_documents')
       .select('*')
@@ -80,7 +82,20 @@ serve(async (req) => {
       .single();
 
     if (fetchError) throw fetchError;
-    if (!document.mathpix_markdown) throw new Error('Document not processed yet');
+
+    // Use MMD if available (better LaTeX preservation), fallback to markdown
+    const documentContent = document.mathpix_mmd || document.mathpix_markdown;
+    const documentJson = document.mathpix_json_output;
+
+    if (!documentContent) {
+      throw new Error('Document has no processed content. Please process document first.');
+    }
+
+    await logJobProgress(job.id, 'info', 'Fetched document content', {
+      has_mmd: !!document.mathpix_mmd,
+      has_json: !!document.mathpix_json_output,
+      content_length: documentContent?.length || 0
+    });
 
     await updateJobProgress(job.id, 20, 'Document fetched, preparing for extraction');
 
@@ -88,41 +103,82 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) throw new Error('AI API key not configured');
 
-    const systemPrompt = `You are an expert at parsing educational questions from documents.
+    const systemPrompt = `You are an expert at parsing educational questions from JEE/NEET examination papers processed by Mathpix OCR.
 
-For each question you extract:
-1. Extract question text, options, correct answer, explanation
-2. Identify question format (single_choice, multiple_choice, true_false, fill_blank, short_answer)
-3. **AUTO-DETECT DIFFICULTY LEVEL**:
-   - Analyze question complexity, concepts, reasoning required
-   - Assign one of: "Low", "Medium", "Intermediate", "Advanced"
-   - Provide brief reasoning (1 sentence)
+**Input Format:**
+1. Mathpix Markdown (MMD) - preserves LaTeX formulas and structure
+2. Mathpix JSON - contains structured elements
 
-Difficulty Criteria:
-- **Low**: Basic recall, simple facts, direct definitions
-- **Medium**: Application of single concept, straightforward problem-solving
-- **Intermediate**: Multi-step reasoning, combining 2-3 concepts, moderate complexity
-- **Advanced**: Complex analysis, advanced concepts, multi-layered reasoning, requires deep understanding
+**Your Task:**
+Extract each question as a separate object with:
+- question_text: Full question with LaTeX formulas preserved (e.g., \\( x^2 + 5x + 6 = 0 \\))
+- question_format: "single_choice" (for MCQs), "multiple_choice", "true_false", "fill_blank", "short_answer"
+- options: { "A": "...", "B": "...", "C": "...", "D": "..." } for MCQs (use null if not MCQ)
+- correct_answer: The correct option letter(s) or answer text
+- explanation: Solution/explanation if present (use null if not available)
+- difficulty: Auto-detect based on complexity:
+  * "Low" - Basic recall, simple arithmetic, direct formulas
+  * "Medium" - Single-concept application, straightforward problem-solving
+  * "Intermediate" - Multi-step reasoning, 2-3 concepts combined
+  * "Advanced" - Complex analysis, advanced concepts, multi-layered reasoning
+- difficulty_reasoning: Brief explanation (1 sentence) why you chose this difficulty
 
-Return JSON array:
+**Question Boundary Detection:**
+- Look for question numbers: "Q1", "Q2", "1.", "2.", etc.
+- Each MCQ typically has 4 options (A, B, C, D or 1, 2, 3, 4)
+- Questions may span multiple lines
+- Options may contain LaTeX formulas
+
+**LaTeX Preservation:**
+- Keep all LaTeX exactly as written: \\( ... \\) for inline, \\[ ... \\] for display
+- Common symbols: \\sqrt{}, \\frac{}{}, \\int, \\sum, \\alpha, \\beta, etc.
+- DO NOT modify or "fix" LaTeX unless it's clearly broken
+
+**OCR Quality Assessment:**
+Flag potential issues:
+- Malformed LaTeX (unmatched braces, broken syntax)
+- Garbled text or unclear question structure
+- Missing options or incomplete data
+- Unusual formatting
+
+**Output Format:**
+Return a valid JSON object with this structure:
 {
   "questions": [
     {
       "question_text": "...",
       "question_format": "single_choice",
-      "question_type": "objective",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "correct_answer": "C",
+      "explanation": "..." or null,
       "difficulty": "Medium",
-      "difficulty_reasoning": "Requires understanding of basic physics principles",
-      "marks": 1,
-      "options": {"A": "...", "B": "...", "C": "...", "D": "..."},
-      "correct_answer": "A",
-      "explanation": "..."
+      "difficulty_reasoning": "Requires understanding of quadratic formula application",
+      "ocr_quality_notes": "Clean extraction" or "Minor LaTeX formatting issues detected"
     }
   ]
-}`;
+}
+
+IMPORTANT: Return ONLY valid JSON. No markdown code blocks, no explanations, just the JSON object.`;
+
+    const userPrompt = `Document: ${document.file_name}
+
+**Mathpix Markdown (MMD):**
+\`\`\`
+${documentContent}
+\`\`\`
+
+${documentJson ? `**Mathpix JSON Structure:**
+\`\`\`json
+${JSON.stringify(documentJson, null, 2)}
+\`\`\`
+` : ''}
+
+Extract all questions from this document. Return valid JSON only.`;
 
     await updateJobProgress(job.id, 40, 'Calling AI to extract questions');
-    await logJobProgress(job.id, 'info', 'Invoking AI extraction');
+    await logJobProgress(job.id, 'info', 'Invoking AI extraction', {
+      prompt_length: userPrompt.length
+    });
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -134,9 +190,9 @@ Return JSON array:
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract questions from this document:\n\n${document.mathpix_markdown}` }
+          { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
+        temperature: 0.3,
       }),
     });
 
@@ -150,11 +206,45 @@ Return JSON array:
     }
 
     const aiData = await aiResponse.json();
-    const extractedData = JSON.parse(aiData.choices[0].message.content);
+    const llmResponse = aiData.choices[0]?.message?.content;
+
+    if (!llmResponse) {
+      throw new Error('No response from AI');
+    }
+
+    await logJobProgress(job.id, 'info', 'Received AI response', {
+      response_length: llmResponse.length
+    });
+
+    await updateJobProgress(job.id, 70, 'Parsing AI response');
+
+    // Parse JSON response (handle markdown code blocks if present)
+    let extractedData;
+    try {
+      let jsonText = llmResponse.trim();
+      
+      // Remove markdown code blocks if present
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
+      }
+      
+      extractedData = JSON.parse(jsonText);
+    } catch (parseError) {
+      await logJobProgress(job.id, 'error', 'Failed to parse AI response', {
+        error: parseError instanceof Error ? parseError.message : 'Unknown error',
+        response_preview: llmResponse.substring(0, 500)
+      });
+      throw new Error('Failed to parse AI response as JSON');
+    }
+
     const questions = extractedData.questions || [];
 
+    if (!Array.isArray(questions)) {
+      throw new Error('Invalid response format: questions is not an array');
+    }
+
     await logJobProgress(job.id, 'info', `Extracted ${questions.length} questions`);
-    await updateJobProgress(job.id, 70, `Saving ${questions.length} questions to database`);
+    await updateJobProgress(job.id, 80, `Saving ${questions.length} questions to database`);
 
     // Insert questions into pending table
     let insertedCount = 0;
@@ -176,11 +266,12 @@ Return JSON array:
         question_type: q.question_type || 'objective',
         difficulty: q.difficulty || 'Medium',
         marks: q.marks || 1,
-        options: q.options || {},
+        options: q.options || null,
         correct_answer: q.correct_answer,
-        explanation: q.explanation || '',
-        llm_suggested_difficulty: q.difficulty,
-        llm_difficulty_reasoning: q.difficulty_reasoning
+        explanation: q.explanation || null,
+        llm_suggested_difficulty: q.difficulty || 'Medium',
+        llm_difficulty_reasoning: q.difficulty_reasoning || null,
+        contains_formula: (q.question_text || '').includes('\\(') || (q.question_text || '').includes('\\[')
       };
     });
 

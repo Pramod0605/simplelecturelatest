@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Loader2, Download, Eye } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, FileText, Loader2, Eye } from "lucide-react";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubtopics } from "@/hooks/useSubtopics";
 import { useUploadedDocuments, useUploadDocument, useProcessDocument, useExtractQuestions } from "@/hooks/useUploadedDocuments";
+import { MathpixPreview } from "@/components/admin/MathpixPreview";
 import { toast } from "sonner";
 
 export default function UploadQuestionBank() {
@@ -24,6 +26,8 @@ export default function UploadQuestionBank() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<'image' | 'pdf' | 'word' | 'json'>('pdf');
+  const [previewDocument, setPreviewDocument] = useState<any>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const { data: categories } = useCategoriesWithSubjects();
   const { data: allSubjects } = useAdminPopularSubjects();
@@ -335,6 +339,19 @@ export default function UploadQuestionBank() {
                             )}
                           </Button>
                         )}
+                        {doc.status === 'completed' && doc.mathpix_mmd && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setPreviewDocument(doc);
+                              setIsPreviewOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Preview
+                          </Button>
+                        )}
                         {doc.status === 'completed' && (
                           <Button
                             size="sm"
@@ -363,6 +380,29 @@ export default function UploadQuestionBank() {
           )}
         </CardContent>
       </Card>
+
+      {/* Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {previewDocument?.file_name}
+            </DialogTitle>
+            <DialogDescription>
+              Mathpix Markdown Preview - LaTeX formulas rendered
+            </DialogDescription>
+          </DialogHeader>
+          {previewDocument?.mathpix_mmd ? (
+            <MathpixPreview mmdText={previewDocument.mathpix_mmd} />
+          ) : (
+            <Alert>
+              <AlertDescription>
+                No preview available. Document may still be processing.
+              </AlertDescription>
+            </Alert>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
