@@ -137,11 +137,22 @@ serve(async (req) => {
       size: fileData.size 
     });
 
-    // Convert to base64
-    const fileBuffer = await fileData.arrayBuffer();
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    // Generate signed URL for Mathpix (60 minute expiry)
+    await updateJobProgress(job.id, 25, 'Generating signed URL');
+    
+    const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+      .from('uploaded-question-documents')
+      .createSignedUrl(storagePath, 3600); // 60 minutes
 
-    await updateJobProgress(job.id, 30, 'Uploading to Mathpix API');
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new Error(`Failed to generate signed URL: ${signedUrlError?.message || 'Unknown error'}`);
+    }
+
+    await logJobProgress(job.id, 'info', 'Signed URL generated', { 
+      url: signedUrlData.signedUrl.substring(0, 50) + '...' 
+    });
+
+    await updateJobProgress(job.id, 30, 'Sending to Mathpix API');
 
     const mathpixAppId = Deno.env.get('MATHPIX_APP_ID');
     const mathpixAppKey = Deno.env.get('MATHPIX_APP_KEY');
@@ -162,9 +173,13 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          src: `data:image/${fileExtension};base64,${base64Data}`,
-          formats: ['markdown', 'mmd', 'json', 'latex_styled', 'html'],
-          ocr: ['math', 'text']
+          url: signedUrlData.signedUrl,
+          conversion_formats: {
+            md: true,
+            mmd: true,
+            html: true,
+            latex_styled: true
+          }
         }),
       });
 
@@ -218,9 +233,13 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          src: `data:application/pdf;base64,${base64Data}`,
-          formats: ['markdown', 'mmd', 'json', 'latex_styled', 'html'],
-          ocr: ['math', 'text']
+          url: signedUrlData.signedUrl,
+          conversion_formats: {
+            md: true,
+            mmd: true,
+            html: true,
+            latex_styled: true
+          }
         }),
       });
 
