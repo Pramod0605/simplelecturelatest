@@ -54,6 +54,7 @@ import SubjectForm from "./pages/admin/SubjectForm";
 import QuestionBank from "./pages/admin/QuestionBank";
 import UploadQuestionBank from "./pages/admin/UploadQuestionBank";
 import VerifyUploadedQuestions from "./pages/admin/VerifyUploadedQuestions";
+import ProcessingJobsMonitor from "./pages/admin/ProcessingJobsMonitor";
 import AssignmentManager from "./pages/admin/AssignmentManager";
 import DepartmentsManager from "./pages/admin/hr/DepartmentsManager";
 import InstructorsManager from "./pages/admin/hr/InstructorsManager";
@@ -113,6 +114,7 @@ const App = () => (
               <Route path="question-bank" element={<QuestionBank />} />
               <Route path="question-bank/upload" element={<UploadQuestionBank />} />
               <Route path="question-bank/verify" element={<VerifyUploadedQuestions />} />
+              <Route path="question-bank/jobs-monitor" element={<ProcessingJobsMonitor />} />
               <Route path="assignments" element={<AssignmentManager />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />
                 <Route path="popular-subjects/edit/:id" element={<PopularSubjectsForm />} />

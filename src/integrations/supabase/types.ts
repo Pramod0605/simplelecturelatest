@@ -851,6 +851,83 @@ export type Database = {
         }
         Relationships: []
       }
+      document_processing_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          current_step: string | null
+          document_id: string
+          error_details: Json | null
+          error_message: string | null
+          estimated_completion_at: string | null
+          id: string
+          job_type: string
+          mathpix_pdf_id: string | null
+          max_retries: number | null
+          progress_percentage: number | null
+          questions_extracted: number | null
+          result_data: Json | null
+          retry_count: number | null
+          started_at: string | null
+          status: string
+          total_steps: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_step?: string | null
+          document_id: string
+          error_details?: Json | null
+          error_message?: string | null
+          estimated_completion_at?: string | null
+          id?: string
+          job_type: string
+          mathpix_pdf_id?: string | null
+          max_retries?: number | null
+          progress_percentage?: number | null
+          questions_extracted?: number | null
+          result_data?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_steps?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_step?: string | null
+          document_id?: string
+          error_details?: Json | null
+          error_message?: string | null
+          estimated_completion_at?: string | null
+          id?: string
+          job_type?: string
+          mathpix_pdf_id?: string | null
+          max_retries?: number | null
+          progress_percentage?: number | null
+          questions_extracted?: number | null
+          result_data?: Json | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_steps?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_processing_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_question_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentation_pages: {
         Row: {
           category: string
@@ -1243,6 +1320,41 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          id: string
+          job_id: string
+          log_level: string
+          message: string
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          job_id: string
+          log_level: string
+          message: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          job_id?: string
+          log_level?: string
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "document_processing_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -2620,6 +2732,7 @@ export type Database = {
           category_id: string
           chapter_id: string
           created_at: string | null
+          current_job_id: string | null
           error_message: string | null
           extracted_images: Json | null
           file_name: string
@@ -2645,6 +2758,7 @@ export type Database = {
           category_id: string
           chapter_id: string
           created_at?: string | null
+          current_job_id?: string | null
           error_message?: string | null
           extracted_images?: Json | null
           file_name: string
@@ -2670,6 +2784,7 @@ export type Database = {
           category_id?: string
           chapter_id?: string
           created_at?: string | null
+          current_job_id?: string | null
           error_message?: string | null
           extracted_images?: Json | null
           file_name?: string
@@ -2704,6 +2819,13 @@ export type Database = {
             columns: ["chapter_id"]
             isOneToOne: false
             referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_current_job_id_fkey"
+            columns: ["current_job_id"]
+            isOneToOne: false
+            referencedRelation: "document_processing_jobs"
             referencedColumns: ["id"]
           },
           {
