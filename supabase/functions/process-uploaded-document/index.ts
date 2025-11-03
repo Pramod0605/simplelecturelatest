@@ -192,12 +192,10 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           src: `data:image/${fileExtension};base64,${base64Data}`,
-          conversion_formats: {
-            md: true,
-            mmd: true,
-            html: true,
-            latex_styled: true
-          }
+          ocr_engine: "mathpix",
+          formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+          math_inline_delimiters: ["$", "$"],
+          math_display_delimiters: ["$$", "$$"]
         }),
       });
 
@@ -216,7 +214,7 @@ serve(async (req) => {
         .from('uploaded_question_documents')
         .update({
           mathpix_json_output: conversionData,
-          mathpix_markdown: conversionData.text || conversionData.markdown,
+          mathpix_markdown: conversionData.markdown || conversionData.text,
           mathpix_mmd: conversionData.mmd,
           mathpix_latex: conversionData.latex_styled,
           mathpix_html: conversionData.html,
@@ -252,12 +250,10 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           src: `data:application/pdf;base64,${base64Data}`,
-          conversion_formats: {
-            md: true,
-            mmd: true,
-            html: true,
-            latex_styled: true
-          }
+          ocr_engine: "mathpix",
+          formats: ["markdown", "mmd", "json", "latex_styled", "html"],
+          math_inline_delimiters: ["$", "$"],
+          math_display_delimiters: ["$$", "$$"]
         }),
       });
 
