@@ -14,7 +14,7 @@ serve(async (req) => {
   let documentId: string | undefined;
 
   try {
-    const { documentId: docId, fileUrl } = await req.json();
+    const { documentId: docId } = await req.json();
     documentId = docId;
 
     console.log('Processing document:', documentId);
@@ -87,10 +87,10 @@ serve(async (req) => {
 
     await updateJobProgress(job.id, 10, 'Fetching document from storage');
 
-    // Get document details
+    // Get document details including file_url
     const { data: doc } = await supabaseAdmin
       .from('uploaded_question_documents')
-      .select('file_name, file_type')
+      .select('file_name, file_type, file_url')
       .eq('id', documentId)
       .single();
 
@@ -99,6 +99,17 @@ serve(async (req) => {
     }
 
     await logJobProgress(job.id, 'info', 'Document fetched', { file_name: doc.file_name });
+
+    // Extract storage path from file_url
+    // Format: https://PROJECT.supabase.co/storage/v1/object/public/bucket/path
+    const urlParts = doc.file_url.split('/storage/v1/object/public/');
+    if (urlParts.length < 2) {
+      throw new Error('Invalid file URL format');
+    }
+    const fullPath = urlParts[1]; // e.g., "uploaded-question-documents/user-id/timestamp.pdf"
+    const storagePath = fullPath.split('/').slice(1).join('/'); // Remove bucket name
+
+    await logJobProgress(job.id, 'info', 'Extracted storage path', { storage_path: storagePath });
 
     // Detect file type
     const fileExtension = doc.file_name.split('.').pop()?.toLowerCase();
@@ -111,14 +122,23 @@ serve(async (req) => {
       isPDF 
     });
 
-    // Fetch file and convert to base64
+    // Download file from storage using service role
     await updateJobProgress(job.id, 20, 'Downloading file from storage');
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
+    
+    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+      .from('uploaded-question-documents')
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
+      throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
     }
 
-    const fileBuffer = await fileResponse.arrayBuffer();
+    await logJobProgress(job.id, 'info', 'File downloaded successfully', { 
+      size: fileData.size 
+    });
+
+    // Convert to base64
+    const fileBuffer = await fileData.arrayBuffer();
     const base64Data = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
 
     await updateJobProgress(job.id, 30, 'Uploading to Mathpix API');

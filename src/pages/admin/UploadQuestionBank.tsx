@@ -329,7 +329,7 @@ export default function UploadQuestionBank() {
                         {doc.status === 'pending' && (
                           <Button
                             size="sm"
-                            onClick={() => processMutation.mutate({ documentId: doc.id, fileUrl: doc.file_url })}
+                            onClick={() => processMutation.mutate({ documentId: doc.id })}
                             disabled={processMutation.isPending}
                           >
                             {processMutation.isPending ? (

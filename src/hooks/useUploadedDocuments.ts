@@ -119,9 +119,9 @@ export const useProcessDocument = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ documentId, fileUrl }: { documentId: string; fileUrl: string }) => {
+    mutationFn: async ({ documentId }: { documentId: string }) => {
       const { data, error } = await supabase.functions.invoke('process-uploaded-document', {
-        body: { documentId, fileUrl },
+        body: { documentId },
       });
 
       if (error) throw error;
