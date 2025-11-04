@@ -160,19 +160,7 @@ export const useExtractQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ["pending-questions"] });
       queryClient.invalidateQueries({ queryKey: ["processing-jobs"] });
       
-      // Handle async response (202 Accepted)
-      if (data.started) {
-        toast.success(
-          'Extraction started successfully!',
-          {
-            description: 'You can track progress in Processing Jobs Monitor or wait for completion.'
-          }
-        );
-      } 
-      // Legacy response (shouldn't happen after fix)
-      else if (data.questionsExtracted) {
-        toast.success(`Extracted ${data.questionsExtracted} questions`);
-      }
+      toast.success(`Extracted ${data.questionsExtracted} questions`);
     },
     onError: (error: Error) => {
       toast.error("Failed to extract questions", { description: error.message });
