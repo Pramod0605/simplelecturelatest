@@ -160,7 +160,13 @@ export const useExtractQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ["pending-questions"] });
       queryClient.invalidateQueries({ queryKey: ["processing-jobs"] });
       
-      toast.success(`Extracted ${data.questionsExtracted} questions`);
+      if (data?.started) {
+        toast.success('Extraction started successfully!', {
+          description: 'Track progress in Processing Jobs Monitor'
+        });
+      } else if (data?.questionsExtracted) {
+        toast.success(`Extracted ${data.questionsExtracted} questions`);
+      }
     },
     onError: (error: Error) => {
       toast.error("Failed to extract questions", { description: error.message });
