@@ -14,6 +14,7 @@ import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubtopics } from "@/hooks/useSubtopics";
 import { useUploadedDocuments, useUploadDocument, useProcessDocument, useExtractQuestions } from "@/hooks/useUploadedDocuments";
+import { useProcessingJobs } from "@/hooks/useProcessingJobs";
 import { MathpixPreview } from "@/components/admin/MathpixPreview";
 import { toast } from "sonner";
 
@@ -297,92 +298,111 @@ export default function UploadQuestionBank() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documents.map((doc: any) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.file_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{doc.file_type.toUpperCase()}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">{doc.popular_subjects?.name}</span>
-                        {' > '}
-                        <span className="text-muted-foreground">{doc.subject_chapters?.title}</span>
-                        {doc.subject_topics?.title && (
-                          <>
+                {documents.map((doc: any) => {
+                  // Check if there's an active extraction job for this document
+                  const DocumentRow = () => {
+                    const { data: jobs } = useProcessingJobs({ 
+                      documentId: doc.id,
+                      jobType: 'llm_extraction'
+                    });
+                    
+                    const activeJob = jobs?.find(
+                      (job: any) => job.status === 'running' || job.status === 'pending'
+                    );
+
+                    return (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">{doc.file_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{doc.file_type.toUpperCase()}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">{doc.popular_subjects?.name}</span>
                             {' > '}
-                            <span className="font-medium">{doc.subject_topics.title}</span>
-                          </>
-                        )}
-                        {doc.subtopics?.title && (
-                          <>
-                            {' > '}
-                            <span className="text-xs">{doc.subtopics.title}</span>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                    <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {doc.status === 'pending' && (
-                          <Button
-                            size="sm"
-                            onClick={() => processMutation.mutate({ documentId: doc.id })}
-                            disabled={processMutation.isPending}
-                          >
-                            {processMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              'Process'
+                            <span className="text-muted-foreground">{doc.subject_chapters?.title}</span>
+                            {doc.subject_topics?.title && (
+                              <>
+                                {' > '}
+                                <span className="font-medium">{doc.subject_topics.title}</span>
+                              </>
                             )}
-                          </Button>
-                        )}
-                        {doc.status === 'completed' && doc.mathpix_mmd && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setPreviewDocument(doc);
-                              setIsPreviewOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Preview
-                          </Button>
-                        )}
-                        {doc.status === 'completed' && !doc.mathpix_mmd && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => processMutation.mutate({ documentId: doc.id })}
-                            disabled={processMutation.isPending}
-                          >
-                            {processMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              'Re-process'
+                            {doc.subtopics?.title && (
+                              <>
+                                {' > '}
+                                <span className="text-xs">{doc.subtopics.title}</span>
+                              </>
                             )}
-                          </Button>
-                        )}
-                        {doc.status === 'completed' && doc.mathpix_mmd && (
-                          <Button
-                            size="sm"
-                            onClick={() => extractMutation.mutate({ documentId: doc.id })}
-                            disabled={extractMutation.isPending}
-                          >
-                            {extractMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              'Extract Questions'
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {doc.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                onClick={() => processMutation.mutate({ documentId: doc.id })}
+                                disabled={processMutation.isPending}
+                              >
+                                {processMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Process'
+                                )}
+                              </Button>
                             )}
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            {doc.status === 'completed' && doc.mathpix_mmd && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setPreviewDocument(doc);
+                                  setIsPreviewOpen(true);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Preview
+                              </Button>
+                            )}
+                            {doc.status === 'completed' && !doc.mathpix_mmd && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => processMutation.mutate({ documentId: doc.id })}
+                                disabled={processMutation.isPending}
+                              >
+                                {processMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  'Re-process'
+                                )}
+                              </Button>
+                            )}
+                            {doc.status === 'completed' && doc.mathpix_mmd && (
+                              <Button
+                                size="sm"
+                                onClick={() => extractMutation.mutate({ documentId: doc.id })}
+                                disabled={extractMutation.isPending || !!activeJob}
+                              >
+                                {(extractMutation.isPending || activeJob) ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  'Extract Questions'
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  };
+
+                  return <DocumentRow key={doc.id} />;
+                })}
               </TableBody>
             </Table>
           ) : (

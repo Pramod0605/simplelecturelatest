@@ -11,8 +11,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  let jobId: string | null = null;
+  let documentId: string | null = null;
+
   try {
-    const { jobId, documentId } = await req.json();
+    const body = await req.json();
+    jobId = body.jobId;
+    documentId = body.documentId;
 
     if (!jobId || !documentId) {
       throw new Error('jobId and documentId are required');
@@ -297,8 +309,6 @@ Extract all questions from this document. Return valid JSON only.`;
   } catch (error) {
     console.error('Worker extraction error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    const { jobId } = await req.json().catch(() => ({ jobId: null }));
 
     if (jobId) {
       const supabaseAdmin = createClient(

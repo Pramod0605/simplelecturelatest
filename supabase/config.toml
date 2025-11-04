@@ -52,7 +52,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.process-llm-extraction]
-verify_jwt = true
+verify_jwt = false
 
 [functions.llm-verify-questions]
 verify_jwt = true
