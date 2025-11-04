@@ -74,36 +74,57 @@ serve(async (req) => {
 
     await logJobProgress(job.id, 'info', 'Starting LLM question extraction');
 
-    // Fetch document with MMD and JSON
-    const { data: document, error: fetchError } = await supabaseAdmin
-      .from('uploaded_question_documents')
-      .select('*')
-      .eq('id', documentId)
-      .single();
+    // Return immediate response to client (202 Accepted)
+    const immediateResponse = new Response(
+      JSON.stringify({ 
+        success: true, 
+        started: true,
+        jobId: job.id,
+        documentId,
+        message: 'Extraction started. Track progress in Processing Jobs Monitor.'
+      }),
+      { 
+        status: 202,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
 
-    if (fetchError) throw fetchError;
+    // Start background extraction using EdgeRuntime.waitUntil
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          console.log('Background extraction started for job:', job.id);
 
-    // Use MMD if available (better LaTeX preservation), fallback to markdown
-    const documentContent = document.mathpix_mmd || document.mathpix_markdown;
-    const documentJson = document.mathpix_json_output;
+          // Fetch document with MMD and JSON
+          const { data: document, error: fetchError } = await supabaseAdmin
+            .from('uploaded_question_documents')
+            .select('*')
+            .eq('id', documentId)
+            .single();
 
-    if (!documentContent) {
-      throw new Error('Document has no processed content. Please process document first.');
-    }
+          if (fetchError) throw fetchError;
 
-    await logJobProgress(job.id, 'info', 'Fetched document content', {
-      has_mmd: !!document.mathpix_mmd,
-      has_json: !!document.mathpix_json_output,
-      content_length: documentContent?.length || 0
-    });
+          // Use MMD if available (better LaTeX preservation), fallback to markdown
+          const documentContent = document.mathpix_mmd || document.mathpix_markdown;
+          const documentJson = document.mathpix_json_output;
 
-    await updateJobProgress(job.id, 20, 'Document fetched, preparing for extraction');
+          if (!documentContent) {
+            throw new Error('Document has no processed content. Please process document first.');
+          }
 
-    // Call AI to extract questions
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableApiKey) throw new Error('AI API key not configured');
+          await logJobProgress(job.id, 'info', 'Fetched document content', {
+            has_mmd: !!document.mathpix_mmd,
+            has_json: !!document.mathpix_json_output,
+            content_length: documentContent?.length || 0
+          });
 
-    const systemPrompt = `You are an expert at parsing educational questions from JEE/NEET examination papers processed by Mathpix OCR.
+          await updateJobProgress(job.id, 20, 'Document fetched, preparing for extraction');
+
+          // Call AI to extract questions
+          const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+          if (!lovableApiKey) throw new Error('AI API key not configured');
+
+          const systemPrompt = `You are an expert at parsing educational questions from JEE/NEET examination papers processed by Mathpix OCR.
 
 **Input Format:**
 1. Mathpix Markdown (MMD) - preserves LaTeX formulas and structure
@@ -160,7 +181,7 @@ Return a valid JSON object with this structure:
 
 IMPORTANT: Return ONLY valid JSON. No markdown code blocks, no explanations, just the JSON object.`;
 
-    const userPrompt = `Document: ${document.file_name}
+          const userPrompt = `Document: ${document.file_name}
 
 **Mathpix Markdown (MMD):**
 \`\`\`
@@ -175,149 +196,162 @@ ${JSON.stringify(documentJson, null, 2)}
 
 Extract all questions from this document. Return valid JSON only.`;
 
-    await updateJobProgress(job.id, 40, 'Calling AI to extract questions');
-    await logJobProgress(job.id, 'info', 'Invoking AI extraction', {
-      prompt_length: userPrompt.length
-    });
+          await updateJobProgress(job.id, 40, 'Calling AI to extract questions');
+          await logJobProgress(job.id, 'info', 'Invoking AI extraction', {
+            prompt_length: userPrompt.length
+          });
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-      }),
-    });
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${lovableApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+              temperature: 0.3,
+            }),
+          });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      await logJobProgress(job.id, 'error', 'AI extraction failed', {
-        status: aiResponse.status,
-        error: errorText
-      });
-      throw new Error(`AI API error: ${aiResponse.statusText}`);
-    }
+          if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            await logJobProgress(job.id, 'error', 'AI extraction failed', {
+              status: aiResponse.status,
+              error: errorText
+            });
+            throw new Error(`AI API error: ${aiResponse.statusText}`);
+          }
 
-    const aiData = await aiResponse.json();
-    const llmResponse = aiData.choices[0]?.message?.content;
+          const aiData = await aiResponse.json();
+          const llmResponse = aiData.choices[0]?.message?.content;
 
-    if (!llmResponse) {
-      throw new Error('No response from AI');
-    }
+          if (!llmResponse) {
+            throw new Error('No response from AI');
+          }
 
-    await logJobProgress(job.id, 'info', 'Received AI response', {
-      response_length: llmResponse.length
-    });
+          await logJobProgress(job.id, 'info', 'Received AI response', {
+            response_length: llmResponse.length
+          });
 
-    await updateJobProgress(job.id, 70, 'Parsing AI response');
+          await updateJobProgress(job.id, 70, 'Parsing AI response');
 
-    // Parse JSON response (handle markdown code blocks if present)
-    let extractedData;
-    try {
-      let jsonText = llmResponse.trim();
-      
-      // Remove markdown code blocks if present
-      if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
-      }
-      
-      extractedData = JSON.parse(jsonText);
-    } catch (parseError) {
-      await logJobProgress(job.id, 'error', 'Failed to parse AI response', {
-        error: parseError instanceof Error ? parseError.message : 'Unknown error',
-        response_preview: llmResponse.substring(0, 500)
-      });
-      throw new Error('Failed to parse AI response as JSON');
-    }
+          // Parse JSON response (handle markdown code blocks if present)
+          let extractedData;
+          try {
+            let jsonText = llmResponse.trim();
+            
+            // Remove markdown code blocks if present
+            if (jsonText.startsWith('```')) {
+              jsonText = jsonText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '');
+            }
+            
+            extractedData = JSON.parse(jsonText);
+          } catch (parseError) {
+            await logJobProgress(job.id, 'error', 'Failed to parse AI response', {
+              error: parseError instanceof Error ? parseError.message : 'Unknown error',
+              response_preview: llmResponse.substring(0, 500)
+            });
+            throw new Error('Failed to parse AI response as JSON');
+          }
 
-    const questions = extractedData.questions || [];
+          const questions = extractedData.questions || [];
 
-    if (!Array.isArray(questions)) {
-      throw new Error('Invalid response format: questions is not an array');
-    }
+          if (!Array.isArray(questions)) {
+            throw new Error('Invalid response format: questions is not an array');
+          }
 
-    await logJobProgress(job.id, 'info', `Extracted ${questions.length} questions`);
-    await updateJobProgress(job.id, 80, `Saving ${questions.length} questions to database`);
+          await logJobProgress(job.id, 'info', `Extracted ${questions.length} questions`);
+          await updateJobProgress(job.id, 80, `Saving ${questions.length} questions to database`);
 
-    // Insert questions into pending table
-    let insertedCount = 0;
-    const difficultyDistribution: any = { Low: 0, Medium: 0, Intermediate: 0, Advanced: 0 };
+          // Insert questions into pending table
+          let insertedCount = 0;
+          const difficultyDistribution: any = { Low: 0, Medium: 0, Intermediate: 0, Advanced: 0 };
 
-    const questionRecords = questions.map((q: any) => {
-      if (q.difficulty) {
-        difficultyDistribution[q.difficulty]++;
-      }
-      return {
-        document_id: documentId,
-        category_id: document.category_id,
-        subject_id: document.subject_id,
-        chapter_id: document.chapter_id,
-        topic_id: document.topic_id,
-        subtopic_id: document.subtopic_id,
-        question_text: q.question_text,
-        question_format: q.question_format || 'single_choice',
-        question_type: q.question_type || 'objective',
-        difficulty: q.difficulty || 'Medium',
-        marks: q.marks || 1,
-        options: q.options || null,
-        correct_answer: q.correct_answer,
-        explanation: q.explanation || null,
-        llm_suggested_difficulty: q.difficulty || 'Medium',
-        llm_difficulty_reasoning: q.difficulty_reasoning || null,
-        contains_formula: (q.question_text || '').includes('\\(') || (q.question_text || '').includes('\\[')
-      };
-    });
+          const questionRecords = questions.map((q: any) => {
+            if (q.difficulty) {
+              difficultyDistribution[q.difficulty]++;
+            }
+            return {
+              document_id: documentId,
+              category_id: document.category_id,
+              subject_id: document.subject_id,
+              chapter_id: document.chapter_id,
+              topic_id: document.topic_id,
+              subtopic_id: document.subtopic_id,
+              question_text: q.question_text,
+              question_format: q.question_format || 'single_choice',
+              question_type: q.question_type || 'objective',
+              difficulty: q.difficulty || 'Medium',
+              marks: q.marks || 1,
+              options: q.options || null,
+              correct_answer: q.correct_answer,
+              explanation: q.explanation || null,
+              llm_suggested_difficulty: q.difficulty || 'Medium',
+              llm_difficulty_reasoning: q.difficulty_reasoning || null,
+              contains_formula: (q.question_text || '').includes('\\(') || (q.question_text || '').includes('\\[')
+            };
+          });
 
-    const { error: insertError } = await supabaseAdmin
-      .from('parsed_questions_pending')
-      .insert(questionRecords);
+          const { error: insertError } = await supabaseAdmin
+            .from('parsed_questions_pending')
+            .insert(questionRecords);
 
-    if (insertError) {
-      await logJobProgress(job.id, 'error', 'Failed to insert questions', {
-        error: insertError.message
-      });
-      throw insertError;
-    }
+          if (insertError) {
+            await logJobProgress(job.id, 'error', 'Failed to insert questions', {
+              error: insertError.message
+            });
+            throw insertError;
+          }
 
-    insertedCount = questionRecords.length;
+          insertedCount = questionRecords.length;
 
-    await updateJobProgress(job.id, 95, 'Finalizing extraction');
+          await updateJobProgress(job.id, 95, 'Finalizing extraction');
 
-    // Mark job as completed
-    await supabaseAdmin
-      .from('document_processing_jobs')
-      .update({
-        status: 'completed',
-        progress_percentage: 100,
-        current_step: 'Extraction complete',
-        completed_at: new Date().toISOString(),
-        questions_extracted: insertedCount,
-        result_data: {
-          total_questions: insertedCount,
-          difficulty_distribution: difficultyDistribution
+          // Mark job as completed
+          await supabaseAdmin
+            .from('document_processing_jobs')
+            .update({
+              status: 'completed',
+              progress_percentage: 100,
+              current_step: 'Extraction complete',
+              completed_at: new Date().toISOString(),
+              questions_extracted: insertedCount,
+              result_data: {
+                total_questions: insertedCount,
+                difficulty_distribution: difficultyDistribution
+              }
+            })
+            .eq('id', job.id);
+
+          await logJobProgress(job.id, 'info', `Extraction completed: ${insertedCount} questions saved`);
+
+          console.log('Background extraction completed successfully');
+
+        } catch (backgroundError) {
+          console.error('Background extraction error:', backgroundError);
+          await logJobProgress(
+            job.id, 
+            'error',
+            `Error: ${backgroundError instanceof Error ? backgroundError.message : 'Unknown error'}`
+          );
+          await supabaseAdmin
+            .from('document_processing_jobs')
+            .update({
+              status: 'failed',
+              error_message: backgroundError instanceof Error ? backgroundError.message : 'Unknown error',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', job.id);
         }
-      })
-      .eq('id', job.id);
-
-    await logJobProgress(job.id, 'info', `Extraction completed: ${insertedCount} questions saved`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        questionsExtracted: insertedCount,
-        documentId,
-        jobId: job.id,
-        difficultyDistribution
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      })()
     );
+
+    // Return the immediate response
+    return immediateResponse;
 
   } catch (error) {
     console.error('Error extracting questions:', error);
