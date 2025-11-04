@@ -50,3 +50,15 @@ verify_jwt = true
 
 [functions.retry-failed-job]
 verify_jwt = true
+
+[functions.process-llm-extraction]
+verify_jwt = true
+
+[functions.llm-verify-questions]
+verify_jwt = true
+
+[functions.update-instructor-password]
+verify_jwt = true
+
+[functions.voice-to-text]
+verify_jwt = true
