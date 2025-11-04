@@ -166,11 +166,8 @@ serve(async (req) => {
       const formData = new FormData();
       formData.append('file', blob, doc.file_name);
       
+      // For /v3/text endpoint, don't use conversion_formats (returns inline in JSON)
       const options = {
-        conversion_formats: {
-          md: true,
-          mmd: true
-        },
         math_inline_delimiters: ["$", "$"],
         math_display_delimiters: ["$$", "$$"]
       };
@@ -233,17 +230,15 @@ serve(async (req) => {
       const formData = new FormData();
       formData.append('file', blob, doc.file_name);
       
+      // Use valid Mathpix PDF format names: "md", "docx", "tex.zip" (note the dot)
       const options = {
         conversion_formats: {
           md: true,
-          mmd: true,
           docx: false,
-          tex_zip: false
+          "tex.zip": false
         },
         math_inline_delimiters: ["$", "$"],
-        math_display_delimiters: ["$$", "$$"],
-        include_table_html: true,
-        include_svg: true
+        math_display_delimiters: ["$$", "$$"]
       };
       formData.append('options_json', JSON.stringify(options));
 
@@ -263,6 +258,15 @@ serve(async (req) => {
       }
 
       const mathpixData = await mathpixResponse.json();
+
+      // Check for Mathpix error response first
+      if (mathpixData.error || mathpixData.error_info) {
+        await logJobProgress(job.id, 'error', 'Mathpix API returned error', {
+          error: mathpixData.error || mathpixData.error_info,
+          full_response: mathpixData
+        });
+        throw new Error(`Mathpix API error: ${JSON.stringify(mathpixData.error || mathpixData.error_info)}`);
+      }
 
       // Enhanced pdf_id extraction with fallbacks
       const pdfId = mathpixData.pdf_id || mathpixData.id || mathpixData.request_id;
@@ -403,13 +407,8 @@ async function pollMathpixCompletion(
             pdf_id: pdfId,
             full_response: conversionData,
             available_keys: Object.keys(conversionData),
-            has_mmd_url: !!conversionData.mmd_url,
-            has_md_url: !!conversionData.url,
-            has_direct_mmd: !!conversionData.mmd,
-            has_direct_markdown: !!conversionData.markdown,
-            has_outputs: !!conversionData.outputs,
-            has_results: !!conversionData.results,
-            has_conversion_outputs: !!conversionData.conversion_outputs
+            has_output_urls: !!conversionData.output_urls,
+            output_urls_keys: conversionData.output_urls ? Object.keys(conversionData.output_urls) : []
           }
         });
 
@@ -418,19 +417,19 @@ async function pollMathpixCompletion(
         let mmdContent = null;
 
         try {
-          // Try multiple possible locations for MMD content
-          const mmdUrl = conversionData.mmd_url 
+          // Prioritize documented output_urls, then fallback to other locations
+          const mmdUrl = conversionData.output_urls?.mmd
+            || conversionData.mmd_url 
             || conversionData.outputs?.mmd 
             || conversionData.results?.mmd_url
-            || conversionData.conversion_outputs?.mmd
-            || conversionData.output_urls?.mmd;
+            || conversionData.conversion_outputs?.mmd;
 
-          const mdUrl = conversionData.url 
+          const mdUrl = conversionData.output_urls?.md
+            || conversionData.url 
             || conversionData.md_url
             || conversionData.outputs?.md
             || conversionData.results?.md_url
-            || conversionData.conversion_outputs?.md
-            || conversionData.output_urls?.md;
+            || conversionData.conversion_outputs?.md;
 
           await supabase.from('job_logs').insert({
             job_id: jobId,
@@ -540,6 +539,17 @@ async function pollMathpixCompletion(
             }
           }
 
+          // Fallback: If MMD not available, use Markdown for both columns
+          if (!mmdContent && markdownContent) {
+            mmdContent = markdownContent;
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'Using Markdown as MMD fallback (MMD not available from Mathpix)',
+              details: { markdown_length: markdownContent.length }
+            });
+          }
+
           // Final validation
           if (!mmdContent && !markdownContent) {
             throw new Error('No content could be downloaded from Mathpix');
@@ -553,7 +563,8 @@ async function pollMathpixCompletion(
               has_mmd: !!mmdContent,
               has_markdown: !!markdownContent,
               mmd_length: mmdContent?.length || 0,
-              markdown_length: markdownContent?.length || 0
+              markdown_length: markdownContent?.length || 0,
+              used_markdown_fallback: !conversionData.output_urls?.mmd && !!markdownContent
             }
           });
 
