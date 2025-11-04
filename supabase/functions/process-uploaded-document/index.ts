@@ -167,8 +167,10 @@ serve(async (req) => {
       formData.append('file', blob, doc.file_name);
       
       const options = {
-        ocr_engine: "mathpix",
-        formats: ["mmd", "md"],
+        conversion_formats: {
+          md: true,
+          mmd: true
+        },
         math_inline_delimiters: ["$", "$"],
         math_display_delimiters: ["$$", "$$"]
       };
@@ -232,10 +234,16 @@ serve(async (req) => {
       formData.append('file', blob, doc.file_name);
       
       const options = {
-        ocr_engine: "mathpix",
-        formats: ["mmd", "md"],
+        conversion_formats: {
+          md: true,
+          mmd: true,
+          docx: false,
+          tex_zip: false
+        },
         math_inline_delimiters: ["$", "$"],
-        math_display_delimiters: ["$$", "$$"]
+        math_display_delimiters: ["$$", "$$"],
+        include_table_html: true,
+        include_svg: true
       };
       formData.append('options_json', JSON.stringify(options));
 
@@ -390,13 +398,18 @@ async function pollMathpixCompletion(
         await supabase.from('job_logs').insert({
           job_id: jobId,
           log_level: 'info',
-          message: 'PDF conversion completed, downloading content',
+          message: 'PDF conversion completed, analyzing response',
           details: { 
             pdf_id: pdfId,
+            full_response: conversionData,
+            available_keys: Object.keys(conversionData),
             has_mmd_url: !!conversionData.mmd_url,
             has_md_url: !!conversionData.url,
             has_direct_mmd: !!conversionData.mmd,
-            has_direct_markdown: !!conversionData.markdown
+            has_direct_markdown: !!conversionData.markdown,
+            has_outputs: !!conversionData.outputs,
+            has_results: !!conversionData.results,
+            has_conversion_outputs: !!conversionData.conversion_outputs
           }
         });
 
@@ -405,6 +418,34 @@ async function pollMathpixCompletion(
         let mmdContent = null;
 
         try {
+          // Try multiple possible locations for MMD content
+          const mmdUrl = conversionData.mmd_url 
+            || conversionData.outputs?.mmd 
+            || conversionData.results?.mmd_url
+            || conversionData.conversion_outputs?.mmd
+            || conversionData.output_urls?.mmd;
+
+          const mdUrl = conversionData.url 
+            || conversionData.md_url
+            || conversionData.outputs?.md
+            || conversionData.results?.md_url
+            || conversionData.conversion_outputs?.md
+            || conversionData.output_urls?.md;
+
+          await supabase.from('job_logs').insert({
+            job_id: jobId,
+            log_level: 'info',
+            message: 'Checking for content locations',
+            details: { 
+              found_mmd_url: !!mmdUrl,
+              found_md_url: !!mdUrl,
+              direct_mmd: !!conversionData.mmd,
+              direct_markdown: !!conversionData.markdown,
+              mmd_url_value: mmdUrl,
+              md_url_value: mdUrl
+            }
+          });
+
           // First, check if content is directly in response (rare, but possible)
           if (conversionData.mmd) {
             mmdContent = conversionData.mmd;
@@ -414,16 +455,16 @@ async function pollMathpixCompletion(
               message: 'MMD content found directly in response',
               details: { length: mmdContent.length }
             });
-          } else if (conversionData.mmd_url) {
+          } else if (mmdUrl) {
             // Download .mmd file from URL (Math Markdown - best for parsing questions)
             await supabase.from('job_logs').insert({
               job_id: jobId,
               log_level: 'info',
               message: 'Downloading MMD content from URL',
-              details: { url: conversionData.mmd_url }
+              details: { url: mmdUrl }
             });
 
-            const mmdResponse = await fetch(conversionData.mmd_url, {
+            const mmdResponse = await fetch(mmdUrl, {
               headers: {
                 'app_id': mathpixAppId!,
                 'app_key': mathpixAppKey!,
@@ -440,7 +481,7 @@ async function pollMathpixCompletion(
                   log_level: 'warn',
                   message: 'MMD content is in ZIP format (not yet supported)',
                   details: { 
-                    url: conversionData.mmd_url,
+                    url: mmdUrl,
                     contentType: contentType
                   }
                 });
@@ -470,15 +511,15 @@ async function pollMathpixCompletion(
           // Download plain Markdown as fallback
           if (conversionData.markdown) {
             markdownContent = conversionData.markdown;
-          } else if (conversionData.url) {
+          } else if (mdUrl) {
             await supabase.from('job_logs').insert({
               job_id: jobId,
               log_level: 'info',
               message: 'Downloading Markdown content from URL',
-              details: { url: conversionData.url }
+              details: { url: mdUrl }
             });
 
-            const mdResponse = await fetch(conversionData.url, {
+            const mdResponse = await fetch(mdUrl, {
               headers: {
                 'app_id': mathpixAppId!,
                 'app_key': mathpixAppKey!,
