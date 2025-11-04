@@ -226,21 +226,9 @@ serve(async (req) => {
       await logJobProgress(job.id, 'info', 'Using /v3/pdf endpoint for PDF');
       await updateJobProgress(job.id, 35, 'Uploading PDF to Mathpix');
 
-      // Prepare multipart form data
+      // Prepare multipart form data - n8n approach: just upload file, no options
       const formData = new FormData();
       formData.append('file', blob, doc.file_name);
-      
-      // Use valid Mathpix PDF format names: "md", "docx", "tex.zip" (note the dot)
-      const options = {
-        conversion_formats: {
-          md: true,
-          docx: false,
-          "tex.zip": false
-        },
-        math_inline_delimiters: ["$", "$"],
-        math_display_delimiters: ["$$", "$$"]
-      };
-      formData.append('options_json', JSON.stringify(options));
 
       const mathpixResponse = await fetch('https://api.mathpix.com/v3/pdf', {
         method: 'POST',
@@ -412,142 +400,77 @@ async function pollMathpixCompletion(
           }
         });
 
-        // Download the actual content from Mathpix URLs
+        // Download content using n8n approach: direct URLs with pdf_id
         let markdownContent = null;
         let mmdContent = null;
 
         try {
-          // Prioritize documented output_urls, then fallback to other locations
-          const mmdUrl = conversionData.output_urls?.mmd
-            || conversionData.mmd_url 
-            || conversionData.outputs?.mmd 
-            || conversionData.results?.mmd_url
-            || conversionData.conversion_outputs?.mmd;
-
-          const mdUrl = conversionData.output_urls?.md
-            || conversionData.url 
-            || conversionData.md_url
-            || conversionData.outputs?.md
-            || conversionData.results?.md_url
-            || conversionData.conversion_outputs?.md;
+          // n8n pattern: https://api.mathpix.com/v3/pdf/{pdf_id}.mmd
+          const baseUrl = 'https://api.mathpix.com/v3/pdf';
+          const mmdUrl = `${baseUrl}/${pdfId}.mmd`;
+          const mdUrl = `${baseUrl}/${pdfId}.md`;
 
           await supabase.from('job_logs').insert({
             job_id: jobId,
             log_level: 'info',
-            message: 'Checking for content locations',
+            message: 'Attempting n8n-style direct download',
             details: { 
-              found_mmd_url: !!mmdUrl,
-              found_md_url: !!mdUrl,
-              direct_mmd: !!conversionData.mmd,
-              direct_markdown: !!conversionData.markdown,
-              mmd_url_value: mmdUrl,
-              md_url_value: mdUrl
+              mmd_url: mmdUrl,
+              md_url: mdUrl
             }
           });
 
-          // First, check if content is directly in response (rare, but possible)
-          if (conversionData.mmd) {
-            mmdContent = conversionData.mmd;
-            await supabase.from('job_logs').insert({
-              job_id: jobId,
-              log_level: 'info',
-              message: 'MMD content found directly in response',
-              details: { length: mmdContent.length }
-            });
-          } else if (mmdUrl) {
-            // Download .mmd file from URL (Math Markdown - best for parsing questions)
-            await supabase.from('job_logs').insert({
-              job_id: jobId,
-              log_level: 'info',
-              message: 'Downloading MMD content from URL',
-              details: { url: mmdUrl }
-            });
-
-            const mmdResponse = await fetch(mmdUrl, {
-              headers: {
-                'app_id': mathpixAppId!,
-                'app_key': mathpixAppKey!,
-              }
-            });
-            
-            if (mmdResponse.ok) {
-              const contentType = mmdResponse.headers.get('content-type');
-              
-              if (contentType?.includes('zip') || contentType?.includes('application/octet-stream')) {
-                // It's a ZIP file - log for now
-                await supabase.from('job_logs').insert({
-                  job_id: jobId,
-                  log_level: 'warn',
-                  message: 'MMD content is in ZIP format (not yet supported)',
-                  details: { 
-                    url: mmdUrl,
-                    contentType: contentType
-                  }
-                });
-              } else {
-                // Plain text content
-                mmdContent = await mmdResponse.text();
-                await supabase.from('job_logs').insert({
-                  job_id: jobId,
-                  log_level: 'info',
-                  message: 'MMD content downloaded successfully',
-                  details: { length: mmdContent.length }
-                });
-              }
-            } else {
-              await supabase.from('job_logs').insert({
-                job_id: jobId,
-                log_level: 'warn',
-                message: 'Failed to download MMD content',
-                details: { 
-                  status: mmdResponse.status,
-                  statusText: mmdResponse.statusText
-                }
-              });
+          // Try MMD first
+          const mmdResponse = await fetch(mmdUrl, {
+            headers: {
+              'app_id': mathpixAppId!,
+              'app_key': mathpixAppKey!,
             }
+          });
+          
+          if (mmdResponse.ok) {
+            mmdContent = await mmdResponse.text();
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'MMD downloaded successfully',
+              details: { length: mmdContent.length, url: mmdUrl }
+            });
+          } else {
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'warn',
+              message: 'MMD download failed, will try MD',
+              details: { status: mmdResponse.status }
+            });
           }
 
-          // Download plain Markdown as fallback
-          if (conversionData.markdown) {
-            markdownContent = conversionData.markdown;
-          } else if (mdUrl) {
+          // Try Markdown
+          const mdResponse = await fetch(mdUrl, {
+            headers: {
+              'app_id': mathpixAppId!,
+              'app_key': mathpixAppKey!,
+            }
+          });
+          
+          if (mdResponse.ok) {
+            markdownContent = await mdResponse.text();
             await supabase.from('job_logs').insert({
               job_id: jobId,
               log_level: 'info',
-              message: 'Downloading Markdown content from URL',
-              details: { url: mdUrl }
+              message: 'Markdown downloaded successfully',
+              details: { length: markdownContent.length, url: mdUrl }
             });
-
-            const mdResponse = await fetch(mdUrl, {
-              headers: {
-                'app_id': mathpixAppId!,
-                'app_key': mathpixAppKey!,
-              }
-            });
-            
-            if (mdResponse.ok) {
-              const contentType = mdResponse.headers.get('content-type');
-              if (!contentType?.includes('zip')) {
-                markdownContent = await mdResponse.text();
-                await supabase.from('job_logs').insert({
-                  job_id: jobId,
-                  log_level: 'info',
-                  message: 'Markdown content downloaded successfully',
-                  details: { length: markdownContent.length }
-                });
-              }
-            }
           }
 
-          // Fallback: If MMD not available, use Markdown for both columns
+          // Use Markdown for both if MMD failed
           if (!mmdContent && markdownContent) {
             mmdContent = markdownContent;
-            await supabase.from('job_logs').insert({
-              job_id: jobId,
-              log_level: 'info',
-              message: 'Using Markdown as MMD fallback (MMD not available from Mathpix)',
-              details: { markdown_length: markdownContent.length }
-            });
+          }
+          
+          // Use MMD for both if Markdown failed
+          if (!markdownContent && mmdContent) {
+            markdownContent = mmdContent;
           }
 
           // Final validation
