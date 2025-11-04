@@ -352,7 +352,21 @@ export default function UploadQuestionBank() {
                             Preview
                           </Button>
                         )}
-                        {doc.status === 'completed' && (
+                        {doc.status === 'completed' && !doc.mathpix_mmd && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => processMutation.mutate({ documentId: doc.id })}
+                            disabled={processMutation.isPending}
+                          >
+                            {processMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              'Re-process'
+                            )}
+                          </Button>
+                        )}
+                        {doc.status === 'completed' && doc.mathpix_mmd && (
                           <Button
                             size="sm"
                             onClick={() => extractMutation.mutate({ documentId: doc.id })}
