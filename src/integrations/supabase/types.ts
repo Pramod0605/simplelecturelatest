@@ -851,6 +851,44 @@ export type Database = {
         }
         Relationships: []
       }
+      document_images: {
+        Row: {
+          created_at: string | null
+          document_id: string
+          id: string
+          image_type: string
+          original_filename: string
+          question_number: number | null
+          storage_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_id: string
+          id?: string
+          image_type: string
+          original_filename: string
+          question_number?: number | null
+          storage_url: string
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          image_type?: string
+          original_filename?: string
+          question_number?: number | null
+          storage_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_images_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_question_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_processing_jobs: {
         Row: {
           completed_at: string | null
@@ -2746,14 +2784,24 @@ export type Database = {
           mathpix_markdown: string | null
           mathpix_mmd: string | null
           mathpix_pdf_id: string | null
+          mathpix_questions_pdf_id: string | null
+          mathpix_solutions_pdf_id: string | null
           processing_completed_at: string | null
           processing_started_at: string | null
+          questions_images_folder: string | null
+          questions_mmd_content: string | null
+          questions_pdf_url: string | null
+          solutions_images_folder: string | null
+          solutions_mmd_content: string | null
+          solutions_pdf_url: string | null
           status: string | null
           subject_id: string
           subtopic_id: string | null
           topic_id: string | null
           updated_at: string | null
           uploaded_by: string
+          validation_notes: string | null
+          validation_status: string | null
         }
         Insert: {
           category_id: string
@@ -2773,14 +2821,24 @@ export type Database = {
           mathpix_markdown?: string | null
           mathpix_mmd?: string | null
           mathpix_pdf_id?: string | null
+          mathpix_questions_pdf_id?: string | null
+          mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_images_folder?: string | null
+          questions_mmd_content?: string | null
+          questions_pdf_url?: string | null
+          solutions_images_folder?: string | null
+          solutions_mmd_content?: string | null
+          solutions_pdf_url?: string | null
           status?: string | null
           subject_id: string
           subtopic_id?: string | null
           topic_id?: string | null
           updated_at?: string | null
           uploaded_by: string
+          validation_notes?: string | null
+          validation_status?: string | null
         }
         Update: {
           category_id?: string
@@ -2800,14 +2858,24 @@ export type Database = {
           mathpix_markdown?: string | null
           mathpix_mmd?: string | null
           mathpix_pdf_id?: string | null
+          mathpix_questions_pdf_id?: string | null
+          mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_images_folder?: string | null
+          questions_mmd_content?: string | null
+          questions_pdf_url?: string | null
+          solutions_images_folder?: string | null
+          solutions_mmd_content?: string | null
+          solutions_pdf_url?: string | null
           status?: string | null
           subject_id?: string
           subtopic_id?: string | null
           topic_id?: string | null
           updated_at?: string | null
           uploaded_by?: string
+          validation_notes?: string | null
+          validation_status?: string | null
         }
         Relationships: [
           {
