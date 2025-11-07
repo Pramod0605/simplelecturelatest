@@ -118,14 +118,20 @@ serve(async (req) => {
       }
 
       const structuredData = await resultResponse.json();
+      
+      // Extract nested result object (Replit API returns data nested under 'result')
+      const resultData = structuredData.result || structuredData;
+      
+      console.log('Replit response structure:', JSON.stringify(structuredData, null, 2));
+      console.log('Merged array length:', resultData.merged?.length || 0);
 
       await supabaseAdmin.from('job_logs').insert({
         job_id: jobId,
         log_level: 'info',
         message: 'Results fetched successfully',
         details: { 
-          total_questions: structuredData.total_questions,
-          matched_count: structuredData.matched_count
+          total_questions: resultData.total_questions,
+          matched_count: resultData.matched_count
         }
       });
 
@@ -151,7 +157,7 @@ serve(async (req) => {
 
       let insertedCount = 0;
 
-      for (const item of structuredData.merged || []) {
+      for (const item of resultData.merged || []) {
         try {
           // Parse question text to extract options
           const questionText = item.question_text || '';
@@ -252,8 +258,8 @@ serve(async (req) => {
           current_step: `Completed: ${insertedCount} questions inserted`,
           result_data: {
             replit_job_id: replitJobId,
-            total_questions: structuredData.total_questions,
-            matched_count: structuredData.matched_count,
+            total_questions: resultData.total_questions,
+            matched_count: resultData.matched_count,
             inserted_count: insertedCount
           }
         })
