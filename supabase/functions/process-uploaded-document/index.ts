@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as zipjs from "https://deno.land/x/zipjs@v2.7.52/index.js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,7 @@ serve(async (req) => {
     const { documentId: docId } = await req.json();
     documentId = docId;
 
-    console.log('Processing document:', documentId);
+    console.log('Processing dual-PDF document:', documentId);
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -85,70 +86,32 @@ serve(async (req) => {
       })
       .eq('id', documentId);
 
-    await updateJobProgress(job.id, 10, 'Fetching document from storage');
+    await updateJobProgress(job.id, 10, 'Fetching dual PDFs from storage');
 
-    // Get document details including file_url
+    // Get document details including both file URLs
     const { data: doc } = await supabaseAdmin
       .from('uploaded_question_documents')
-      .select('file_name, file_type, file_url')
+      .select(`
+        questions_file_name, 
+        questions_file_url, 
+        solutions_file_name, 
+        solutions_file_url, 
+        chapter_id, 
+        topic_id,
+        subject_chapters!inner(title),
+        subject_topics!inner(title)
+      `)
       .eq('id', documentId)
       .single();
 
-    if (!doc) {
-      throw new Error('Document not found');
+    if (!doc || !doc.questions_file_url || !doc.solutions_file_url) {
+      throw new Error('Document not found or missing file URLs');
     }
 
-    await logJobProgress(job.id, 'info', 'Document fetched', { file_name: doc.file_name });
-
-    // Extract storage path from file_url
-    // Format: https://PROJECT.supabase.co/storage/v1/object/public/bucket/path
-    const urlParts = doc.file_url.split('/storage/v1/object/public/');
-    if (urlParts.length < 2) {
-      throw new Error('Invalid file URL format');
-    }
-    const fullPath = urlParts[1]; // e.g., "uploaded-question-documents/user-id/timestamp.pdf"
-    const storagePath = fullPath.split('/').slice(1).join('/'); // Remove bucket name
-
-    await logJobProgress(job.id, 'info', 'Extracted storage path', { storage_path: storagePath });
-
-    // Detect file type
-    const fileExtension = doc.file_name.split('.').pop()?.toLowerCase();
-    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension || '');
-    const isPDF = fileExtension === 'pdf';
-
-    await logJobProgress(job.id, 'info', 'File type detected', { 
-      extension: fileExtension, 
-      isImage, 
-      isPDF 
+    await logJobProgress(job.id, 'info', 'Documents fetched', { 
+      questions_file: doc.questions_file_name,
+      solutions_file: doc.solutions_file_name 
     });
-
-    // Download file from storage using service role
-    await updateJobProgress(job.id, 20, 'Downloading file from storage');
-    
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-      .from('uploaded-question-documents')
-      .download(storagePath);
-
-    if (downloadError || !fileData) {
-      throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
-    }
-
-    await logJobProgress(job.id, 'info', 'File downloaded successfully', { 
-      size: fileData.size 
-    });
-
-    // Prepare file for multipart upload (no encoding needed)
-    await updateJobProgress(job.id, 25, 'Preparing file for upload');
-
-    const fileBuffer = await fileData.arrayBuffer();
-    const blob = new Blob([fileBuffer], { type: doc.file_type });
-
-    await logJobProgress(job.id, 'info', 'File prepared for upload', {
-      size: fileData.size,
-      type: doc.file_type
-    });
-
-    await updateJobProgress(job.id, 30, 'Uploading to Mathpix API');
 
     const mathpixAppId = Deno.env.get('MATHPIX_APP_ID');
     const mathpixAppKey = Deno.env.get('MATHPIX_APP_KEY');
@@ -157,142 +120,121 @@ serve(async (req) => {
       throw new Error('Mathpix API credentials not configured');
     }
 
-    // For images: Use /v3/text endpoint (instant response)
-    if (isImage) {
-      await logJobProgress(job.id, 'info', 'Using /v3/text endpoint for image');
-      await updateJobProgress(job.id, 35, 'Processing image with Mathpix');
+    // Helper to extract storage path and download file
+    const downloadFile = async (fileUrl: string, fileName: string) => {
+      const urlParts = fileUrl.split('/storage/v1/object/public/');
+      if (urlParts.length < 2) throw new Error('Invalid file URL format');
+      const fullPath = urlParts[1];
+      const storagePath = fullPath.split('/').slice(1).join('/');
 
-      // Prepare multipart form data
+      const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+        .from('uploaded-question-documents')
+        .download(storagePath);
+
+      if (downloadError || !fileData) {
+        throw new Error(`Failed to download ${fileName}: ${downloadError?.message}`);
+      }
+
+      return fileData;
+    };
+
+    // Helper to upload PDF to Mathpix
+    const uploadToMathpix = async (fileData: Blob, fileName: string) => {
+      const fileBuffer = await fileData.arrayBuffer();
+      const blob = new Blob([fileBuffer], { type: 'application/pdf' });
+
       const formData = new FormData();
-      formData.append('file', blob, doc.file_name);
+      formData.append('file', blob, fileName);
+
+      const response = await fetch('https://api.mathpix.com/v3/pdf', {
+        method: 'POST',
+        headers: {
+          'app_id': mathpixAppId,
+          'app_key': mathpixAppKey,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Mathpix API error for ${fileName}: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
       
-      // For /v3/text endpoint, don't use conversion_formats (returns inline in JSON)
-      const options = {
-        math_inline_delimiters: ["$", "$"],
-        math_display_delimiters: ["$$", "$$"]
-      };
-      formData.append('options_json', JSON.stringify(options));
-
-      const mathpixResponse = await fetch('https://api.mathpix.com/v3/text', {
-        method: 'POST',
-        headers: {
-          'app_id': mathpixAppId,
-          'app_key': mathpixAppKey,
-          // DO NOT set Content-Type - FormData sets it automatically with boundary
-        },
-        body: formData,
-      });
-
-      if (!mathpixResponse.ok) {
-        const errorText = await mathpixResponse.text();
-        throw new Error(`Mathpix API error: ${mathpixResponse.status} - ${errorText}`);
+      if (data.error || data.error_info) {
+        throw new Error(`Mathpix API error for ${fileName}: ${JSON.stringify(data.error || data.error_info)}`);
       }
 
-      const conversionData = await mathpixResponse.json();
-
-      await logJobProgress(job.id, 'info', 'Image processed successfully');
-      await updateJobProgress(job.id, 90, 'Storing results');
-
-      // Store results immediately for images
-      await supabaseAdmin
-        .from('uploaded_question_documents')
-        .update({
-          mathpix_json_output: conversionData,
-          mathpix_markdown: conversionData.markdown || conversionData.text,
-          mathpix_mmd: conversionData.mmd,
-          mathpix_latex: conversionData.latex_styled,
-          mathpix_html: conversionData.html,
-          status: 'completed',
-          processing_completed_at: new Date().toISOString()
-        })
-        .eq('id', documentId);
-
-      await updateJobProgress(job.id, 100, 'Processing complete', 'completed');
-      await supabaseAdmin
-        .from('document_processing_jobs')
-        .update({ completed_at: new Date().toISOString() })
-        .eq('id', job.id);
-
-      await logJobProgress(job.id, 'info', 'Job completed successfully');
-
-      return new Response(
-        JSON.stringify({ success: true, jobId: job.id }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // For PDFs: Use /v3/pdf endpoint (async with background polling)
-    if (isPDF) {
-      await logJobProgress(job.id, 'info', 'Using /v3/pdf endpoint for PDF');
-      await updateJobProgress(job.id, 35, 'Uploading PDF to Mathpix');
-
-      // Prepare multipart form data - n8n approach: just upload file, no options
-      const formData = new FormData();
-      formData.append('file', blob, doc.file_name);
-
-      const mathpixResponse = await fetch('https://api.mathpix.com/v3/pdf', {
-        method: 'POST',
-        headers: {
-          'app_id': mathpixAppId,
-          'app_key': mathpixAppKey,
-          // DO NOT set Content-Type - FormData sets it automatically with boundary
-        },
-        body: formData,
-      });
-
-      if (!mathpixResponse.ok) {
-        const errorText = await mathpixResponse.text();
-        throw new Error(`Mathpix API error: ${mathpixResponse.status} - ${errorText}`);
-      }
-
-      const mathpixData = await mathpixResponse.json();
-
-      // Check for Mathpix error response first
-      if (mathpixData.error || mathpixData.error_info) {
-        await logJobProgress(job.id, 'error', 'Mathpix API returned error', {
-          error: mathpixData.error || mathpixData.error_info,
-          full_response: mathpixData
-        });
-        throw new Error(`Mathpix API error: ${JSON.stringify(mathpixData.error || mathpixData.error_info)}`);
-      }
-
-      // Enhanced pdf_id extraction with fallbacks
-      const pdfId = mathpixData.pdf_id || mathpixData.id || mathpixData.request_id;
-
+      const pdfId = data.pdf_id || data.id || data.request_id;
       if (!pdfId) {
-        await logJobProgress(job.id, 'error', 'Mathpix response missing PDF ID', {
-          response_keys: Object.keys(mathpixData),
-          full_response: mathpixData
-        });
-        throw new Error('Mathpix API returned success but no PDF ID found');
+        throw new Error(`No PDF ID returned for ${fileName}`);
       }
 
-      await logJobProgress(job.id, 'info', 'PDF upload successful', { pdf_id: pdfId });
+      return pdfId;
+    };
 
-      // Store pdf_id for polling
-      await supabaseAdmin
-        .from('document_processing_jobs')
-        .update({ mathpix_pdf_id: pdfId })
-        .eq('id', job.id);
+    // Download both PDFs
+    await updateJobProgress(job.id, 20, 'Downloading questions PDF');
+    const questionsFile = await downloadFile(doc.questions_file_url, doc.questions_file_name);
+    
+    await updateJobProgress(job.id, 25, 'Downloading solutions PDF');
+    const solutionsFile = await downloadFile(doc.solutions_file_url, doc.solutions_file_name);
 
-      // Start background polling (fire and forget)
-      pollMathpixCompletion(job.id, pdfId, documentId!, supabaseAdmin);
+    await logJobProgress(job.id, 'info', 'Both PDFs downloaded successfully');
 
-      await updateJobProgress(job.id, 40, `PDF submitted to Mathpix (ID: ${pdfId})`);
+    // Upload both PDFs to Mathpix
+    await updateJobProgress(job.id, 30, 'Uploading questions PDF to Mathpix');
+    const questionsPdfId = await uploadToMathpix(questionsFile, doc.questions_file_name);
+    
+    await updateJobProgress(job.id, 35, 'Uploading solutions PDF to Mathpix');
+    const solutionsPdfId = await uploadToMathpix(solutionsFile, doc.solutions_file_name);
 
-      // Return immediately - polling continues in background
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          jobId: job.id,
-          pdfId,
-          message: 'PDF processing started in background'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    await logJobProgress(job.id, 'info', 'Both PDFs uploaded to Mathpix', {
+      questions_pdf_id: questionsPdfId,
+      solutions_pdf_id: solutionsPdfId
+    });
 
-    throw new Error('Unsupported file type');
+    // Store both PDF IDs
+    await supabaseAdmin
+      .from('document_processing_jobs')
+      .update({
+        mathpix_pdf_id: questionsPdfId,
+        result_data: { solutions_pdf_id: solutionsPdfId }
+      })
+      .eq('id', job.id);
+
+    await supabaseAdmin
+      .from('uploaded_question_documents')
+      .update({
+        mathpix_questions_pdf_id: questionsPdfId,
+        mathpix_solutions_pdf_id: solutionsPdfId
+      })
+      .eq('id', documentId);
+
+    // Start background polling for both PDFs
+    pollMathpixDualCompletion(
+      job.id,
+      questionsPdfId,
+      solutionsPdfId,
+      documentId!,
+      supabaseAdmin,
+      (doc.subject_chapters as any)?.title,
+      (doc.subject_topics as any)?.title
+    );
+
+    await updateJobProgress(job.id, 40, 'Dual PDF processing started');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        jobId: job.id,
+        questionsPdfId,
+        solutionsPdfId,
+        message: 'Dual PDF processing started in background'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error processing document:', error);
@@ -346,231 +288,228 @@ serve(async (req) => {
   }
 });
 
-// Background polling function for PDF conversion
-async function pollMathpixCompletion(
-  jobId: string,
+// ZIP extraction helper function
+async function extractMmdZipAndUpload(
   pdfId: string,
+  pdfType: 'questions' | 'solutions',
   documentId: string,
-  supabase: any
-) {
-  const mathpixAppId = Deno.env.get('MATHPIX_APP_ID');
-  const mathpixAppKey = Deno.env.get('MATHPIX_APP_KEY');
+  appId: string,
+  appKey: string,
+  supabase: any,
+  jobId: string
+): Promise<{ mmdContent: string; imageMetadata: Array<any> }> {
+  const zipUrl = `https://api.mathpix.com/v3/pdf/${pdfId}.mmd.zip`;
 
-  let attempts = 0;
-  const maxAttempts = 60; // 10 minutes (10s intervals)
+  // Download ZIP file
+  const zipResponse = await fetch(zipUrl, {
+    headers: { app_id: appId, app_key: appKey }
+  });
 
-  while (attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+  if (!zipResponse.ok) {
+    throw new Error(`Failed to download ZIP for ${pdfType}: ${zipResponse.status}`);
+  }
 
-    try {
-      const statusResponse = await fetch(`https://api.mathpix.com/v3/pdf/${pdfId}`, {
-        headers: {
-          'app_id': mathpixAppId!,
-          'app_key': mathpixAppKey!,
-        },
+  const zipBytes = new Uint8Array(await zipResponse.arrayBuffer());
+  const blob = new Blob([zipBytes]);
+  
+  const reader = new zipjs.ZipReader(new zipjs.BlobReader(blob));
+  const entries = await reader.getEntries();
+
+  let mmdContent = '';
+  const imageMetadata: Array<any> = [];
+
+  for (const entry of entries) {
+    if (entry.filename.toLowerCase().endsWith('.mmd')) {
+      const writer = new zipjs.TextWriter();
+      mmdContent = await entry.getData!(writer);
+      
+      await supabase.from('job_logs').insert({
+        job_id: jobId,
+        log_level: 'info',
+        message: `Extracted MMD for ${pdfType}`,
+        details: { filename: entry.filename, length: mmdContent.length }
       });
+    } else if (/\.(png|jpg|jpeg)$/i.test(entry.filename)) {
+      const writer = new zipjs.BlobWriter();
+      const blobData = await entry.getData!(writer);
+      
+      // Upload to Supabase Storage
+      const imagePath = `${documentId}/${pdfType}/${entry.filename}`;
+      const { error: uploadError } = await supabase.storage
+        .from('questions-images')
+        .upload(imagePath, blobData, { contentType: blobData.type, upsert: true });
 
-      if (!statusResponse.ok) {
-        throw new Error(`Status check failed: ${statusResponse.statusText}`);
+      if (uploadError) {
+        await supabase.from('job_logs').insert({
+          job_id: jobId,
+          log_level: 'warn',
+          message: `Failed to upload image ${entry.filename}`,
+          details: { error: uploadError.message }
+        });
+        continue;
       }
 
-      const conversionData = await statusResponse.json();
+      const { data: publicUrlData } = supabase.storage
+        .from('questions-images')
+        .getPublicUrl(imagePath);
 
-      // Log progress
-      await supabase
-        .from('job_logs')
-        .insert({
-          job_id: jobId,
-          log_level: 'info',
-          message: `Polling Mathpix (attempt ${attempts + 1}/${maxAttempts})`,
-          details: { status: conversionData.status, pdf_id: pdfId }
+      imageMetadata.push({
+        document_id: documentId,
+        image_type: pdfType === 'questions' ? 'question' : 'solution',
+        original_filename: entry.filename,
+        storage_url: publicUrlData.publicUrl
+      });
+
+      await supabase.from('job_logs').insert({
+        job_id: jobId,
+        log_level: 'info',
+        message: `Uploaded image for ${pdfType}`,
+        details: { filename: entry.filename, url: publicUrlData.publicUrl }
+      });
+    }
+  }
+
+  await reader.close();
+
+  if (!mmdContent) {
+    throw new Error(`No MMD content found in ZIP for ${pdfType}`);
+  }
+
+  return { mmdContent, imageMetadata };
+}
+
+// Background polling function for dual PDF conversion
+async function pollMathpixDualCompletion(
+  jobId: string,
+  questionsPdfId: string,
+  solutionsPdfId: string,
+  documentId: string,
+  supabase: any,
+  chapterTitle?: string,
+  topicTitle?: string
+) {
+  const mathpixAppId = Deno.env.get('MATHPIX_APP_ID')!;
+  const mathpixAppKey = Deno.env.get('MATHPIX_APP_KEY')!;
+
+  let attempts = 0;
+  const maxAttempts = 60;
+
+  let questionsCompleted = false;
+  let solutionsCompleted = false;
+  let questionsMmdContent = '';
+  let solutionsMmdContent = '';
+  const allImageMetadata: Array<any> = [];
+
+  while (attempts < maxAttempts && (!questionsCompleted || !solutionsCompleted)) {
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    attempts++;
+
+    try {
+      // Check questions PDF
+      if (!questionsCompleted) {
+        const qResponse = await fetch(`https://api.mathpix.com/v3/pdf/${questionsPdfId}`, {
+          headers: { app_id: mathpixAppId, app_key: mathpixAppKey }
         });
 
-      if (conversionData.status === 'completed') {
-        await supabase.from('job_logs').insert({
-          job_id: jobId,
-          log_level: 'info',
-          message: 'PDF conversion completed, analyzing response',
-          details: { 
-            pdf_id: pdfId,
-            full_response: conversionData,
-            available_keys: Object.keys(conversionData),
-            has_output_urls: !!conversionData.output_urls,
-            output_urls_keys: conversionData.output_urls ? Object.keys(conversionData.output_urls) : []
-          }
-        });
-
-        // Download content using n8n approach: direct URLs with pdf_id
-        let markdownContent = null;
-        let mmdContent = null;
-
-        try {
-          // n8n pattern: https://api.mathpix.com/v3/pdf/{pdf_id}.mmd
-          const baseUrl = 'https://api.mathpix.com/v3/pdf';
-          const mmdUrl = `${baseUrl}/${pdfId}.mmd`;
-          const mdUrl = `${baseUrl}/${pdfId}.md`;
-
+        if (qResponse.ok) {
+          const qData = await qResponse.json();
+          
           await supabase.from('job_logs').insert({
             job_id: jobId,
             log_level: 'info',
-            message: 'Attempting n8n-style direct download',
-            details: { 
-              mmd_url: mmdUrl,
-              md_url: mdUrl
-            }
+            message: `Questions PDF status: ${qData.status}`,
+            details: { pdf_id: questionsPdfId, attempt: attempts }
           });
 
-          // Try MMD first
-          const mmdResponse = await fetch(mmdUrl, {
-            headers: {
-              'app_id': mathpixAppId!,
-              'app_key': mathpixAppKey!,
-            }
-          });
-          
-          if (mmdResponse.ok) {
-            mmdContent = await mmdResponse.text();
+          if (qData.status === 'completed') {
+            const { mmdContent, imageMetadata } = await extractMmdZipAndUpload(
+              questionsPdfId,
+              'questions',
+              documentId,
+              mathpixAppId,
+              mathpixAppKey,
+              supabase,
+              jobId
+            );
+            questionsMmdContent = mmdContent;
+            allImageMetadata.push(...imageMetadata);
+            questionsCompleted = true;
+
             await supabase.from('job_logs').insert({
               job_id: jobId,
               log_level: 'info',
-              message: 'MMD downloaded successfully',
-              details: { length: mmdContent.length, url: mmdUrl }
+              message: 'Questions PDF completed',
+              details: { images_extracted: imageMetadata.length }
             });
-          } else {
-            await supabase.from('job_logs').insert({
-              job_id: jobId,
-              log_level: 'warn',
-              message: 'MMD download failed, will try MD',
-              details: { status: mmdResponse.status }
-            });
+          } else if (qData.status === 'error') {
+            throw new Error(`Questions PDF conversion failed: ${qData.error}`);
           }
-
-          // Try Markdown
-          const mdResponse = await fetch(mdUrl, {
-            headers: {
-              'app_id': mathpixAppId!,
-              'app_key': mathpixAppKey!,
-            }
-          });
-          
-          if (mdResponse.ok) {
-            markdownContent = await mdResponse.text();
-            await supabase.from('job_logs').insert({
-              job_id: jobId,
-              log_level: 'info',
-              message: 'Markdown downloaded successfully',
-              details: { length: markdownContent.length, url: mdUrl }
-            });
-          }
-
-          // Use Markdown for both if MMD failed
-          if (!mmdContent && markdownContent) {
-            mmdContent = markdownContent;
-          }
-          
-          // Use MMD for both if Markdown failed
-          if (!markdownContent && mmdContent) {
-            markdownContent = mmdContent;
-          }
-
-          // Final validation
-          if (!mmdContent && !markdownContent) {
-            throw new Error('No content could be downloaded from Mathpix');
-          }
-
-          await supabase.from('job_logs').insert({
-            job_id: jobId,
-            log_level: 'info',
-            message: 'Content download completed',
-            details: { 
-              has_mmd: !!mmdContent,
-              has_markdown: !!markdownContent,
-              mmd_length: mmdContent?.length || 0,
-              markdown_length: markdownContent?.length || 0,
-              used_markdown_fallback: !conversionData.output_urls?.mmd && !!markdownContent
-            }
-          });
-
-        } catch (downloadError) {
-          const errorMsg = downloadError instanceof Error ? downloadError.message : 'Unknown download error';
-          await supabase.from('job_logs').insert({
-            job_id: jobId,
-            log_level: 'error',
-            message: 'Failed to download content from Mathpix',
-            details: { error: errorMsg }
-          });
-          
-          console.error('Download error:', errorMsg);
         }
+      }
 
-        // Store results with downloaded content
-        await supabase
-          .from('uploaded_question_documents')
-          .update({
-            mathpix_pdf_id: pdfId,
-            mathpix_json_output: conversionData,
-            mathpix_markdown: markdownContent,
-            mathpix_mmd: mmdContent,
-            mathpix_latex: conversionData.latex_styled,
-            mathpix_html: conversionData.html,
-            status: 'completed',
-            processing_completed_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
-
-        await supabase
-          .from('document_processing_jobs')
-          .update({
-            status: 'completed',
-            progress_percentage: 100,
-            current_step: 'Processing complete',
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', jobId);
-
-        await supabase.from('job_logs').insert({
-          job_id: jobId,
-          log_level: 'info',
-          message: 'PDF conversion completed successfully',
-          details: { 
-            pdf_id: pdfId,
-            has_mmd: !!mmdContent,
-            has_markdown: !!markdownContent
-          }
+      // Check solutions PDF
+      if (!solutionsCompleted) {
+        const sResponse = await fetch(`https://api.mathpix.com/v3/pdf/${solutionsPdfId}`, {
+          headers: { app_id: mathpixAppId, app_key: mathpixAppKey }
         });
 
-        return;
-      } else if (conversionData.status === 'error') {
-        throw new Error(`Mathpix conversion failed: ${conversionData.error || 'Unknown error'}`);
+        if (sResponse.ok) {
+          const sData = await sResponse.json();
+          
+          await supabase.from('job_logs').insert({
+            job_id: jobId,
+            log_level: 'info',
+            message: `Solutions PDF status: ${sData.status}`,
+            details: { pdf_id: solutionsPdfId, attempt: attempts }
+          });
+
+          if (sData.status === 'completed') {
+            const { mmdContent, imageMetadata } = await extractMmdZipAndUpload(
+              solutionsPdfId,
+              'solutions',
+              documentId,
+              mathpixAppId,
+              mathpixAppKey,
+              supabase,
+              jobId
+            );
+            solutionsMmdContent = mmdContent;
+            allImageMetadata.push(...imageMetadata);
+            solutionsCompleted = true;
+
+            await supabase.from('job_logs').insert({
+              job_id: jobId,
+              log_level: 'info',
+              message: 'Solutions PDF completed',
+              details: { images_extracted: imageMetadata.length }
+            });
+          } else if (sData.status === 'error') {
+            throw new Error(`Solutions PDF conversion failed: ${sData.error}`);
+          }
+        }
       }
 
       // Update progress
-      attempts++;
+      const completionPercent = ((questionsCompleted ? 1 : 0) + (solutionsCompleted ? 1 : 0)) / 2;
       await supabase
         .from('document_processing_jobs')
         .update({
-          progress_percentage: 40 + Math.floor((attempts / maxAttempts) * 50),
-          current_step: `Polling Mathpix (attempt ${attempts}/${maxAttempts})`
+          progress_percentage: 40 + Math.floor(completionPercent * 50),
+          current_step: `Processing: Questions ${questionsCompleted ? '✓' : '...'} | Solutions ${solutionsCompleted ? '✓' : '...'}`
         })
         .eq('id', jobId);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      // Log error but continue polling
-      await supabase
-        .from('job_logs')
-        .insert({
-          job_id: jobId,
-          log_level: 'error',
-          message: `Polling error on attempt ${attempts + 1}`,
-          details: { error: errorMessage }
-        });
-      
-      attempts++;
+      await supabase.from('job_logs').insert({
+        job_id: jobId,
+        log_level: 'error',
+        message: `Polling error on attempt ${attempts}`,
+        details: { error: errorMessage }
+      });
 
-      // If it's a fatal error, stop polling
-      if (errorMessage.includes('conversion failed') || errorMessage.includes('Status check failed')) {
+      if (errorMessage.includes('conversion failed')) {
         await supabase
           .from('document_processing_jobs')
           .update({
@@ -590,26 +529,82 @@ async function pollMathpixCompletion(
     }
   }
 
-  // Timeout after max attempts
-  const timeoutMessage = 'Mathpix conversion timeout after 10 minutes';
-  await supabase
-    .from('document_processing_jobs')
-    .update({
-      status: 'failed',
-      error_message: timeoutMessage,
-      completed_at: new Date().toISOString()
-    })
-    .eq('id', jobId);
+  // Check if both completed
+  if (questionsCompleted && solutionsCompleted) {
+    // Insert image metadata
+    if (allImageMetadata.length > 0) {
+      await supabase.from('document_images').insert(allImageMetadata);
+    }
 
-  await supabase
-    .from('uploaded_question_documents')
-    .update({ status: 'failed', error_message: timeoutMessage })
-    .eq('id', documentId);
+    // Validate MMD content against chapter/topic
+    const validationResults: any = {};
+    if (chapterTitle) {
+      validationResults.chapter_match = questionsMmdContent.toLowerCase().includes(chapterTitle.toLowerCase());
+    }
+    if (topicTitle) {
+      validationResults.topic_match = questionsMmdContent.toLowerCase().includes(topicTitle.toLowerCase());
+    }
 
-  await supabase.from('job_logs').insert({
-    job_id: jobId,
-    log_level: 'error',
-    message: timeoutMessage,
-    details: { attempts: maxAttempts, pdf_id: pdfId }
-  });
+    const validationStatus = (!chapterTitle || validationResults.chapter_match) && 
+                            (!topicTitle || validationResults.topic_match) ? 'valid' : 'mismatch';
+
+    // Store results
+    await supabase
+      .from('uploaded_question_documents')
+      .update({
+        questions_mmd_content: questionsMmdContent,
+        solutions_mmd_content: solutionsMmdContent,
+        validation_status: validationStatus,
+        validation_details: validationResults,
+        status: 'completed',
+        processing_completed_at: new Date().toISOString()
+      })
+      .eq('id', documentId);
+
+    await supabase
+      .from('document_processing_jobs')
+      .update({
+        status: 'completed',
+        progress_percentage: 100,
+        current_step: 'Dual PDF processing complete',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
+
+    await supabase.from('job_logs').insert({
+      job_id: jobId,
+      log_level: 'info',
+      message: 'Dual PDF processing completed successfully',
+      details: {
+        questions_length: questionsMmdContent.length,
+        solutions_length: solutionsMmdContent.length,
+        images_extracted: allImageMetadata.length,
+        validation_status: validationStatus
+      }
+    });
+  } else {
+    // Timeout
+    const timeoutMessage = `Timeout after ${attempts} attempts. Questions: ${questionsCompleted ? '✓' : '✗'}, Solutions: ${solutionsCompleted ? '✓' : '✗'}`;
+    
+    await supabase
+      .from('document_processing_jobs')
+      .update({
+        status: 'failed',
+        error_message: timeoutMessage,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
+
+    await supabase
+      .from('uploaded_question_documents')
+      .update({ status: 'failed', error_message: timeoutMessage })
+      .eq('id', documentId);
+
+    await supabase.from('job_logs').insert({
+      job_id: jobId,
+      log_level: 'error',
+      message: timeoutMessage,
+      details: { attempts, questionsCompleted, solutionsCompleted }
+    });
+  }
 }
