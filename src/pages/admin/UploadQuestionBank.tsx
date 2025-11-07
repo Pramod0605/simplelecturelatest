@@ -25,8 +25,8 @@ export default function UploadQuestionBank() {
   const [topicId, setTopicId] = useState("");
   const [subtopicId, setSubtopicId] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileType, setFileType] = useState<'image' | 'pdf' | 'word' | 'json'>('pdf');
+  const [questionsFile, setQuestionsFile] = useState<File | null>(null);
+  const [solutionsFile, setSolutionsFile] = useState<File | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -49,28 +49,37 @@ export default function UploadQuestionBank() {
   const processMutation = useProcessDocument();
   const extractMutation = useExtractQuestions();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuestionsFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile(file);
-      
-      // Auto-detect file type
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (ext === 'pdf') setFileType('pdf');
-      else if (ext === 'docx') setFileType('word');
-      else if (ext === 'json') setFileType('json');
-      else setFileType('image');
+      if (file.type !== 'application/pdf') {
+        toast.error("Questions file must be a PDF");
+        return;
+      }
+      setQuestionsFile(file);
+    }
+  };
+
+  const handleSolutionsFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== 'application/pdf') {
+        toast.error("Solutions file must be a PDF");
+        return;
+      }
+      setSolutionsFile(file);
     }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !categoryId || !subjectId || !chapterId || !topicId) {
-      toast.error("Please select file, category, subject, chapter, and topic");
+    if (!questionsFile || !solutionsFile || !categoryId || !subjectId || !chapterId || !topicId) {
+      toast.error("Please select both PDFs and all required fields");
       return;
     }
 
     await uploadMutation.mutateAsync({
-      file: selectedFile,
+      questionsFile,
+      solutionsFile,
       categoryId,
       subjectId,
       chapterId,
@@ -79,7 +88,8 @@ export default function UploadQuestionBank() {
     });
 
     setIsUploadOpen(false);
-    setSelectedFile(null);
+    setQuestionsFile(null);
+    setSolutionsFile(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -98,9 +108,9 @@ export default function UploadQuestionBank() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Upload Question Bank</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Upload Question Bank (Dual PDF)</h2>
         <p className="text-muted-foreground">
-          Upload documents (PDF, Word, Images, JSON) to extract questions
+          Upload separate PDFs for questions and solutions
         </p>
       </div>
 
@@ -216,60 +226,71 @@ export default function UploadQuestionBank() {
               <DialogTrigger asChild>
                 <Button className="w-full">
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Question
+                  Upload Dual PDFs
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Upload Question Document</DialogTitle>
+                  <DialogTitle>Upload Question Bank (Dual PDFs)</DialogTitle>
                   <DialogDescription>
-                    Upload PDF, Word, Image, or JSON file to extract questions
+                    Upload separate PDFs for questions and solutions
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>File Type</Label>
-                    <Select value={fileType} onValueChange={(value: any) => setFileType(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pdf">📄 PDF</SelectItem>
-                        <SelectItem value="word">📝 Word (DOCX)</SelectItem>
-                        <SelectItem value="image">📷 Image (JPG, PNG)</SelectItem>
-                        <SelectItem value="json">📊 JSON</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Select File</Label>
+                    <Label>Questions PDF *</Label>
                     <Input
                       type="file"
-                      accept={
-                        fileType === 'pdf' ? '.pdf' :
-                        fileType === 'word' ? '.docx' :
-                        fileType === 'image' ? '.jpg,.jpeg,.png' :
-                        '.json'
-                      }
-                      onChange={handleFileSelect}
+                      accept=".pdf"
+                      onChange={handleQuestionsFileSelect}
                     />
-                    {selectedFile && (
-                      <p className="text-sm text-muted-foreground">
-                        Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                    {questionsFile && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700">Q</Badge>
+                        {questionsFile.name} ({(questionsFile.size / 1024).toFixed(2)} KB)
                       </p>
                     )}
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Solutions PDF *</Label>
+                    <Input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleSolutionsFileSelect}
+                    />
+                    {solutionsFile && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Badge variant="outline" className="bg-green-50 text-green-700">S</Badge>
+                        {solutionsFile.name} ({(solutionsFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                    )}
+                  </div>
+
+                  {questionsFile && solutionsFile && (
+                    <Alert>
+                      <AlertDescription>
+                        Total size: {((questionsFile.size + solutionsFile.size) / 1024).toFixed(2)} KB
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
+                  <Button variant="outline" onClick={() => {
+                    setIsUploadOpen(false);
+                    setQuestionsFile(null);
+                    setSolutionsFile(null);
+                  }}>
                     Cancel
                   </Button>
-                  <Button onClick={handleUpload} disabled={!selectedFile || uploadMutation.isPending}>
+                  <Button 
+                    onClick={handleUpload} 
+                    disabled={!questionsFile || !solutionsFile || uploadMutation.isPending}
+                  >
                     {uploadMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Upload
+                    Upload Both PDFs
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -289,7 +310,7 @@ export default function UploadQuestionBank() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>File Name</TableHead>
+                  <TableHead>File Names</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Hierarchy</TableHead>
                   <TableHead>Status</TableHead>
@@ -299,7 +320,6 @@ export default function UploadQuestionBank() {
               </TableHeader>
               <TableBody>
                 {documents.map((doc: any) => {
-                  // Check if there's an active extraction job for this document
                   const DocumentRow = () => {
                     const { data: jobs } = useProcessingJobs({ 
                       documentId: doc.id,
@@ -312,7 +332,18 @@ export default function UploadQuestionBank() {
 
                     return (
                       <TableRow key={doc.id}>
-                        <TableCell className="font-medium">{doc.file_name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">Q</Badge>
+                              <span className="text-sm">{doc.questions_file_name || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">S</Badge>
+                              <span className="text-sm">{doc.solutions_file_name || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">{doc.file_type.toUpperCase()}</Badge>
                         </TableCell>
@@ -342,17 +373,24 @@ export default function UploadQuestionBank() {
                             {doc.status === 'pending' && (
                               <Button
                                 size="sm"
-                                onClick={() => processMutation.mutate({ documentId: doc.id })}
+                                onClick={() => {
+                                  if (!doc.questions_file_url || !doc.solutions_file_url) {
+                                    toast.error("Both PDFs must be uploaded before processing");
+                                    return;
+                                  }
+                                  processMutation.mutate({ documentId: doc.id });
+                                }}
                                 disabled={processMutation.isPending}
                               >
                                 {processMutation.isPending ? (
                                   <Loader2 className="h-3 w-3 animate-spin" />
                                 ) : (
-                                  'Process'
+                                  'Process Dual PDFs'
                                 )}
                               </Button>
                             )}
-                            {doc.status === 'completed' && doc.mathpix_mmd && (
+                            
+                            {doc.status === 'completed' && (doc.questions_mmd_content || doc.solutions_mmd_content) && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -365,21 +403,8 @@ export default function UploadQuestionBank() {
                                 Preview
                               </Button>
                             )}
-                            {doc.status === 'completed' && !doc.mathpix_mmd && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => processMutation.mutate({ documentId: doc.id })}
-                                disabled={processMutation.isPending}
-                              >
-                                {processMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  'Re-process'
-                                )}
-                              </Button>
-                            )}
-                            {doc.status === 'completed' && doc.mathpix_mmd && (
+                            
+                            {doc.status === 'completed' && doc.questions_mmd_content && doc.solutions_mmd_content && (
                               <Button
                                 size="sm"
                                 onClick={() => extractMutation.mutate({ documentId: doc.id })}
@@ -409,7 +434,7 @@ export default function UploadQuestionBank() {
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No documents uploaded yet</p>
-              <p className="text-sm">Upload a document to get started</p>
+              <p className="text-sm">Upload dual PDFs to get started</p>
             </div>
           )}
         </CardContent>
@@ -417,23 +442,54 @@ export default function UploadQuestionBank() {
 
       {/* Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {previewDocument?.file_name}
+              Document Preview: {previewDocument?.questions_file_name}
             </DialogTitle>
             <DialogDescription>
-              Mathpix Markdown Preview - LaTeX formulas rendered
+              View extracted MMD content from both PDFs
             </DialogDescription>
           </DialogHeader>
-          {previewDocument?.mathpix_mmd ? (
-            <MathpixPreview mmdText={previewDocument.mathpix_mmd} />
-          ) : (
-            <Alert>
-              <AlertDescription>
-                No preview available. Document may still be processing.
-              </AlertDescription>
-            </Alert>
+
+          {previewDocument && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="border-r pr-4">
+                <div className="sticky top-0 bg-background pb-2 mb-4 border-b">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">Questions</Badge>
+                    {previewDocument.questions_file_name}
+                  </h3>
+                </div>
+                {previewDocument.questions_mmd_content ? (
+                  <MathpixPreview 
+                    mmdText={previewDocument.questions_mmd_content}
+                  />
+                ) : (
+                  <Alert>
+                    <AlertDescription>No questions content available</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <div className="pl-4">
+                <div className="sticky top-0 bg-background pb-2 mb-4 border-b">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-50 text-green-700">Solutions</Badge>
+                    {previewDocument.solutions_file_name}
+                  </h3>
+                </div>
+                {previewDocument.solutions_mmd_content ? (
+                  <MathpixPreview 
+                    mmdText={previewDocument.solutions_mmd_content}
+                  />
+                ) : (
+                  <Alert>
+                    <AlertDescription>No solutions content available</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

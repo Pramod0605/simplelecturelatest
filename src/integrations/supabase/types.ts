@@ -2788,9 +2788,13 @@ export type Database = {
           mathpix_solutions_pdf_id: string | null
           processing_completed_at: string | null
           processing_started_at: string | null
+          questions_file_name: string | null
+          questions_file_url: string | null
           questions_images_folder: string | null
           questions_mmd_content: string | null
           questions_pdf_url: string | null
+          solutions_file_name: string | null
+          solutions_file_url: string | null
           solutions_images_folder: string | null
           solutions_mmd_content: string | null
           solutions_pdf_url: string | null
@@ -2825,9 +2829,13 @@ export type Database = {
           mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_file_name?: string | null
+          questions_file_url?: string | null
           questions_images_folder?: string | null
           questions_mmd_content?: string | null
           questions_pdf_url?: string | null
+          solutions_file_name?: string | null
+          solutions_file_url?: string | null
           solutions_images_folder?: string | null
           solutions_mmd_content?: string | null
           solutions_pdf_url?: string | null
@@ -2862,9 +2870,13 @@ export type Database = {
           mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_file_name?: string | null
+          questions_file_url?: string | null
           questions_images_folder?: string | null
           questions_mmd_content?: string | null
           questions_pdf_url?: string | null
+          solutions_file_name?: string | null
+          solutions_file_url?: string | null
           solutions_images_folder?: string | null
           solutions_mmd_content?: string | null
           solutions_pdf_url?: string | null
