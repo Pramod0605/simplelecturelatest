@@ -1624,6 +1624,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_parsed_questions_pending_approved_by"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "parsed_questions_pending_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
