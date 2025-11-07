@@ -16,7 +16,7 @@ export const useProcessingJobs = (filters: ProcessingJobFilters = {}) => {
         .from('document_processing_jobs')
         .select(`
           *,
-          uploaded_question_documents(
+          uploaded_question_documents!document_processing_jobs_document_id_fkey(
             file_name,
             file_type,
             category_id,

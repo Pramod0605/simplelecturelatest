@@ -23,7 +23,8 @@ import {
   CalendarDays,
   Video,
   Upload,
-  CheckSquare
+  CheckSquare,
+  TestTube2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,6 +187,20 @@ export const AdminSidebar = () => {
             >
               <CheckSquare className="h-4 w-4" />
               Verify Questions
+            </NavLink>
+            <NavLink
+              to="/admin/question-bank/test-api"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <TestTube2 className="h-4 w-4" />
+              Test Replit API
             </NavLink>
             <NavLink
               to="/admin/assignments"
