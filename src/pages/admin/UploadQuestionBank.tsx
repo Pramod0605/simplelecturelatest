@@ -51,27 +51,6 @@ export default function UploadQuestionBank() {
   const extractMutation = useExtractQuestions();
   const checkStatusMutation = useCheckJobStatus();
 
-  // Auto-polling for processing jobs
-  const { data: allJobs, refetch: refetchJobs } = useProcessingJobs({
-    status: 'running',
-  });
-
-  // Poll every 30 seconds for running jobs
-  useEffect(() => {
-    const hasRunningJobs = allJobs && allJobs.length > 0;
-    if (!hasRunningJobs) return;
-
-    const interval = setInterval(() => {
-      allJobs.forEach((job: any) => {
-        if (job.status === 'running') {
-          checkStatusMutation.mutate(job.id);
-        }
-      });
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [allJobs]);
-
   const handleQuestionsFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
