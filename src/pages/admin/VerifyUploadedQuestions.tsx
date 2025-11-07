@@ -463,7 +463,7 @@ export default function VerifyUploadedQuestions() {
                   <div className="space-y-2">
                     <Label className="text-base font-semibold">Question:</Label>
                     <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-md">
-                      <MathpixRenderer mmdText={question.question_text} />
+                      <MathpixRenderer mmdText={question.question_text} inline={true} />
                     </div>
                   </div>
 
@@ -497,7 +497,7 @@ export default function VerifyUploadedQuestions() {
                     <div className="space-y-2">
                       <Label className="text-base font-semibold">Solution:</Label>
                       <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-md">
-                        <MathpixRenderer mmdText={question.explanation} />
+                        <MathpixRenderer mmdText={question.explanation} inline={true} />
                       </div>
                     </div>
                   )}

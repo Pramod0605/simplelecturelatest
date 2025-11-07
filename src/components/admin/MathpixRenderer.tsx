@@ -9,9 +9,10 @@ interface MathpixRendererProps {
   mmdText: string;
   title?: string;
   className?: string;
+  inline?: boolean;
 }
 
-export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererProps) => {
+export const MathpixRenderer = ({ mmdText, title, className, inline = false }: MathpixRendererProps) => {
   // Convert Mathpix markdown syntax to standard LaTeX syntax
   const convertMathpixToStandard = (text: string) => {
     if (!text) return '';
@@ -35,6 +36,23 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
 
   const standardMarkdown = convertMathpixToStandard(mmdText);
 
+  // Inline mode - render without Card wrapper
+  if (inline) {
+    return (
+      <div className={className}>
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {standardMarkdown}
+          </ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  // Default mode - render with Card wrapper
   return (
     <Card className={className}>
       {title && (
