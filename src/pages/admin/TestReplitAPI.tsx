@@ -56,14 +56,7 @@ export default function TestReplitAPI() {
 
   const checkStatusInternal = async (docId: string) => {
     try {
-      const { data: document, error: docError } = await supabase
-        .from('uploaded_question_documents')
-        .select('*')
-        .eq('id', docId)
-        .single();
-
-      if (docError) throw docError;
-
+      // First get the latest job ID
       const { data: job, error: jobError } = await supabase
         .from('document_processing_jobs')
         .select('*')
@@ -74,36 +67,85 @@ export default function TestReplitAPI() {
 
       if (jobError && jobError.code !== 'PGRST116') throw jobError;
 
-      if (job) {
+      if (!job) {
+        setStatusResponse({ 
+          status: 'No job found', 
+          message: "Job may not have started yet"
+        });
+        return;
+      }
+
+      // If job is still running, call the edge function to check Replit status
+      if (job.status === 'running') {
+        console.log('Calling check-replit-job-status for job:', job.id);
+        const { data: statusData, error: statusError } = await supabase.functions.invoke(
+          'check-replit-job-status',
+          { body: { jobId: job.id } }
+        );
+
+        if (statusError) {
+          console.error('Status check error:', statusError);
+          throw statusError;
+        }
+
+        console.log('Status check response:', statusData);
+        
+        // Refresh job data after status check
+        const { data: updatedJob } = await supabase
+          .from('document_processing_jobs')
+          .select('*')
+          .eq('id', job.id)
+          .single();
+
+        if (updatedJob) {
+          const resultData = updatedJob.result_data as any;
+          setStatusResponse({ 
+            status: updatedJob.status, 
+            job_id: updatedJob.id,
+            replit_job_id: resultData?.replit_job_id,
+            progress: updatedJob.progress_percentage,
+            current_step: updatedJob.current_step,
+            message: statusData?.message || updatedJob.current_step
+          });
+          
+          if (updatedJob.status === 'completed') {
+            setFinalResult(updatedJob.result_data);
+            stopPolling();
+            toast.success("Processing completed!", {
+              description: `${updatedJob.questions_extracted || 0} questions extracted`
+            });
+          } else if (updatedJob.status === 'failed') {
+            stopPolling();
+            toast.error("Processing failed", {
+              description: updatedJob.error_message || "Check logs for details"
+            });
+          }
+        }
+      } else {
+        // Job already completed or failed
         const resultData = job.result_data as any;
         setStatusResponse({ 
           status: job.status, 
-          document_status: document.status,
           job_id: job.id,
           replit_job_id: resultData?.replit_job_id,
+          progress: job.progress_percentage,
+          current_step: job.current_step,
           message: job.error_message || `Job ${job.status}`
         });
         
         if (job.status === 'completed' && job.result_data) {
           setFinalResult(job.result_data);
           stopPolling();
-          toast.success("Processing completed!");
         } else if (job.status === 'failed') {
           stopPolling();
-          toast.error("Processing failed", {
-            description: job.error_message || "Check logs for details"
-          });
         }
-      } else {
-        setStatusResponse({ 
-          status: 'No job found', 
-          document_status: document.status,
-          message: "Job may not have started yet"
-        });
       }
     } catch (error: any) {
       console.error("Auto-poll status check error:", error);
-      // Don't show toast for auto-poll errors to avoid spam
+      setStatusResponse({
+        status: 'error',
+        message: error.message || 'Status check failed'
+      });
     }
   };
 
