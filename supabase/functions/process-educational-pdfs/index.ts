@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<any>): void;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -173,16 +177,18 @@ serve(async (req) => {
       .eq('id', job.id);
 
     // Start background polling
-    pollReplitService(
-      job.id,
-      replitJobId,
-      documentId!,
-      doc.category_id,
-      doc.subject_id,
-      doc.chapter_id,
-      doc.topic_id,
-      doc.subtopic_id,
-      supabaseAdmin
+    EdgeRuntime.waitUntil(
+      pollReplitService(
+        job.id,
+        replitJobId,
+        documentId!,
+        doc.category_id,
+        doc.subject_id,
+        doc.chapter_id,
+        doc.topic_id,
+        doc.subtopic_id,
+        supabaseAdmin
+      )
     );
 
     await updateJobProgress(job.id, 40, 'Polling Replit service for completion');
@@ -259,7 +265,7 @@ async function pollReplitService(
   topicId: string | null,
   subtopicId: string | null,
   supabase: any
-) {
+): Promise<void> {
   let attempts = 0;
   const maxAttempts = 30; // 60 minutes timeout (30 attempts * 2 minutes)
   let status = 'PROCESSING';
