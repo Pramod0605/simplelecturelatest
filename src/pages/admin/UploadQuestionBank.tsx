@@ -379,10 +379,10 @@ export default function UploadQuestionBank() {
                         <TableCell>
                           {getStatusBadge(doc.status, activeJob)}
                           
-                          {activeJob?.result_data?.replit_job_id && (
+                          {activeJob?.result_data && typeof activeJob.result_data === 'object' && 'replit_job_id' in activeJob.result_data && (
                             <div className="mt-1">
                               <Badge variant="outline" className="text-xs">
-                                🔄 Replit Job: {activeJob.result_data.replit_job_id}
+                                🔄 Replit Job: {String((activeJob.result_data as any).replit_job_id)}
                               </Badge>
                             </div>
                           )}

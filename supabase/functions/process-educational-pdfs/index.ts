@@ -70,7 +70,8 @@ serve(async (req) => {
       .single();
 
     if (jobError || !job) {
-      throw new Error('Failed to create job record');
+      console.error('Job creation error:', jobError);
+      throw new Error(`Failed to create job record: ${jobError?.message || 'No job returned'} - Details: ${JSON.stringify(jobError)}`);
     }
 
     await logJobProgress(job.id, 'info', 'Job created', { job_id: job.id });
