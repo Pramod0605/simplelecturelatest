@@ -168,7 +168,7 @@ export const useExtractQuestions = () => {
 
   return useMutation({
     mutationFn: async ({ documentId }: { documentId: string }) => {
-      const { data, error } = await supabase.functions.invoke('extract-questions-from-document', {
+      const { data, error } = await supabase.functions.invoke('process-educational-pdfs', {
         body: { documentId },
       });
 
@@ -180,9 +180,9 @@ export const useExtractQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ["pending-questions"] });
       queryClient.invalidateQueries({ queryKey: ["processing-jobs"] });
       
-      if (data?.started) {
-        toast.success('Extraction started successfully!', {
-          description: 'Track progress in Processing Jobs Monitor'
+      if (data?.replitJobId) {
+        toast.success('Processing started with Replit service!', {
+          description: `Job ID: ${data.replitJobId}. Polling every 2 minutes...`
         });
       } else if (data?.questionsExtracted) {
         toast.success(`Extracted ${data.questionsExtracted} questions`);

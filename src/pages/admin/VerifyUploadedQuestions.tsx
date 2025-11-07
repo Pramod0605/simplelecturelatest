@@ -22,6 +22,7 @@ import {
   useApproveAndTransfer 
 } from "@/hooks/usePendingQuestions";
 import { DifficultyBadge } from "@/components/admin/DifficultyBadge";
+import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 import { toast } from "sonner";
 
 export default function VerifyUploadedQuestions() {
@@ -458,11 +459,30 @@ export default function VerifyUploadedQuestions() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  {/* Question Text */}
-                  <div>
+                  {/* Question Text with LaTeX Rendering */}
+                  <div className="space-y-2">
                     <Label className="text-base font-semibold">Question:</Label>
-                    <p className="mt-2 text-base">{question.question_text}</p>
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-md">
+                      <MathpixRenderer mmdText={question.question_text} />
+                    </div>
                   </div>
+
+                  {/* Question Images */}
+                  {question.question_images && question.question_images.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Question Images:</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {question.question_images.map((img: string, idx: number) => (
+                          <img 
+                            key={idx} 
+                            src={img} 
+                            alt={`Question image ${idx + 1}`}
+                            className="rounded border max-h-64 object-contain"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Options */}
                   <div>
@@ -472,11 +492,30 @@ export default function VerifyUploadedQuestions() {
                     </div>
                   </div>
 
-                  {/* Explanation */}
+                  {/* Explanation with LaTeX Rendering */}
                   {question.explanation && (
-                    <div>
-                      <Label className="text-base font-semibold">Explanation:</Label>
-                      <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Solution:</Label>
+                      <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-md">
+                        <MathpixRenderer mmdText={question.explanation} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Explanation Images */}
+                  {question.explanation_images && question.explanation_images.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Solution Images:</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {question.explanation_images.map((img: string, idx: number) => (
+                          <img 
+                            key={idx} 
+                            src={img} 
+                            alt={`Solution image ${idx + 1}`}
+                            className="rounded border max-h-64 object-contain"
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
 
