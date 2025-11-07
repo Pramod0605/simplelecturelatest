@@ -116,13 +116,15 @@ export const useUploadDocument = () => {
           topic_id: topicId,
           subtopic_id: subtopicId,
           uploaded_by: user.id,
+          file_name: `${questionsFile.name} + ${solutionsFile.name}`,
+          file_url: questionsUrl, // Use questions URL as primary for backward compatibility
           questions_file_name: questionsFile.name,
           questions_file_url: questionsUrl,
           solutions_file_name: solutionsFile.name,
           solutions_file_url: solutionsUrl,
           file_type: 'pdf',
           file_size_bytes: questionsFile.size + solutionsFile.size,
-        })
+        } as any)
         .select()
         .single();
 

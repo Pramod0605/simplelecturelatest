@@ -2773,7 +2773,7 @@ export type Database = {
           current_job_id: string | null
           error_message: string | null
           extracted_images: Json | null
-          file_name: string
+          file_name: string | null
           file_size_bytes: number | null
           file_type: string
           file_url: string | null
@@ -2814,7 +2814,7 @@ export type Database = {
           current_job_id?: string | null
           error_message?: string | null
           extracted_images?: Json | null
-          file_name: string
+          file_name?: string | null
           file_size_bytes?: number | null
           file_type: string
           file_url?: string | null
@@ -2855,7 +2855,7 @@ export type Database = {
           current_job_id?: string | null
           error_message?: string | null
           extracted_images?: Json | null
-          file_name?: string
+          file_name?: string | null
           file_size_bytes?: number | null
           file_type?: string
           file_url?: string | null
