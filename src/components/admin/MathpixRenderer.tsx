@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 // @ts-ignore - mathpix-markdown-it types may not be available
-import MathpixMarkdown from 'mathpix-markdown-it';
+import { MathpixMarkdownModel as MM } from 'mathpix-markdown-it';
 import 'katex/dist/katex.min.css';
 
 interface MathpixRendererProps {
@@ -18,6 +18,17 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Inject Mathpix styles once
+    const styleId = 'mathpix-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = MM.getMathpixFontsStyle() + MM.getMathpixStyle(true);
+      document.head.appendChild(style);
+    }
+  }, []);
+
+  useEffect(() => {
     const renderMMD = async () => {
       if (!containerRef.current || !mmdText) {
         setIsLoading(false);
@@ -28,8 +39,8 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
         setIsLoading(true);
         setError(null);
 
-        // Initialize Mathpix Markdown renderer
-        const mmd = new MathpixMarkdown({
+        // Render MMD to HTML using static method
+        const html = MM.render(mmdText, {
           htmlTags: true,
           width: 800,
           outMath: {
@@ -41,9 +52,6 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
             include_tsv: false,
           }
         });
-
-        // Render MMD to HTML
-        const html = mmd.render(mmdText);
 
         if (containerRef.current) {
           containerRef.current.innerHTML = html;
