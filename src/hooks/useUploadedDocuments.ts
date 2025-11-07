@@ -58,14 +58,16 @@ export const useUploadDocument = () => {
 
   return useMutation({
     mutationFn: async ({
-      file,
+      questionsFile,
+      solutionsFile,
       categoryId,
       subjectId,
       chapterId,
       topicId,
       subtopicId,
     }: {
-      file: File;
+      questionsFile: File;
+      solutionsFile: File;
       categoryId: string;
       subjectId: string;
       chapterId: string;
@@ -75,22 +77,36 @@ export const useUploadDocument = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload file to storage
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      // Upload QUESTIONS PDF
+      const questionsExt = questionsFile.name.split('.').pop();
+      const questionsPath = `${user.id}/${Date.now()}_questions.${questionsExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: questionsUploadError } = await supabase.storage
         .from('uploaded-question-documents')
-        .upload(filePath, file);
+        .upload(questionsPath, questionsFile);
 
-      if (uploadError) throw uploadError;
+      if (questionsUploadError) throw questionsUploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Upload SOLUTIONS PDF
+      const solutionsExt = solutionsFile.name.split('.').pop();
+      const solutionsPath = `${user.id}/${Date.now()}_solutions.${solutionsExt}`;
+
+      const { error: solutionsUploadError } = await supabase.storage
         .from('uploaded-question-documents')
-        .getPublicUrl(filePath);
+        .upload(solutionsPath, solutionsFile);
 
-      // Create document record
+      if (solutionsUploadError) throw solutionsUploadError;
+
+      // Get public URLs
+      const { data: { publicUrl: questionsUrl } } = supabase.storage
+        .from('uploaded-question-documents')
+        .getPublicUrl(questionsPath);
+
+      const { data: { publicUrl: solutionsUrl } } = supabase.storage
+        .from('uploaded-question-documents')
+        .getPublicUrl(solutionsPath);
+
+      // Create document record with BOTH URLs
       const { data, error } = await supabase
         .from('uploaded_question_documents')
         .insert({
@@ -100,10 +116,12 @@ export const useUploadDocument = () => {
           topic_id: topicId,
           subtopic_id: subtopicId,
           uploaded_by: user.id,
-          file_name: file.name,
-          file_type: fileExt === 'pdf' ? 'pdf' : fileExt === 'docx' ? 'word' : fileExt === 'json' ? 'json' : 'image',
-          file_url: publicUrl,
-          file_size_bytes: file.size,
+          questions_file_name: questionsFile.name,
+          questions_file_url: questionsUrl,
+          solutions_file_name: solutionsFile.name,
+          solutions_file_url: solutionsUrl,
+          file_type: 'pdf',
+          file_size_bytes: questionsFile.size + solutionsFile.size,
         })
         .select()
         .single();
@@ -112,11 +130,11 @@ export const useUploadDocument = () => {
       return data;
     },
     onSuccess: () => {
-      toast.success("Document uploaded successfully");
+      toast.success("Dual PDFs uploaded successfully");
       queryClient.invalidateQueries({ queryKey: ["uploaded-documents"] });
     },
     onError: (error: Error) => {
-      toast.error("Failed to upload document", { description: error.message });
+      toast.error("Failed to upload documents", { description: error.message });
     },
   });
 };
