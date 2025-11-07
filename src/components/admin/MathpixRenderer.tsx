@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
-// @ts-ignore - mathpix-markdown-it types may not be available
-import { MathpixMarkdownModel as MM } from 'mathpix-markdown-it';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 interface MathpixRendererProps {
@@ -13,60 +12,18 @@ interface MathpixRendererProps {
 }
 
 export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Inject Mathpix styles once
-    const styleId = 'mathpix-styles';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.innerHTML = MM.getMathpixFontsStyle() + MM.getMathpixStyle(true);
-      document.head.appendChild(style);
-    }
-  }, []);
-
-  useEffect(() => {
-    const renderMMD = async () => {
-      if (!containerRef.current || !mmdText) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Render MMD to HTML using static method
-        const html = MM.render(mmdText, {
-          htmlTags: true,
-          width: 800,
-          outMath: {
-            include_asciimath: false,
-            include_mathml: false,
-            include_latex: true,
-            include_svg: false,
-            include_table_html: true,
-            include_tsv: false,
-          }
-        });
-
-        if (containerRef.current) {
-          containerRef.current.innerHTML = html;
-        }
-
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error rendering MMD:', err);
-        setError('Failed to render mathematical content');
-        setIsLoading(false);
-      }
-    };
-
-    renderMMD();
-  }, [mmdText]);
+  // Convert Mathpix markdown syntax to standard LaTeX syntax
+  const convertMathpixToStandard = (text: string) => {
+    if (!text) return '';
+    
+    // Convert \( \) to $ $ for inline math
+    let converted = text.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+    
+    // Convert \[ \] to $$ $$ for display math
+    converted = converted.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+    
+    return converted;
+  };
 
   if (!mmdText) {
     return (
@@ -76,6 +33,8 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
     );
   }
 
+  const standardMarkdown = convertMathpixToStandard(mmdText);
+
   return (
     <Card className={className}>
       {title && (
@@ -84,24 +43,14 @@ export const MathpixRenderer = ({ mmdText, title, className }: MathpixRendererPr
         </CardHeader>
       )}
       <CardContent>
-        {isLoading && (
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Rendering mathematical content...</span>
-          </div>
-        )}
-        
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        <div 
-          ref={containerRef} 
-          className="mathpix-content prose prose-sm max-w-none dark:prose-invert"
-          style={{ display: isLoading ? 'none' : 'block' }}
-        />
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {standardMarkdown}
+          </ReactMarkdown>
+        </div>
       </CardContent>
     </Card>
   );
