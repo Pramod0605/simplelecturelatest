@@ -24,8 +24,7 @@ export const usePendingQuestions = (filters: {
           subject_chapters(title),
           subject_topics(title),
           subtopics(title),
-          uploaded_question_documents(file_name, file_type),
-          teacher_profiles!approved_by(full_name)
+          uploaded_question_documents(file_name, file_type)
         `);
 
       if (filters.categoryId) {
