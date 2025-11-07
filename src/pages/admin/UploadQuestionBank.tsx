@@ -14,7 +14,8 @@ import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubtopics } from "@/hooks/useSubtopics";
 import { useUploadedDocuments, useUploadDocument, useProcessDocument, useExtractQuestions } from "@/hooks/useUploadedDocuments";
-import { useProcessingJobs } from "@/hooks/useProcessingJobs";
+import { useProcessingJobs, useCheckJobStatus } from "@/hooks/useProcessingJobs";
+import { useEffect } from "react";
 import { MathpixPreview } from "@/components/admin/MathpixPreview";
 import { toast } from "sonner";
 
@@ -48,6 +49,28 @@ export default function UploadQuestionBank() {
   const uploadMutation = useUploadDocument();
   const processMutation = useProcessDocument();
   const extractMutation = useExtractQuestions();
+  const checkStatusMutation = useCheckJobStatus();
+
+  // Auto-polling for processing jobs
+  const { data: allJobs, refetch: refetchJobs } = useProcessingJobs({
+    status: 'running',
+  });
+
+  // Poll every 30 seconds for running jobs
+  useEffect(() => {
+    const hasRunningJobs = allJobs && allJobs.length > 0;
+    if (!hasRunningJobs) return;
+
+    const interval = setInterval(() => {
+      allJobs.forEach((job: any) => {
+        if (job.status === 'running') {
+          checkStatusMutation.mutate(job.id);
+        }
+      });
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [allJobs]);
 
   const handleQuestionsFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -411,6 +434,29 @@ export default function UploadQuestionBank() {
                                   <>
                                     <Sparkles className="h-4 w-4 mr-1" />
                                     Process & Extract with Replit
+                                  </>
+                                )}
+                              </Button>
+                            )}
+
+                            {doc.status === 'processing' && activeJob && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  checkStatusMutation.mutate(activeJob.id);
+                                }}
+                                disabled={checkStatusMutation.isPending}
+                              >
+                                {checkStatusMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    Checking...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Check Status
                                   </>
                                 )}
                               </Button>

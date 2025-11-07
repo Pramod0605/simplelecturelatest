@@ -144,3 +144,42 @@ export const useJobStats = () => {
     refetchInterval: 5000,
   });
 };
+
+export const useCheckJobStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { data, error } = await supabase.functions.invoke('check-replit-job-status', {
+        body: { jobId }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.status === 'completed') {
+        toast.success('Processing completed!', {
+          description: `${data.questionsInserted} questions inserted into database`
+        });
+      } else if (data.status === 'processing') {
+        toast.info('Still processing', {
+          description: 'Job is being processed on Replit service'
+        });
+      } else if (data.status === 'failed') {
+        toast.error('Processing failed', {
+          description: data.message
+        });
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['processing-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['uploaded-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-questions'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to check job status', {
+        description: error.message
+      });
+    }
+  });
+};
