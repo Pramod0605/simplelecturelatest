@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, AlertCircle, StopCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +17,95 @@ export default function TestReplitAPI() {
   const [uploadResponse, setUploadResponse] = useState<any>(null);
   const [statusResponse, setStatusResponse] = useState<any>(null);
   const [finalResult, setFinalResult] = useState<any>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+    setPollCount(0);
+  };
+
+  const startPolling = (docId: string) => {
+    stopPolling(); // Clear any existing polling
+    setIsPolling(true);
+    setPollCount(0);
+    
+    // Poll immediately
+    checkStatusInternal(docId);
+    
+    // Then poll every 5 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      setPollCount(prev => prev + 1);
+      checkStatusInternal(docId);
+    }, 5000);
+  };
+
+  const checkStatusInternal = async (docId: string) => {
+    try {
+      const { data: document, error: docError } = await supabase
+        .from('uploaded_question_documents')
+        .select('*')
+        .eq('id', docId)
+        .single();
+
+      if (docError) throw docError;
+
+      const { data: job, error: jobError } = await supabase
+        .from('document_processing_jobs')
+        .select('*')
+        .eq('document_id', docId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (jobError && jobError.code !== 'PGRST116') throw jobError;
+
+      if (job) {
+        const resultData = job.result_data as any;
+        setStatusResponse({ 
+          status: job.status, 
+          document_status: document.status,
+          job_id: job.id,
+          replit_job_id: resultData?.replit_job_id,
+          message: job.error_message || `Job ${job.status}`
+        });
+        
+        if (job.status === 'completed' && job.result_data) {
+          setFinalResult(job.result_data);
+          stopPolling();
+          toast.success("Processing completed!");
+        } else if (job.status === 'failed') {
+          stopPolling();
+          toast.error("Processing failed", {
+            description: job.error_message || "Check logs for details"
+          });
+        }
+      } else {
+        setStatusResponse({ 
+          status: 'No job found', 
+          document_status: document.status,
+          message: "Job may not have started yet"
+        });
+      }
+    } catch (error: any) {
+      console.error("Auto-poll status check error:", error);
+      // Don't show toast for auto-poll errors to avoid spam
+    }
+  };
 
   const handleQuestionsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -112,8 +201,11 @@ export default function TestReplitAPI() {
       console.log("Edge function response:", data);
       setUploadResponse(data);
       toast.success("Processing started via edge function!", {
-        description: `Document ID: ${document.id}`,
+        description: `Document ID: ${document.id}. Auto-checking status...`,
       });
+      
+      // Start automatic polling
+      startPolling(document.id);
     } catch (error: any) {
       console.error("Upload error:", error);
       toast.error("Upload failed", {
@@ -133,58 +225,8 @@ export default function TestReplitAPI() {
     setIsChecking(true);
 
     try {
-      console.log("Checking status for document:", documentId);
-      
-      // Check document status in Supabase
-      const { data: document, error: docError } = await supabase
-        .from('uploaded_question_documents')
-        .select('*')
-        .eq('id', documentId)
-        .single();
-
-      if (docError) throw docError;
-
-      console.log("Document status:", document);
-      
-      // Check processing job if exists
-      const { data: job, error: jobError } = await supabase
-        .from('document_processing_jobs')
-        .select('*')
-        .eq('document_id', documentId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (jobError && jobError.code !== 'PGRST116') throw jobError;
-
-      if (job) {
-        const resultData = job.result_data as any;
-        setStatusResponse({ 
-          status: job.status, 
-          document_status: document.status,
-          job_id: job.id,
-          replit_job_id: resultData?.replit_job_id,
-          message: job.error_message || `Job ${job.status}`
-        });
-        
-        if (job.status === 'completed' && job.result_data) {
-          setFinalResult(job.result_data);
-          toast.success("Processing completed!");
-        } else if (job.status === 'failed') {
-          toast.error("Processing failed", {
-            description: job.error_message || "Check logs for details"
-          });
-        } else if (job.status === 'processing') {
-          toast.info("Still processing...");
-        }
-      } else {
-        setStatusResponse({ 
-          status: 'No job found', 
-          document_status: document.status,
-          message: "Job may not have started yet"
-        });
-        toast.warning("No processing job found yet");
-      }
+      await checkStatusInternal(documentId);
+      toast.success("Status refreshed");
     } catch (error: any) {
       console.error("Status check error:", error);
       toast.error("Status check failed", {
@@ -287,50 +329,68 @@ export default function TestReplitAPI() {
         <Card>
           <CardHeader>
             <CardTitle>2. Check Processing Status</CardTitle>
-            <CardDescription>Document ID: {documentId}</CardDescription>
+            <CardDescription>
+              Document ID: {documentId}
+              {isPolling && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  • Auto-checking every 5s (Check #{pollCount + 1})
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              onClick={handleCheckStatus}
-              disabled={isChecking}
-              className="w-full"
-            >
-              {isChecking ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Checking Status...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Check Status
-                </>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCheckStatus}
+                disabled={isChecking}
+                className="flex-1"
+                variant={isPolling ? "outline" : "default"}
+              >
+                {isChecking ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Check Status Now
+                  </>
+                )}
+              </Button>
+              {isPolling && (
+                <Button
+                  onClick={stopPolling}
+                  variant="destructive"
+                  size="icon"
+                  title="Stop auto-polling"
+                >
+                  <StopCircle className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
+            </div>
+
+            {isPolling && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertTitle>Auto-polling Active</AlertTitle>
+                <AlertDescription>
+                  Automatically checking status every 5 seconds. This will stop when processing completes or fails.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {statusResponse && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Current Status: {statusResponse.status}</AlertTitle>
+                <AlertTitle>Status: {statusResponse.status}</AlertTitle>
                 <AlertDescription>
-                  {statusResponse.message || "No message provided"}
+                  <pre className="mt-2 text-xs overflow-auto max-h-60">
+                    {JSON.stringify(statusResponse, null, 2)}
+                  </pre>
                 </AlertDescription>
               </Alert>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Status Response */}
-      {statusResponse && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Status Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="bg-muted p-4 rounded-lg overflow-auto text-xs">
-              {JSON.stringify(statusResponse, null, 2)}
-            </pre>
           </CardContent>
         </Card>
       )}
