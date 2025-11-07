@@ -61,6 +61,44 @@ serve(async (req) => {
       `https://mathpix-ocr-llm-service-utuberpraveen.replit.app/status/${replitJobId}`
     );
 
+    // Handle 404 - job not found on Replit (expired or deleted)
+    if (statusResponse.status === 404) {
+      console.log('Replit job not found (404), marking as failed');
+      
+      await supabaseAdmin
+        .from('document_processing_jobs')
+        .update({
+          status: 'failed',
+          error_message: 'Job not found on Replit service (may have expired)',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      await supabaseAdmin
+        .from('uploaded_question_documents')
+        .update({
+          status: 'failed',
+          error_message: 'Processing job expired on external service'
+        })
+        .eq('id', job.document_id);
+
+      await supabaseAdmin.from('job_logs').insert({
+        job_id: jobId,
+        log_level: 'error',
+        message: 'Replit job not found (404)',
+        details: { replit_job_id: replitJobId }
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          status: 'failed',
+          message: 'Job not found on Replit service (may have expired)'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!statusResponse.ok) {
       throw new Error(`Replit status check failed: ${statusResponse.status}`);
     }
