@@ -188,6 +188,10 @@ serve(async (req) => {
           const hasOptions = Object.keys(options).length > 0;
           const questionFormat = hasOptions ? 'single_choice' : 'short_answer';
           
+          // Map to objective/subjective based on format
+          const objectiveFormats = ['single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'numerical'];
+          const questionType = hasOptions || objectiveFormats.includes(questionFormat) ? 'objective' : 'subjective';
+          
           // Get solution data
           const solution = item.matched_solution;
           const correctAnswer = solution ? solution.answer_key : '';
@@ -216,7 +220,7 @@ serve(async (req) => {
               subtopic_id: doc.subtopic_id,
               question_text: cleanQuestionText,
               question_format: questionFormat,
-              question_type: 'mcq',
+              question_type: questionType,
               options: hasOptions ? options : null,
               correct_answer: correctAnswer || '',
               explanation: explanation || null,
@@ -232,7 +236,13 @@ serve(async (req) => {
               job_id: jobId,
               log_level: 'warn',
               message: `Failed to insert question ${questionNumber}`,
-              details: { error: insertError.message }
+              details: { 
+                error: insertError.message,
+                question_format: questionFormat,
+                question_type: questionType,
+                hasOptions,
+                q_text_preview: cleanQuestionText.slice(0, 140)
+              }
             });
           } else {
             insertedCount++;
@@ -245,6 +255,52 @@ serve(async (req) => {
             details: { error: parseError instanceof Error ? parseError.message : 'Unknown error' }
           });
         }
+      }
+
+      // Check if no questions inserted despite merged items
+      if ((resultData.merged?.length || 0) > 0 && insertedCount === 0) {
+        await supabaseAdmin
+          .from('document_processing_jobs')
+          .update({
+            status: 'failed',
+            progress_percentage: 100,
+            questions_extracted: 0,
+            completed_at: new Date().toISOString(),
+            current_step: 'Insert blocked by validation',
+            error_message: 'No questions inserted due to DB validation. Check job_logs for details.',
+            result_data: {
+              replit_job_id: replitJobId,
+              total_questions: resultData.total_questions,
+              matched_count: resultData.matched_count,
+              inserted_count: 0,
+              raw_preview: {
+                total_questions: resultData.total_questions,
+                matched_count: resultData.matched_count,
+                sample_items: (resultData.merged || []).slice(0, 2).map((x: any) => ({
+                  question_number: x.question_number,
+                  question_text: (x.question_text || '').slice(0, 140)
+                }))
+              }
+            }
+          })
+          .eq('id', jobId);
+
+        await supabaseAdmin
+          .from('uploaded_question_documents')
+          .update({
+            status: 'failed',
+            error_message: 'Validation failed - check job logs'
+          })
+          .eq('id', job.document_id);
+
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            status: 'failed',
+            message: 'No questions inserted due to validation errors'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Update job status to completed
@@ -260,7 +316,15 @@ serve(async (req) => {
             replit_job_id: replitJobId,
             total_questions: resultData.total_questions,
             matched_count: resultData.matched_count,
-            inserted_count: insertedCount
+            inserted_count: insertedCount,
+            raw_preview: {
+              total_questions: resultData.total_questions,
+              matched_count: resultData.matched_count,
+              sample_items: (resultData.merged || []).slice(0, 2).map((x: any) => ({
+                question_number: x.question_number,
+                question_text: (x.question_text || '').slice(0, 140)
+              }))
+            }
           }
         })
         .eq('id', jobId);
@@ -321,11 +385,41 @@ serve(async (req) => {
       );
     }
 
+    // Handle unknown status or timeout (job older than 60 minutes)
+    const jobAgeMinutes = (Date.now() - new Date(job.created_at).getTime()) / (1000 * 60);
+    if (jobAgeMinutes > 60 || !['PROCESSING', 'COMPLETED', 'FAILED'].includes(replitStatus)) {
+      await supabaseAdmin
+        .from('document_processing_jobs')
+        .update({
+          status: 'failed',
+          error_message: `Timed out or invalid external status: ${replitStatus}`,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', jobId);
+
+      await supabaseAdmin
+        .from('uploaded_question_documents')
+        .update({
+          status: 'failed',
+          error_message: 'Processing timeout or invalid status'
+        })
+        .eq('id', job.document_id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          status: 'failed',
+          message: `Job timed out or returned unknown status: ${replitStatus}`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         status: replitStatus,
-        message: `Unknown status: ${replitStatus}`
+        message: `Current status: ${replitStatus}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

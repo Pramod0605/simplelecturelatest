@@ -157,7 +157,7 @@ export const useCheckJobStatus = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, jobId) => {
       if (data.status === 'completed') {
         toast.success('Processing completed!', {
           description: `${data.questionsInserted} questions inserted into database`
@@ -172,9 +172,15 @@ export const useCheckJobStatus = () => {
         });
       }
       
+      // Invalidate only necessary queries
       queryClient.invalidateQueries({ queryKey: ['processing-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job-logs', jobId] });
       queryClient.invalidateQueries({ queryKey: ['uploaded-documents'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-questions'] });
+      
+      // Only invalidate pending questions if completed
+      if (data.status === 'completed') {
+        queryClient.invalidateQueries({ queryKey: ['pending-questions'] });
+      }
     },
     onError: (error: Error) => {
       toast.error('Failed to check job status', {
