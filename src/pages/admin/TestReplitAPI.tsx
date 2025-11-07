@@ -6,15 +6,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-const REPLIT_API_URL = "https://mathpix-ocr-llm-service-utuberpraveen.replit.app";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function TestReplitAPI() {
   const [questionsFile, setQuestionsFile] = useState<File | null>(null);
   const [solutionsFile, setSolutionsFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const [uploadResponse, setUploadResponse] = useState<any>(null);
   const [statusResponse, setStatusResponse] = useState<any>(null);
   const [finalResult, setFinalResult] = useState<any>(null);
@@ -51,38 +50,70 @@ export default function TestReplitAPI() {
     setUploadResponse(null);
     setStatusResponse(null);
     setFinalResult(null);
-    setJobId(null);
+    setDocumentId(null);
 
     try {
-      const formData = new FormData();
-      formData.append("questions_file", questionsFile);
-      formData.append("solutions_file", solutionsFile);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-      console.log("Uploading to Replit API:", REPLIT_API_URL);
-      
-      const response = await fetch(`${REPLIT_API_URL}/process-educational-content`, {
-        method: "POST",
-        body: formData,
+      // Upload files to Supabase storage
+      const questionsPath = `${user.id}/${Date.now()}_questions.pdf`;
+      const solutionsPath = `${user.id}/${Date.now()}_solutions.pdf`;
+
+      console.log("Uploading files to Supabase storage...");
+      const [questionsUpload, solutionsUpload] = await Promise.all([
+        supabase.storage.from('uploaded-question-documents').upload(questionsPath, questionsFile),
+        supabase.storage.from('uploaded-question-documents').upload(solutionsPath, solutionsFile)
+      ]);
+
+      if (questionsUpload.error) throw questionsUpload.error;
+      if (solutionsUpload.error) throw solutionsUpload.error;
+
+      // Get public URLs
+      const { data: { publicUrl: questionsUrl } } = supabase.storage
+        .from('uploaded-question-documents')
+        .getPublicUrl(questionsPath);
+      const { data: { publicUrl: solutionsUrl } } = supabase.storage
+        .from('uploaded-question-documents')
+        .getPublicUrl(solutionsPath);
+
+      // Create document record
+      console.log("Creating document record...");
+      const { data: documents, error: docError } = await supabase
+        .from('uploaded_question_documents')
+        .insert([{
+          questions_file_name: questionsFile.name,
+          questions_file_url: questionsUrl,
+          solutions_file_name: solutionsFile.name,
+          solutions_file_url: solutionsUrl,
+          uploaded_by: user.id,
+          status: 'pending',
+          file_type: 'pdf',
+          category_id: '00000000-0000-0000-0000-000000000000', // placeholder
+          subject_id: '00000000-0000-0000-0000-000000000000', // placeholder
+          chapter_id: '00000000-0000-0000-0000-000000000000' // placeholder
+        }])
+        .select()
+        .single();
+
+      if (docError) throw docError;
+      const document = documents;
+
+      setDocumentId(document.id);
+
+      // Call edge function
+      console.log("Calling edge function with document ID:", document.id);
+      const { data, error } = await supabase.functions.invoke('process-educational-pdfs', {
+        body: { documentId: document.id }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-      console.log("Upload response:", data);
-      
+      console.log("Edge function response:", data);
       setUploadResponse(data);
-      
-      if (data.job_id) {
-        setJobId(data.job_id);
-        toast.success("Files uploaded successfully!", {
-          description: `Job ID: ${data.job_id}`,
-        });
-      } else {
-        toast.warning("Upload completed but no job_id received");
-      }
+      toast.success("Processing started via edge function!", {
+        description: `Document ID: ${document.id}`,
+      });
     } catch (error: any) {
       console.error("Upload error:", error);
       toast.error("Upload failed", {
@@ -94,51 +125,65 @@ export default function TestReplitAPI() {
   };
 
   const handleCheckStatus = async () => {
-    if (!jobId) {
-      toast.error("No job ID available");
+    if (!documentId) {
+      toast.error("No document ID available");
       return;
     }
 
     setIsChecking(true);
 
     try {
-      console.log("Checking status for job:", jobId);
+      console.log("Checking status for document:", documentId);
       
-      const response = await fetch(`${REPLIT_API_URL}/status/${jobId}`, {
-        method: "GET",
-      });
+      // Check document status in Supabase
+      const { data: document, error: docError } = await supabase
+        .from('uploaded_question_documents')
+        .select('*')
+        .eq('id', documentId)
+        .single();
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Status check failed: ${response.status} - ${errorText}`);
-      }
+      if (docError) throw docError;
 
-      const data = await response.json();
-      console.log("Status response:", data);
+      console.log("Document status:", document);
       
-      setStatusResponse(data);
+      // Check processing job if exists
+      const { data: job, error: jobError } = await supabase
+        .from('document_processing_jobs')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (data.status === "COMPLETED") {
-        toast.success("Processing completed!");
+      if (jobError && jobError.code !== 'PGRST116') throw jobError;
+
+      if (job) {
+        const resultData = job.result_data as any;
+        setStatusResponse({ 
+          status: job.status, 
+          document_status: document.status,
+          job_id: job.id,
+          replit_job_id: resultData?.replit_job_id,
+          message: job.error_message || `Job ${job.status}`
+        });
         
-        // Fetch the final result
-        const resultResponse = await fetch(`${REPLIT_API_URL}/api/educational-result/${jobId}`, {
-          method: "GET",
-        });
-
-        if (resultResponse.ok) {
-          const resultData = await resultResponse.json();
-          console.log("Final result:", resultData);
-          setFinalResult(resultData);
+        if (job.status === 'completed' && job.result_data) {
+          setFinalResult(job.result_data);
+          toast.success("Processing completed!");
+        } else if (job.status === 'failed') {
+          toast.error("Processing failed", {
+            description: job.error_message || "Check logs for details"
+          });
+        } else if (job.status === 'processing') {
+          toast.info("Still processing...");
         }
-      } else if (data.status === "PROCESSING") {
-        toast.info("Still processing...", {
-          description: data.message || "Job is being processed",
+      } else {
+        setStatusResponse({ 
+          status: 'No job found', 
+          document_status: document.status,
+          message: "Job may not have started yet"
         });
-      } else if (data.status === "FAILED") {
-        toast.error("Processing failed", {
-          description: data.message || "Check logs for details",
-        });
+        toast.warning("No processing job found yet");
       }
     } catch (error: any) {
       console.error("Status check error:", error);
@@ -153,18 +198,18 @@ export default function TestReplitAPI() {
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Test Replit API</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Test Document Processing</h1>
         <p className="text-muted-foreground mt-2">
-          Direct test interface for the Replit document processing API
+          Test the full workflow: Upload → Edge Function → Replit API → Database
         </p>
       </div>
 
       {/* Upload Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload PDFs</CardTitle>
+          <CardTitle>1. Upload PDFs via Edge Function</CardTitle>
           <CardDescription>
-            Upload questions and solutions PDFs directly to the Replit API
+            Upload files to Supabase storage, then process via edge function
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -213,7 +258,7 @@ export default function TestReplitAPI() {
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Upload to Replit
+                Upload & Process
               </>
             )}
           </Button>
@@ -226,7 +271,7 @@ export default function TestReplitAPI() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Upload Response
+              Edge Function Response
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -238,11 +283,11 @@ export default function TestReplitAPI() {
       )}
 
       {/* Status Check Section */}
-      {jobId && (
+      {documentId && (
         <Card>
           <CardHeader>
-            <CardTitle>Check Processing Status</CardTitle>
-            <CardDescription>Job ID: {jobId}</CardDescription>
+            <CardTitle>2. Check Processing Status</CardTitle>
+            <CardDescription>Document ID: {documentId}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
@@ -310,29 +355,47 @@ export default function TestReplitAPI() {
         </Card>
       )}
 
-      {/* API Documentation */}
+      {/* Workflow Documentation */}
       <Card>
         <CardHeader>
-          <CardTitle>API Endpoints</CardTitle>
+          <CardTitle>Processing Workflow</CardTitle>
+          <CardDescription>How the data flows through the system</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div>
-            <code className="bg-muted px-2 py-1 rounded text-xs">
-              POST {REPLIT_API_URL}/process-educational-content
-            </code>
-            <p className="text-muted-foreground mt-1">Upload PDFs and start processing</p>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex gap-3">
+            <div className="font-mono text-muted-foreground">1.</div>
+            <div>
+              <p className="font-medium">Upload to Supabase Storage</p>
+              <p className="text-muted-foreground">Files stored in uploaded-question-documents bucket</p>
+            </div>
           </div>
-          <div>
-            <code className="bg-muted px-2 py-1 rounded text-xs">
-              GET {REPLIT_API_URL}/status/&#123;job_id&#125;
-            </code>
-            <p className="text-muted-foreground mt-1">Check processing status</p>
+          <div className="flex gap-3">
+            <div className="font-mono text-muted-foreground">2.</div>
+            <div>
+              <p className="font-medium">Create Database Record</p>
+              <p className="text-muted-foreground">Document metadata saved to uploaded_question_documents table</p>
+            </div>
           </div>
-          <div>
-            <code className="bg-muted px-2 py-1 rounded text-xs">
-              GET {REPLIT_API_URL}/api/educational-result/&#123;job_id&#125;
-            </code>
-            <p className="text-muted-foreground mt-1">Get final structured result</p>
+          <div className="flex gap-3">
+            <div className="font-mono text-muted-foreground">3.</div>
+            <div>
+              <p className="font-medium">Call Edge Function</p>
+              <p className="text-muted-foreground">process-educational-pdfs downloads files and sends to Replit API</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="font-mono text-muted-foreground">4.</div>
+            <div>
+              <p className="font-medium">Replit API Processing</p>
+              <p className="text-muted-foreground">OCR + LLM extraction of questions and solutions</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="font-mono text-muted-foreground">5.</div>
+            <div>
+              <p className="font-medium">Save Results</p>
+              <p className="text-muted-foreground">Structured data saved to document_processing_jobs table</p>
+            </div>
           </div>
         </CardContent>
       </Card>
