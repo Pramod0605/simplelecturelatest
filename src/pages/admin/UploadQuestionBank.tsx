@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, FileText, Loader2, Eye } from "lucide-react";
+import { Upload, FileText, Loader2, Eye, Sparkles } from "lucide-react";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
@@ -92,16 +92,26 @@ export default function UploadQuestionBank() {
     setSolutionsFile(null);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, job?: any) => {
     switch (status) {
       case 'completed':
         return <Badge className="bg-green-100 text-green-800">✅ Completed</Badge>;
       case 'processing':
-        return <Badge className="bg-yellow-100 text-yellow-800"><Loader2 className="h-3 w-3 animate-spin mr-1" />🔄 Processing</Badge>;
+        const progress = job?.progress_percentage || 0;
+        const step = job?.current_step || 'Initializing...';
+        return (
+          <div className="space-y-1">
+            <Badge className="bg-yellow-100 text-yellow-800">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              Processing ({progress}%)
+            </Badge>
+            <p className="text-xs text-muted-foreground">{step}</p>
+          </div>
+        );
       case 'failed':
         return <Badge className="bg-red-100 text-red-800">❌ Failed</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800">⏳ Pending</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800">⏳ Ready to Process</Badge>;
     }
   };
 
@@ -323,7 +333,7 @@ export default function UploadQuestionBank() {
                   const DocumentRow = () => {
                     const { data: jobs } = useProcessingJobs({ 
                       documentId: doc.id,
-                      jobType: 'llm_extraction'
+                      jobType: 'replit_processing'
                     });
                     
                     const activeJob = jobs?.find(
@@ -366,7 +376,17 @@ export default function UploadQuestionBank() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        <TableCell>
+                          {getStatusBadge(doc.status, activeJob)}
+                          
+                          {activeJob?.result_data?.replit_job_id && (
+                            <div className="mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                🔄 Replit Job: {activeJob.result_data.replit_job_id}
+                              </Badge>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -378,14 +398,20 @@ export default function UploadQuestionBank() {
                                     toast.error("Both PDFs must be uploaded before processing");
                                     return;
                                   }
-                                  processMutation.mutate({ documentId: doc.id });
+                                  extractMutation.mutate({ documentId: doc.id });
                                 }}
-                                disabled={processMutation.isPending}
+                                disabled={extractMutation.isPending || !!activeJob}
                               >
-                                {processMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                {(extractMutation.isPending || activeJob) ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    Processing with Replit...
+                                  </>
                                 ) : (
-                                  'Process Dual PDFs'
+                                  <>
+                                    <Sparkles className="h-4 w-4 mr-1" />
+                                    Process & Extract with Replit
+                                  </>
                                 )}
                               </Button>
                             )}
@@ -401,23 +427,6 @@ export default function UploadQuestionBank() {
                               >
                                 <Eye className="h-4 w-4 mr-1" />
                                 Preview
-                              </Button>
-                            )}
-                            
-                            {doc.status === 'completed' && doc.questions_mmd_content && doc.solutions_mmd_content && (
-                              <Button
-                                size="sm"
-                                onClick={() => extractMutation.mutate({ documentId: doc.id })}
-                                disabled={extractMutation.isPending || !!activeJob}
-                              >
-                                {(extractMutation.isPending || activeJob) ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                    Processing...
-                                  </>
-                                ) : (
-                                  'Extract Questions'
-                                )}
                               </Button>
                             )}
                           </div>
