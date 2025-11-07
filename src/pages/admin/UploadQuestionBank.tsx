@@ -333,7 +333,7 @@ export default function UploadQuestionBank() {
                   const DocumentRow = () => {
                     const { data: jobs } = useProcessingJobs({ 
                       documentId: doc.id,
-                      jobType: 'replit_processing'
+                      jobType: 'mathpix_processing'
                     });
                     
                     const activeJob = jobs?.find(

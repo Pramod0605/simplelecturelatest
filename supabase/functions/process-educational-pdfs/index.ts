@@ -59,7 +59,7 @@ serve(async (req) => {
       .from('document_processing_jobs')
       .insert({
         document_id: documentId,
-        job_type: 'replit_processing',
+        job_type: 'mathpix_processing',
         status: 'running',
         created_by: user.id,
         started_at: new Date().toISOString(),
