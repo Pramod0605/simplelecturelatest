@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const REPLIT_API_URL = "https://f03b2a2f-86e9-43a1-b8c4-dce91c92bd0b-00-28d3tmmpmdcxq.riker.replit.dev";
+const REPLIT_API_URL = "https://mathpix-ocr-llm-service-utuberpraveen.replit.app";
 
 export default function TestReplitAPI() {
   const [questionsFile, setQuestionsFile] = useState<File | null>(null);
@@ -55,8 +55,8 @@ export default function TestReplitAPI() {
 
     try {
       const formData = new FormData();
-      formData.append("questions_pdf", questionsFile);
-      formData.append("solutions_pdf", solutionsFile);
+      formData.append("questions_file", questionsFile);
+      formData.append("solutions_file", solutionsFile);
 
       console.log("Uploading to Replit API:", REPLIT_API_URL);
       
@@ -122,7 +122,7 @@ export default function TestReplitAPI() {
         toast.success("Processing completed!");
         
         // Fetch the final result
-        const resultResponse = await fetch(`${REPLIT_API_URL}/result/${jobId}`, {
+        const resultResponse = await fetch(`${REPLIT_API_URL}/api/educational-result/${jobId}`, {
           method: "GET",
         });
 
@@ -330,7 +330,7 @@ export default function TestReplitAPI() {
           </div>
           <div>
             <code className="bg-muted px-2 py-1 rounded text-xs">
-              GET {REPLIT_API_URL}/result/&#123;job_id&#125;
+              GET {REPLIT_API_URL}/api/educational-result/&#123;job_id&#125;
             </code>
             <p className="text-muted-foreground mt-1">Get final structured result</p>
           </div>
