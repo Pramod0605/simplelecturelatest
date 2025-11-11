@@ -101,7 +101,16 @@ Suggest the best match or propose new names if no match exists. Consider the que
 
     const data = await response.json();
     const content = data.choices[0].message.content;
-    const suggestions = JSON.parse(content);
+    
+    // Clean markdown code blocks if present
+    let cleanContent = content.trim();
+    if (cleanContent.startsWith('```json')) {
+      cleanContent = cleanContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+    } else if (cleanContent.startsWith('```')) {
+      cleanContent = cleanContent.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+    
+    const suggestions = JSON.parse(cleanContent);
 
     return new Response(
       JSON.stringify(suggestions),
