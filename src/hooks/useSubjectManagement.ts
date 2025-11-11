@@ -345,6 +345,97 @@ export const useDeleteTopic = () => {
   });
 };
 
+// Order update hooks
+export const useUpdateChapterOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      chapters,
+    }: {
+      chapters: Array<{ id: string; sequence_order: number }>;
+    }) => {
+      const updates = chapters.map((chapter) =>
+        supabase
+          .from("subject_chapters")
+          .update({ sequence_order: chapter.sequence_order })
+          .eq("id", chapter.id)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter((r) => r.error);
+      if (errors.length > 0) throw errors[0].error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subject-chapters"] });
+      toast({ title: "Success", description: "Chapter order updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to update order: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
+export const useUpdateTopicOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      topics,
+    }: {
+      topics: Array<{ id: string; sequence_order: number }>;
+    }) => {
+      const updates = topics.map((topic) =>
+        supabase
+          .from("subject_topics")
+          .update({ sequence_order: topic.sequence_order })
+          .eq("id", topic.id)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter((r) => r.error);
+      if (errors.length > 0) throw errors[0].error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subject-topics"] });
+      toast({ title: "Success", description: "Topic order updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to update order: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
+export const useUpdateSubtopicOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      subtopics,
+    }: {
+      subtopics: Array<{ id: string; sequence_order: number }>;
+    }) => {
+      const updates = subtopics.map((subtopic) =>
+        supabase
+          .from("subtopics")
+          .update({ sequence_order: subtopic.sequence_order })
+          .eq("id", subtopic.id)
+      );
+
+      const results = await Promise.all(updates);
+      const errors = results.filter((r) => r.error);
+      if (errors.length > 0) throw errors[0].error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subtopics"] });
+      toast({ title: "Success", description: "Subtopic order updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to update order: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
 // Bulk import hook
 export const useBulkImportChapters = () => {
   const queryClient = useQueryClient();
@@ -364,13 +455,38 @@ export const useBulkImportChapters = () => {
           title: string;
           estimated_duration_minutes?: number;
           content_markdown?: string;
+          subtopics?: Array<{
+            title: string;
+            description?: string;
+            estimated_duration_minutes?: number;
+            sequence_order: number;
+          }>;
         }>;
       }>;
     }) => {
-      const results = { chapters: 0, topics: 0, errors: [] as string[] };
+      const results = { chapters: 0, topics: 0, subtopics: 0, skipped: 0, errors: [] as string[] };
+
+      // Check existing chapters
+      const { data: existingChapters } = await supabase
+        .from("subject_chapters")
+        .select("chapter_number, title")
+        .eq("subject_id", subjectId);
+
+      const existingChapterNumbers = new Set(
+        existingChapters?.map((c) => c.chapter_number) || []
+      );
 
       for (const chapter of chapters) {
         try {
+          // Skip if chapter already exists
+          if (existingChapterNumbers.has(chapter.chapter_number)) {
+            results.skipped++;
+            results.errors.push(
+              `Chapter ${chapter.chapter_number} already exists - skipped`
+            );
+            continue;
+          }
+
           const { data: chapterData, error: chapterError } = await supabase
             .from("subject_chapters")
             .insert({
@@ -387,21 +503,41 @@ export const useBulkImportChapters = () => {
           results.chapters++;
 
           if (chapter.topics && chapter.topics.length > 0) {
-            const topicsToInsert = chapter.topics.map((topic) => ({
-              chapter_id: chapterData.id,
-              topic_number: topic.topic_number,
-              title: topic.title,
-              estimated_duration_minutes: topic.estimated_duration_minutes,
-              content_markdown: topic.content_markdown,
-              sequence_order: topic.topic_number,
-            }));
+            for (const topic of chapter.topics) {
+              const { data: topicData, error: topicError } = await supabase
+                .from("subject_topics")
+                .insert({
+                  chapter_id: chapterData.id,
+                  topic_number: topic.topic_number,
+                  title: topic.title,
+                  estimated_duration_minutes: topic.estimated_duration_minutes,
+                  content_markdown: topic.content_markdown,
+                  sequence_order: topic.topic_number,
+                })
+                .select()
+                .single();
 
-            const { error: topicsError } = await supabase
-              .from("subject_topics")
-              .insert(topicsToInsert);
+              if (topicError) throw topicError;
+              results.topics++;
 
-            if (topicsError) throw topicsError;
-            results.topics += topicsToInsert.length;
+              // Handle subtopics
+              if (topic.subtopics && topic.subtopics.length > 0) {
+                const subtopicsToInsert = topic.subtopics.map((subtopic, index) => ({
+                  topic_id: topicData.id,
+                  title: subtopic.title,
+                  description: subtopic.description,
+                  estimated_duration_minutes: subtopic.estimated_duration_minutes,
+                  sequence_order: subtopic.sequence_order || index + 1,
+                }));
+
+                const { error: subtopicsError } = await supabase
+                  .from("subtopics")
+                  .insert(subtopicsToInsert);
+
+                if (subtopicsError) throw subtopicsError;
+                results.subtopics += subtopicsToInsert.length;
+              }
+            }
           }
         } catch (error) {
           results.errors.push(
@@ -414,11 +550,21 @@ export const useBulkImportChapters = () => {
     },
     onSuccess: (results, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subject-chapters", variables.subjectId] });
+      queryClient.invalidateQueries({ queryKey: ["subject-topics"] });
+      queryClient.invalidateQueries({ queryKey: ["subtopics"] });
+      
+      const message = `Imported ${results.chapters} chapters, ${results.topics} topics, ${results.subtopics} subtopics` +
+        (results.skipped > 0 ? `, skipped ${results.skipped}` : "") +
+        (results.errors.length > 0 ? `. Check console for errors.` : "");
+      
       toast({
         title: "Import Complete",
-        description: `Imported ${results.chapters} chapters and ${results.topics} topics` +
-          (results.errors.length > 0 ? ` with ${results.errors.length} errors` : "")
+        description: message,
       });
+      
+      if (results.errors.length > 0) {
+        console.log("Import errors:", results.errors);
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: "Bulk import failed: " + error.message, variant: "destructive" });

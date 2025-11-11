@@ -4,7 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -47,12 +64,13 @@ import {
   useUpdateTopic,
   useDeleteTopic,
   useBulkImportChapters,
+  useUpdateChapterOrder,
+  useUpdateTopicOrder,
 } from "@/hooks/useSubjectManagement";
 import { FileUploadWidget } from "./FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
-import { ExcelImportModal } from "./ExcelImportModal";
 import * as XLSX from "xlsx";
 
 interface SubjectChaptersTabProps {
@@ -109,6 +127,16 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
   const updateTopic = useUpdateTopic();
   const deleteTopic = useDeleteTopic();
   const bulkImport = useBulkImportChapters();
+  const updateChapterOrder = useUpdateChapterOrder();
+  const updateTopicOrder = useUpdateTopicOrder();
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const toggleChapter = (chapterId: string) => {
     const newExpanded = new Set(expandedChapters);
@@ -350,11 +378,16 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-    // Parse Excel data into chapters with topics
+    // Parse Excel data into chapters with topics and subtopics
     const chaptersMap = new Map<number, any>();
+    const topicsMap = new Map<string, any>();
 
     jsonData.forEach((row) => {
       const chapterNum = parseInt(row.chapter_number);
+      const topicNum = row.topic_number ? parseInt(row.topic_number) : null;
+      const subtopicOrder = row.subtopic_order ? parseInt(row.subtopic_order) : null;
+
+      // Create chapter if doesn't exist
       if (!chaptersMap.has(chapterNum)) {
         chaptersMap.set(chapterNum, {
           chapter_number: chapterNum,
@@ -364,13 +397,30 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         });
       }
 
-      if (row.topic_number && row.topic_title) {
-        chaptersMap.get(chapterNum)?.topics.push({
-          topic_number: parseInt(row.topic_number),
-          title: row.topic_title,
-          estimated_duration_minutes: parseInt(row.duration_minutes) || 60,
-          content_markdown: row.content_markdown || "",
-        });
+      // If topic exists, add/update it
+      if (topicNum && row.topic_title) {
+        const topicKey = `${chapterNum}-${topicNum}`;
+        
+        if (!topicsMap.has(topicKey)) {
+          topicsMap.set(topicKey, {
+            topic_number: topicNum,
+            title: row.topic_title,
+            estimated_duration_minutes: parseInt(row.topic_duration_minutes) || 60,
+            content_markdown: row.topic_content || "",
+            subtopics: [],
+          });
+          chaptersMap.get(chapterNum)?.topics.push(topicsMap.get(topicKey));
+        }
+
+        // If subtopic exists, add it
+        if (subtopicOrder && row.subtopic_title) {
+          topicsMap.get(topicKey)?.subtopics.push({
+            title: row.subtopic_title,
+            description: row.subtopic_description || "",
+            estimated_duration_minutes: parseInt(row.subtopic_duration_minutes) || 30,
+            sequence_order: subtopicOrder,
+          });
+        }
       }
     });
 
@@ -382,7 +432,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
     });
 
     return {
-      success: result.chapters + result.topics,
+      success: result.chapters + result.topics + result.subtopics,
       errors: result.errors,
     };
   };
@@ -392,27 +442,111 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
       {
         chapter_number: 1,
         chapter_title: "Introduction to Physics",
-        chapter_description: "Basic concepts and principles",
-        topic_number: 1,
-        topic_title: "Newton's First Law",
-        duration_minutes: 45,
-        content_markdown: "# Content here...",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: "",
+        topic_title: "",
+        topic_duration_minutes: "",
+        topic_content: "",
+        subtopic_order: "",
+        subtopic_title: "",
+        subtopic_description: "",
+        subtopic_duration_minutes: "",
       },
       {
         chapter_number: 1,
         chapter_title: "Introduction to Physics",
-        chapter_description: "Basic concepts and principles",
-        topic_number: 2,
-        topic_title: "Newton's Second Law",
-        duration_minutes: 60,
-        content_markdown: "# Content here...",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 1,
+        topic_title: "Newton's Laws of Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Newton's Laws\nDetailed explanation...",
+        subtopic_order: "",
+        subtopic_title: "",
+        subtopic_description: "",
+        subtopic_duration_minutes: "",
+      },
+      {
+        chapter_number: 1,
+        chapter_title: "Introduction to Physics",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 1,
+        topic_title: "Newton's Laws of Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Newton's Laws\nDetailed explanation...",
+        subtopic_order: 1,
+        subtopic_title: "Newton's First Law (Inertia)",
+        subtopic_description: "Law of Inertia explanation",
+        subtopic_duration_minutes: 45,
+      },
+      {
+        chapter_number: 1,
+        chapter_title: "Introduction to Physics",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 1,
+        topic_title: "Newton's Laws of Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Newton's Laws\nDetailed explanation...",
+        subtopic_order: 2,
+        subtopic_title: "Newton's Second Law (F=ma)",
+        subtopic_description: "Force and acceleration relationship",
+        subtopic_duration_minutes: 45,
+      },
+      {
+        chapter_number: 2,
+        chapter_title: "Thermodynamics",
+        chapter_description: "Heat and energy transfer",
+        topic_number: "",
+        topic_title: "",
+        topic_duration_minutes: "",
+        topic_content: "",
+        subtopic_order: "",
+        subtopic_title: "",
+        subtopic_description: "",
+        subtopic_duration_minutes: "",
       },
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 15 }, // chapter_number
+      { wch: 30 }, // chapter_title
+      { wch: 40 }, // chapter_description
+      { wch: 15 }, // topic_number
+      { wch: 30 }, // topic_title
+      { wch: 20 }, // topic_duration_minutes
+      { wch: 40 }, // topic_content
+      { wch: 15 }, // subtopic_order
+      { wch: 30 }, // subtopic_title
+      { wch: 40 }, // subtopic_description
+      { wch: 25 }, // subtopic_duration_minutes
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Chapters");
-    XLSX.writeFile(wb, "chapters_template.xlsx");
+    XLSX.writeFile(wb, `${subjectName}_chapters_template.xlsx`);
+    
+    toast({
+      title: "Template Downloaded",
+      description: "Excel template with examples downloaded successfully",
+    });
+  };
+
+  const handleDragEndChapters = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !chapters) return;
+
+    const oldIndex = chapters.findIndex((c) => c.id === active.id);
+    const newIndex = chapters.findIndex((c) => c.id === over.id);
+
+    const reorderedChapters = arrayMove(chapters, oldIndex, newIndex);
+    const updates = reorderedChapters.map((chapter, index) => ({
+      id: chapter.id,
+      sequence_order: index + 1,
+    }));
+
+    updateChapterOrder.mutate({ chapters: updates });
   };
 
   return (
@@ -427,6 +561,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Template
+              </Button>
               <Button variant="outline" onClick={() => setIsExcelImportOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
                 Bulk Import
@@ -638,17 +776,26 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : chapters && chapters.length > 0 ? (
-            <div className="space-y-4">
-              {chapters.map((chapter) => (
-                <ChapterItem
-                  key={chapter.id}
-                  chapter={chapter}
-                  isExpanded={expandedChapters.has(chapter.id)}
-                  onToggle={() => toggleChapter(chapter.id)}
-                  onEdit={() => {
-                    setEditingChapter(chapter);
-                    setChapterForm({
-                      chapter_number: chapter.chapter_number,
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndChapters}
+            >
+              <SortableContext
+                items={chapters.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-4">
+                  {chapters.map((chapter) => (
+                    <SortableChapterItem
+                      key={chapter.id}
+                      chapter={chapter}
+                      isExpanded={expandedChapters.has(chapter.id)}
+                      onToggle={() => toggleChapter(chapter.id)}
+                      onEdit={() => {
+                        setEditingChapter(chapter);
+                        setChapterForm({
+                          chapter_number: chapter.chapter_number,
                       title: chapter.title,
                       description: chapter.description || "",
                       sequence_order: chapter.sequence_order,
@@ -683,8 +830,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                     setDeleteTopicId(topicId);
                   }}
                 />
-              ))}
-            </div>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           ) : (
             <div className="py-12 text-center text-muted-foreground">
               <p>No chapters added yet</p>
@@ -916,7 +1065,97 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
       />
 
       {/* Excel Import Modal */}
-      {/* Excel Import Modal - Remove until chapters import is implemented */}
+      <Dialog open={isExcelImportOpen} onOpenChange={setIsExcelImportOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import Chapters, Topics & Subtopics
+            </DialogTitle>
+            <DialogDescription>
+              Upload an Excel file with chapter, topic, and subtopic structure. Existing chapters will be skipped.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Instructions */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Excel Format Instructions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  <li><strong>Chapter only:</strong> Fill chapter_number, chapter_title, chapter_description. Leave topic fields empty.</li>
+                  <li><strong>Chapter with Topic:</strong> Repeat chapter info + fill topic_number, topic_title, topic_duration_minutes.</li>
+                  <li><strong>Topic with Subtopic:</strong> Repeat chapter & topic info + fill subtopic_order, subtopic_title, subtopic_description.</li>
+                  <li>Chapters with duplicate chapter_number will be skipped automatically.</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Download Template Button */}
+            <Button onClick={downloadTemplate} variant="outline" className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Download Excel Template with Examples
+            </Button>
+
+            {/* File Upload Section */}
+            <div className="space-y-2">
+              <Label htmlFor="chapters-excel">Upload Excel File (.xlsx)</Label>
+              <Input
+                id="chapters-excel"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      await handleExcelImport(file);
+                      setIsExcelImportOpen(false);
+                    } catch (error) {
+                      console.error("Import error:", error);
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExcelImportOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Sortable Chapter Item Wrapper
+interface SortableChapterItemProps extends ChapterItemProps {
+  chapter: any;
+}
+
+function SortableChapterItem(props: SortableChapterItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.chapter.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ChapterItem {...props} dragHandleProps={{ attributes, listeners }} />
     </div>
   );
 }
@@ -931,6 +1170,7 @@ interface ChapterItemProps {
   onAddTopic: () => void;
   onEditTopic: (topic: any) => void;
   onDeleteTopic: (topicId: string) => void;
+  dragHandleProps?: any;
 }
 
 function ChapterItem({
@@ -942,6 +1182,7 @@ function ChapterItem({
   onAddTopic,
   onEditTopic,
   onDeleteTopic,
+  dragHandleProps,
 }: ChapterItemProps) {
   const { data: topics } = useChapterTopics(chapter.id);
 
@@ -952,6 +1193,13 @@ function ChapterItem({
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
+                <div
+                  {...dragHandleProps?.attributes}
+                  {...dragHandleProps?.listeners}
+                  className="cursor-grab active:cursor-grabbing"
+                >
+                  <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </div>
                 {isExpanded ? (
                   <ChevronDown className="h-5 w-5" />
                 ) : (
