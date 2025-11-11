@@ -1,5 +1,17 @@
 project_id = "oxwhqvsoelqqsblmqkxx"
 
+[functions.ai-suggest-chapter-topic]
+verify_jwt = false
+
+[functions.bulk-auto-assign-chapters]
+verify_jwt = true
+
+[functions.send-verification-notification]
+verify_jwt = true
+
+[functions.export-verification-report]
+verify_jwt = true
+
 [functions.ai-doubt-clear]
 verify_jwt = true
 

@@ -8,6 +8,7 @@ export const useUploadedDocuments = (filters: {
   chapterId?: string;
   topicId?: string;
   status?: string;
+  verificationStatus?: 'unverified' | 'ai_verified' | 'human_verified' | 'both';
 }) => {
   return useQuery({
     queryKey: ["uploaded-documents", filters],
@@ -20,7 +21,8 @@ export const useUploadedDocuments = (filters: {
           popular_subjects(name),
           subject_chapters(title),
           subject_topics(title),
-          subtopics(title)
+          subtopics(title),
+          profiles!uploaded_question_documents_verified_by_user_id_fkey(full_name)
         `);
 
       if (filters.categoryId) {
@@ -37,6 +39,22 @@ export const useUploadedDocuments = (filters: {
       }
       if (filters.status) {
         query = query.eq('status', filters.status);
+      }
+      if (filters.verificationStatus) {
+        switch (filters.verificationStatus) {
+          case 'unverified':
+            query = query.eq('verified_by_ai', false).eq('verified_by_human', false);
+            break;
+          case 'ai_verified':
+            query = query.eq('verified_by_ai', true).eq('verified_by_human', false);
+            break;
+          case 'human_verified':
+            query = query.eq('verified_by_human', true);
+            break;
+          case 'both':
+            query = query.eq('verified_by_ai', true).eq('verified_by_human', true);
+            break;
+        }
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });

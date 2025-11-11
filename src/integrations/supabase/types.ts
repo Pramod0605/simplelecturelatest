@@ -41,6 +41,53 @@ export type Database = {
         }
         Relationships: []
       }
+      approvals: {
+        Row: {
+          approved_at: string | null
+          changes_requested: Json | null
+          comments: string | null
+          created_at: string
+          id: string
+          job_id: string
+          reviewed_by: string | null
+          stage: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          changes_requested?: Json | null
+          comments?: string | null
+          created_at?: string
+          id: string
+          job_id: string
+          reviewed_by?: string | null
+          stage: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          changes_requested?: Json | null
+          comments?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          reviewed_by?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_submissions: {
         Row: {
           answers: Json
@@ -1397,6 +1444,42 @@ export type Database = {
           },
         ]
       }
+      jobs: {
+        Row: {
+          callback_url: string | null
+          chapter: string | null
+          created_at: string
+          current_stage: string | null
+          error_message: string | null
+          id: string
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          callback_url?: string | null
+          chapter?: string | null
+          created_at?: string
+          current_stage?: string | null
+          error_message?: string | null
+          id: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          callback_url?: string | null
+          chapter?: string | null
+          created_at?: string
+          current_stage?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notice_reads: {
         Row: {
           id: string
@@ -1464,6 +1547,71 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      ocr_results: {
+        Row: {
+          cloud_image_urls: Json | null
+          created_at: string
+          datalab_request_id: string | null
+          id: string
+          images: Json | null
+          images_extracted: number | null
+          job_id: string
+          mathpix_pdf_id: string | null
+          mmd_content: string | null
+          mmd_url: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          provider: string | null
+          status: string
+          updated_at: string
+          zip_path: string | null
+        }
+        Insert: {
+          cloud_image_urls?: Json | null
+          created_at?: string
+          datalab_request_id?: string | null
+          id: string
+          images?: Json | null
+          images_extracted?: number | null
+          job_id: string
+          mathpix_pdf_id?: string | null
+          mmd_content?: string | null
+          mmd_url?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          provider?: string | null
+          status?: string
+          updated_at?: string
+          zip_path?: string | null
+        }
+        Update: {
+          cloud_image_urls?: Json | null
+          created_at?: string
+          datalab_request_id?: string | null
+          id?: string
+          images?: Json | null
+          images_extracted?: number | null
+          job_id?: string
+          mathpix_pdf_id?: string | null
+          mmd_content?: string | null
+          mmd_url?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          provider?: string | null
+          status?: string
+          updated_at?: string
+          zip_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_results_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -1654,7 +1802,7 @@ export type Database = {
           {
             foreignKeyName: "parsed_questions_pending_question_bank_id_fkey"
             columns: ["question_bank_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "questions"
             referencedColumns: ["id"]
           },
@@ -1865,6 +2013,7 @@ export type Database = {
       questions: {
         Row: {
           contains_formula: boolean | null
+          content_hash: string | null
           correct_answer: string
           created_at: string | null
           difficulty: string | null
@@ -1881,12 +2030,14 @@ export type Database = {
           question_image_url: string | null
           question_text: string
           question_type: string
+          source_document_id: string | null
           subtopic_id: string | null
           topic_id: string | null
           verified_by: string | null
         }
         Insert: {
           contains_formula?: boolean | null
+          content_hash?: string | null
           correct_answer: string
           created_at?: string | null
           difficulty?: string | null
@@ -1903,12 +2054,14 @@ export type Database = {
           question_image_url?: string | null
           question_text: string
           question_type: string
+          source_document_id?: string | null
           subtopic_id?: string | null
           topic_id?: string | null
           verified_by?: string | null
         }
         Update: {
           contains_formula?: boolean | null
+          content_hash?: string | null
           correct_answer?: string
           created_at?: string | null
           difficulty?: string | null
@@ -1925,6 +2078,7 @@ export type Database = {
           question_image_url?: string | null
           question_text?: string
           question_type?: string
+          source_document_id?: string | null
           subtopic_id?: string | null
           topic_id?: string | null
           verified_by?: string | null
@@ -1935,6 +2089,13 @@ export type Database = {
             columns: ["previous_year_paper_id"]
             isOneToOne: false
             referencedRelation: "subject_previous_year_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_question_documents"
             referencedColumns: ["id"]
           },
           {
@@ -2079,6 +2240,53 @@ export type Database = {
             columns: ["timetable_entry_id"]
             isOneToOne: false
             referencedRelation: "instructor_timetables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slides: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          job_id: string
+          narration_language: string | null
+          narration_script: string | null
+          slide_index: string
+          title: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id: string
+          job_id: string
+          narration_language?: string | null
+          narration_script?: string | null
+          slide_index: string
+          title?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          narration_language?: string | null
+          narration_script?: string | null
+          slide_index?: string
+          title?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slides_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -2774,6 +2982,7 @@ export type Database = {
       }
       uploaded_question_documents: {
         Row: {
+          ai_verified_at: string | null
           category_id: string
           chapter_id: string
           created_at: string | null
@@ -2784,6 +2993,7 @@ export type Database = {
           file_size_bytes: number | null
           file_type: string
           file_url: string | null
+          human_verified_at: string | null
           id: string
           mathpix_html: string | null
           mathpix_json_output: Json | null
@@ -2795,6 +3005,7 @@ export type Database = {
           mathpix_solutions_pdf_id: string | null
           processing_completed_at: string | null
           processing_started_at: string | null
+          questions_count: number | null
           questions_file_name: string | null
           questions_file_url: string | null
           questions_images_folder: string | null
@@ -2813,8 +3024,15 @@ export type Database = {
           uploaded_by: string
           validation_notes: string | null
           validation_status: string | null
+          verification_notes: string | null
+          verification_quality_score: number | null
+          verified_by_ai: boolean | null
+          verified_by_human: boolean | null
+          verified_by_user_id: string | null
+          verified_questions_count: number | null
         }
         Insert: {
+          ai_verified_at?: string | null
           category_id: string
           chapter_id: string
           created_at?: string | null
@@ -2825,6 +3043,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_type: string
           file_url?: string | null
+          human_verified_at?: string | null
           id?: string
           mathpix_html?: string | null
           mathpix_json_output?: Json | null
@@ -2836,6 +3055,7 @@ export type Database = {
           mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_count?: number | null
           questions_file_name?: string | null
           questions_file_url?: string | null
           questions_images_folder?: string | null
@@ -2854,8 +3074,15 @@ export type Database = {
           uploaded_by: string
           validation_notes?: string | null
           validation_status?: string | null
+          verification_notes?: string | null
+          verification_quality_score?: number | null
+          verified_by_ai?: boolean | null
+          verified_by_human?: boolean | null
+          verified_by_user_id?: string | null
+          verified_questions_count?: number | null
         }
         Update: {
+          ai_verified_at?: string | null
           category_id?: string
           chapter_id?: string
           created_at?: string | null
@@ -2866,6 +3093,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string
           file_url?: string | null
+          human_verified_at?: string | null
           id?: string
           mathpix_html?: string | null
           mathpix_json_output?: Json | null
@@ -2877,6 +3105,7 @@ export type Database = {
           mathpix_solutions_pdf_id?: string | null
           processing_completed_at?: string | null
           processing_started_at?: string | null
+          questions_count?: number | null
           questions_file_name?: string | null
           questions_file_url?: string | null
           questions_images_folder?: string | null
@@ -2895,6 +3124,12 @@ export type Database = {
           uploaded_by?: string
           validation_notes?: string | null
           validation_status?: string | null
+          verification_notes?: string | null
+          verification_quality_score?: number | null
+          verified_by_ai?: boolean | null
+          verified_by_human?: boolean | null
+          verified_by_user_id?: string | null
+          verified_questions_count?: number | null
         }
         Relationships: [
           {
@@ -2939,6 +3174,20 @@ export type Database = {
             referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "uploaded_question_documents_verified_by_user_id_fkey"
+            columns: ["verified_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_question_documents_verified_by_user_id_fkey"
+            columns: ["verified_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
+          },
         ]
       }
       user_roles: {
@@ -2964,6 +3213,61 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      verification_notifications: {
+        Row: {
+          created_at: string | null
+          document_id: string
+          id: string
+          is_read: boolean | null
+          message: string
+          notification_type: string
+          read_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_id: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          notification_type: string
+          read_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_notifications_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "uploaded_question_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "student_analytics_cache"
+            referencedColumns: ["student_id"]
+          },
+        ]
       }
     }
     Views: {
@@ -3021,6 +3325,42 @@ export type Database = {
       }
     }
     Functions: {
+      create_ocr_result_rpc: {
+        Args: {
+          p_datalab_request_id?: string
+          p_id: string
+          p_job_id: string
+          p_mathpix_pdf_id?: string
+          p_mmd_content?: string
+          p_mmd_url?: string
+          p_provider?: string
+          p_status?: string
+        }
+        Returns: {
+          cloud_image_urls: Json | null
+          created_at: string
+          datalab_request_id: string | null
+          id: string
+          images: Json | null
+          images_extracted: number | null
+          job_id: string
+          mathpix_pdf_id: string | null
+          mmd_content: string | null
+          mmd_url: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          provider: string | null
+          status: string
+          updated_at: string
+          zip_path: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ocr_results"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       decrement_batch_students: {
         Args: { batch_id: string }
         Returns: undefined

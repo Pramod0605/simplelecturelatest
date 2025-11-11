@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, FileText, Loader2, Eye, Sparkles } from "lucide-react";
+import { Upload, FileText, Loader2, Eye, Sparkles, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
@@ -30,6 +31,7 @@ export default function UploadQuestionBank() {
   const [solutionsFile, setSolutionsFile] = useState<File | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: categories } = useCategoriesWithSubjects();
   const { data: allSubjects } = useAdminPopularSubjects();
@@ -442,17 +444,26 @@ export default function UploadQuestionBank() {
                             )}
                             
                             {doc.status === 'completed' && (doc.questions_mmd_content || doc.solutions_mmd_content) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setPreviewDocument(doc);
-                                  setIsPreviewOpen(true);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Preview
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setPreviewDocument(doc);
+                                    setIsPreviewOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Preview
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/question-bank/verify/${doc.id}`)}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Verify Questions
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
