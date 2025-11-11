@@ -82,9 +82,10 @@ import { supabase } from "@/integrations/supabase/client";
 interface SubjectChaptersTabProps {
   subjectId: string;
   subjectName: string;
+  categoryName?: string;
 }
 
-export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTabProps) {
+export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: SubjectChaptersTabProps) {
   const [isAddChapterOpen, setIsAddChapterOpen] = useState(false);
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
@@ -1374,6 +1375,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         onOpenChange={setIsAIGenerateOpen}
         subjectId={subjectId}
         subjectName={subjectName}
+        categoryName={categoryName}
       />
     </div>
   );

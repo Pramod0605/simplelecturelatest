@@ -364,7 +364,15 @@ export default function SubjectForm() {
         {/* Tab 4: Chapters & Topics */}
         <TabsContent value="chapters">
           {isEdit && id ? (
-            <SubjectChaptersTab subjectId={id} subjectName={subject?.name || ""} />
+            <SubjectChaptersTab 
+              subjectId={id} 
+              subjectName={subject?.name || ""} 
+              categoryName={
+                subject && (subject as any).category_id && categories
+                  ? getCategoryHierarchyDisplay((subject as any).category_id, categories)
+                  : undefined
+              }
+            />
           ) : (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
