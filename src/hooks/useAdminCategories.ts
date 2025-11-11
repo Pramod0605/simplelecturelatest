@@ -19,6 +19,29 @@ export interface Category {
   goal_ids?: string[];
 }
 
+// Utility function to build full hierarchical category display name
+export const getCategoryHierarchyDisplay = (
+  categoryId: string,
+  categories: Category[]
+): string => {
+  const category = categories.find((c) => c.id === categoryId);
+  if (!category) return "";
+
+  const buildPath = (cat: Category): string[] => {
+    const path = [cat.name];
+    if (cat.parent_id) {
+      const parent = categories.find((c) => c.id === cat.parent_id);
+      if (parent) {
+        path.push(...buildPath(parent));
+      }
+    }
+    return path;
+  };
+
+  const pathParts = buildPath(category);
+  return pathParts.join(" - ");
+};
+
 export const useAdminCategories = () => {
   return useQuery({
     queryKey: ["admin-categories"],

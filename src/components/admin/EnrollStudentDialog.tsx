@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
 import { useEnrollStudent } from "@/hooks/useEnrollmentWithBatch";
@@ -96,7 +96,7 @@ export function EnrollStudentDialog({ isOpen, onClose }: EnrollStudentDialogProp
               <SelectContent className="bg-background z-50">
                 {categories?.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {getCategoryHierarchyDisplay(cat.id, categories)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
@@ -225,7 +225,7 @@ export function EnhancedExcelImportModal({ isOpen, onClose }: EnhancedExcelImpor
                 <SelectContent className="bg-background z-50">
                   {categories?.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {getCategoryHierarchyDisplay(cat.id, categories)}
                     </SelectItem>
                   ))}
                 </SelectContent>

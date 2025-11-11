@@ -34,6 +34,7 @@ import {
   useAdminCategory,
   useCreateCategory,
   useUpdateCategory,
+  getCategoryHierarchyDisplay,
 } from "@/hooks/useAdminCategories";
 import { useAdminExploreByGoal } from "@/hooks/useAdminExploreByGoal";
 
@@ -290,7 +291,7 @@ export default function CategoryForm() {
                         <SelectItem value="none">None (Top Level)</SelectItem>
                         {parentCategories?.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name} (Level {cat.level})
+                            {getCategoryHierarchyDisplay(cat.id, parentCategories)} (Level {cat.level})
                           </SelectItem>
                         ))}
                       </SelectContent>

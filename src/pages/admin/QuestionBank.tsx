@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Download, Upload } from "lucide-react";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { useSubjectQuestions } from "@/hooks/useSubjectQuestions";
 import { QuestionPreview } from "@/components/admin/QuestionPreview";
@@ -180,7 +180,7 @@ export default function QuestionBank() {
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories?.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
-                        {category.name}
+                        {getCategoryHierarchyDisplay(category.id, categories)}
                       </SelectItem>
                     ))}
                   </SelectContent>

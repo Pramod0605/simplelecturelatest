@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { useCourses } from "@/hooks/useCourses";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
@@ -172,7 +172,7 @@ export default function AcademicsTimetable() {
                 <SelectContent className="bg-background z-50">
                   {categories?.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name}
+                      {getCategoryHierarchyDisplay(cat.id, categories)}
                     </SelectItem>
                   ))}
                 </SelectContent>

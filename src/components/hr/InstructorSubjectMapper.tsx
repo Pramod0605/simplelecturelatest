@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { useSubjectsByCategory } from "@/hooks/useSubjectsByCategory";
 import { useInstructorSubjects, useUpdateInstructorSubjects } from "@/hooks/useInstructors";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +22,10 @@ export const InstructorSubjectMapper = ({ instructorId }: InstructorSubjectMappe
   const { data: existingSubjects, refetch } = useInstructorSubjects(instructorId);
   const updateSubjects = useUpdateInstructorSubjects();
 
-  // Get category display with parent name
+  // Get category display with full hierarchy
   const getCategoryDisplay = (categoryId: string) => {
-    const category = categories?.find((c) => c.id === categoryId);
-    if (!category) return "";
-    return category.parent_name ? `${category.name} - ${category.parent_name}` : category.name;
+    if (!categories) return "";
+    return getCategoryHierarchyDisplay(categoryId, categories);
   };
 
   useEffect(() => {
@@ -97,7 +96,7 @@ export const InstructorSubjectMapper = ({ instructorId }: InstructorSubjectMappe
             <SelectContent className="bg-background z-50">
               {categories?.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
-                  {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name}
+                  {getCategoryHierarchyDisplay(cat.id, categories)}
                 </SelectItem>
               ))}
             </SelectContent>

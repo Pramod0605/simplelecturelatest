@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +27,8 @@ export const CourseCategoriesTab = ({ selectedCategories, onChange }: CourseCate
   };
 
   const getCategoryDisplay = (categoryId: string) => {
-    const category = categories?.find(c => c.id === categoryId);
-    if (!category) return "";
-    return category.parent_name 
-      ? `${category.name} - ${category.parent_name}` 
-      : category.name;
+    if (!categories) return "";
+    return getCategoryHierarchyDisplay(categoryId, categories);
   };
 
   return (
@@ -46,7 +43,7 @@ export const CourseCategoriesTab = ({ selectedCategories, onChange }: CourseCate
             <SelectContent className="bg-background z-50">
               {categories?.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
-                  {cat.parent_name ? `${cat.name} - ${cat.parent_name}` : cat.name}
+                  {getCategoryHierarchyDisplay(cat.id, categories)}
                 </SelectItem>
               ))}
             </SelectContent>

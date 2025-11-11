@@ -28,7 +28,7 @@ import {
   useCreateSubject,
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
 // Subject management components
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
@@ -297,7 +297,7 @@ export default function SubjectForm() {
                           <SelectContent className="bg-background z-50">
                             {categories?.map((category) => (
                               <SelectItem key={category.id} value={category.id}>
-                                {category.name}
+                                {getCategoryHierarchyDisplay(category.id, categories)}
                               </SelectItem>
                             ))}
                           </SelectContent>
