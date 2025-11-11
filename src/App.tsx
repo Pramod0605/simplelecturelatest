@@ -54,6 +54,8 @@ import SubjectForm from "./pages/admin/SubjectForm";
 import QuestionBank from "./pages/admin/QuestionBank";
 import UploadQuestionBank from "./pages/admin/UploadQuestionBank";
 import VerifyUploadedQuestions from "./pages/admin/VerifyUploadedQuestions";
+import DocumentVerificationDetail from "./pages/admin/DocumentVerificationDetail";
+import VerificationNotifications from "./pages/admin/VerificationNotifications";
 import ProcessingJobsMonitor from "./pages/admin/ProcessingJobsMonitor";
 import TestReplitAPI from "./pages/admin/TestReplitAPI";
 import AssignmentManager from "./pages/admin/AssignmentManager";
@@ -115,7 +117,9 @@ const App = () => (
               <Route path="question-bank" element={<QuestionBank />} />
               <Route path="question-bank/upload" element={<UploadQuestionBank />} />
               <Route path="question-bank/verify" element={<VerifyUploadedQuestions />} />
+              <Route path="question-bank/verify/:documentId" element={<DocumentVerificationDetail />} />
               <Route path="question-bank/jobs-monitor" element={<ProcessingJobsMonitor />} />
+              <Route path="notifications" element={<VerificationNotifications />} />
               <Route path="question-bank/test-api" element={<TestReplitAPI />} />
               <Route path="assignments" element={<AssignmentManager />} />
                 <Route path="popular-subjects/add" element={<PopularSubjectsForm />} />

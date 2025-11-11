@@ -92,8 +92,78 @@ export default function DocumentVerificationDetail() {
             <CardContent className="space-y-4">
               <div>
                 <h4 className="font-semibold mb-2">Question:</h4>
-                <MathpixRenderer text={q.question_text} />
+                <MathpixRenderer mmdText={q.question_text} inline />
               </div>
+
+              {q.question_format === 'single_choice' && q.options && (
+                <div>
+                  <h4 className="font-semibold mb-2">Options:</h4>
+                  <div className="space-y-2">
+                    {q.options.map((opt: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2 p-2 rounded bg-muted/50">
+                        <input type="radio" checked={opt === q.correct_answer} readOnly />
+                        <MathpixRenderer mmdText={opt} inline />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {q.question_format === 'multiple_choice' && q.options && (
+                <div>
+                  <h4 className="font-semibold mb-2">Options:</h4>
+                  <div className="space-y-2">
+                    {q.options.map((opt: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2 p-2 rounded bg-muted/50">
+                        <input type="checkbox" checked={q.correct_answer?.includes(opt)} readOnly />
+                        <MathpixRenderer mmdText={opt} inline />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {q.question_format === 'true_false' && (
+                <div>
+                  <h4 className="font-semibold mb-2">Answer:</h4>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <input type="radio" checked={q.correct_answer === 'True'} readOnly />
+                      <span>True</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="radio" checked={q.correct_answer === 'False'} readOnly />
+                      <span>False</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {q.solution_text && (
+                <div>
+                  <h4 className="font-semibold mb-2">Solution:</h4>
+                  <MathpixRenderer mmdText={q.solution_text} inline />
+                </div>
+              )}
+
+              {q.llm_verification_status && (
+                <div>
+                  <h4 className="font-semibold mb-2">LLM Verification:</h4>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={q.llm_verification_status === 'correct' ? 'default' : q.llm_verification_status === 'medium' ? 'secondary' : 'destructive'}>
+                      {q.llm_verification_status}
+                    </Badge>
+                    {q.llm_confidence_score && (
+                      <span className="text-sm text-muted-foreground">
+                        Confidence: {(q.llm_confidence_score * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                  {q.llm_verification_comments && (
+                    <p className="text-sm text-muted-foreground mt-2">{q.llm_verification_comments}</p>
+                  )}
+                </div>
+              )}
 
               {document && (
                 <ChapterTopicSelector

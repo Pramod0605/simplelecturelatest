@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
-import { Menu, Bell, Info, ChevronDown } from "lucide-react";
+import { VerificationNotificationBell } from "./VerificationNotificationBell";
+import { Menu, Info, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -40,14 +41,7 @@ export const AdminLayout = () => {
               <Info className="h-5 w-5" />
             </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary-foreground hover:bg-primary-dark relative"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full"></span>
-            </Button>
+            <VerificationNotificationBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
