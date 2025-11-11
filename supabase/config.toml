@@ -12,6 +12,12 @@ verify_jwt = true
 [functions.export-verification-report]
 verify_jwt = true
 
+[functions.ai-generate-solution]
+verify_jwt = true
+
+[functions.llm-verify-single-question]
+verify_jwt = true
+
 [functions.ai-doubt-clear]
 verify_jwt = true
 
