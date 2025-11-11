@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2, GripVertical } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2, GripVertical, List } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -71,7 +71,13 @@ import { FileUploadWidget } from "./FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
+import { AIGenerateCurriculumDialog } from "./AIGenerateCurriculumDialog";
+import { ChapterBulkOperations } from "./ChapterBulkOperations";
+import { CurriculumTreeView } from "./CurriculumTreeView";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as XLSX from "xlsx";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubjectChaptersTabProps {
   subjectId: string;
@@ -82,6 +88,8 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
   const [isAddChapterOpen, setIsAddChapterOpen] = useState(false);
   const [isAddTopicOpen, setIsAddTopicOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [isAIGenerateOpen, setIsAIGenerateOpen] = useState(false);
+  const [showTreeView, setShowTreeView] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [editingChapter, setEditingChapter] = useState<any>(null);
@@ -129,6 +137,19 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
   const bulkImport = useBulkImportChapters();
   const updateChapterOrder = useUpdateChapterOrder();
   const updateTopicOrder = useUpdateTopicOrder();
+
+  // Fetch all subjects for bulk operations
+  const { data: allSubjects } = useQuery({
+    queryKey: ['all-subjects'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('popular_subjects')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      return data || [];
+    },
+  });
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -439,6 +460,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
 
   const downloadTemplate = () => {
     const template = [
+      // Chapter 1 - Only chapter info
       {
         chapter_number: 1,
         chapter_title: "Introduction to Physics",
@@ -452,6 +474,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         subtopic_description: "",
         subtopic_duration_minutes: "",
       },
+      // Chapter 1 - With topic
       {
         chapter_number: 1,
         chapter_title: "Introduction to Physics",
@@ -459,12 +482,13 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         topic_number: 1,
         topic_title: "Newton's Laws of Motion",
         topic_duration_minutes: 120,
-        topic_content: "# Newton's Laws\nDetailed explanation...",
+        topic_content: "# Newton's Laws\nStudy of motion and forces",
         subtopic_order: "",
         subtopic_title: "",
         subtopic_description: "",
         subtopic_duration_minutes: "",
       },
+      // Chapter 1, Topic 1 - With subtopics
       {
         chapter_number: 1,
         chapter_title: "Introduction to Physics",
@@ -472,10 +496,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         topic_number: 1,
         topic_title: "Newton's Laws of Motion",
         topic_duration_minutes: 120,
-        topic_content: "# Newton's Laws\nDetailed explanation...",
+        topic_content: "# Newton's Laws\nStudy of motion and forces",
         subtopic_order: 1,
         subtopic_title: "Newton's First Law (Inertia)",
-        subtopic_description: "Law of Inertia explanation",
+        subtopic_description: "An object at rest stays at rest",
         subtopic_duration_minutes: 45,
       },
       {
@@ -485,16 +509,110 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         topic_number: 1,
         topic_title: "Newton's Laws of Motion",
         topic_duration_minutes: 120,
-        topic_content: "# Newton's Laws\nDetailed explanation...",
+        topic_content: "# Newton's Laws\nStudy of motion and forces",
         subtopic_order: 2,
         subtopic_title: "Newton's Second Law (F=ma)",
-        subtopic_description: "Force and acceleration relationship",
+        subtopic_description: "Force equals mass times acceleration",
+        subtopic_duration_minutes: 45,
+      },
+      {
+        chapter_number: 1,
+        chapter_title: "Introduction to Physics",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 1,
+        topic_title: "Newton's Laws of Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Newton's Laws\nStudy of motion and forces",
+        subtopic_order: 3,
+        subtopic_title: "Newton's Third Law (Action-Reaction)",
+        subtopic_description: "Every action has equal opposite reaction",
+        subtopic_duration_minutes: 30,
+      },
+      // Chapter 1, Topic 2
+      {
+        chapter_number: 1,
+        chapter_title: "Introduction to Physics",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 2,
+        topic_title: "Kinematics",
+        topic_duration_minutes: 90,
+        topic_content: "# Kinematics\nStudy of motion without forces",
+        subtopic_order: 1,
+        subtopic_title: "Displacement and Velocity",
+        subtopic_description: "Understanding motion parameters",
+        subtopic_duration_minutes: 45,
+      },
+      {
+        chapter_number: 1,
+        chapter_title: "Introduction to Physics",
+        chapter_description: "Basic concepts and principles of physics",
+        topic_number: 2,
+        topic_title: "Kinematics",
+        topic_duration_minutes: 90,
+        topic_content: "# Kinematics\nStudy of motion without forces",
+        subtopic_order: 2,
+        subtopic_title: "Acceleration and Equations",
+        subtopic_description: "Equations of motion",
+        subtopic_duration_minutes: 45,
+      },
+      // Chapter 2
+      {
+        chapter_number: 2,
+        chapter_title: "Thermodynamics",
+        chapter_description: "Study of heat and energy transfer",
+        topic_number: "",
+        topic_title: "",
+        topic_duration_minutes: "",
+        topic_content: "",
+        subtopic_order: "",
+        subtopic_title: "",
+        subtopic_description: "",
+        subtopic_duration_minutes: "",
+      },
+      {
+        chapter_number: 2,
+        chapter_title: "Thermodynamics",
+        chapter_description: "Study of heat and energy transfer",
+        topic_number: 1,
+        topic_title: "Laws of Thermodynamics",
+        topic_duration_minutes: 120,
+        topic_content: "# Thermodynamic Laws\nFundamental principles",
+        subtopic_order: 1,
+        subtopic_title: "Zeroth Law",
+        subtopic_description: "Thermal equilibrium",
+        subtopic_duration_minutes: 30,
+      },
+      {
+        chapter_number: 2,
+        chapter_title: "Thermodynamics",
+        chapter_description: "Study of heat and energy transfer",
+        topic_number: 1,
+        topic_title: "Laws of Thermodynamics",
+        topic_duration_minutes: 120,
+        topic_content: "# Thermodynamic Laws\nFundamental principles",
+        subtopic_order: 2,
+        subtopic_title: "First Law (Energy Conservation)",
+        subtopic_description: "Energy cannot be created or destroyed",
         subtopic_duration_minutes: 45,
       },
       {
         chapter_number: 2,
         chapter_title: "Thermodynamics",
-        chapter_description: "Heat and energy transfer",
+        chapter_description: "Study of heat and energy transfer",
+        topic_number: 1,
+        topic_title: "Laws of Thermodynamics",
+        topic_duration_minutes: 120,
+        topic_content: "# Thermodynamic Laws\nFundamental principles",
+        subtopic_order: 3,
+        subtopic_title: "Second Law (Entropy)",
+        subtopic_description: "Entropy always increases",
+        subtopic_duration_minutes: 45,
+      },
+      // Chapter 3
+      {
+        chapter_number: 3,
+        chapter_title: "Waves and Oscillations",
+        chapter_description: "Periodic motion and wave phenomena",
         topic_number: "",
         topic_title: "",
         topic_duration_minutes: "",
@@ -503,6 +621,58 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
         subtopic_title: "",
         subtopic_description: "",
         subtopic_duration_minutes: "",
+      },
+      {
+        chapter_number: 3,
+        chapter_title: "Waves and Oscillations",
+        chapter_description: "Periodic motion and wave phenomena",
+        topic_number: 1,
+        topic_title: "Simple Harmonic Motion",
+        topic_duration_minutes: 100,
+        topic_content: "# SHM\nPeriodic oscillatory motion",
+        subtopic_order: 1,
+        subtopic_title: "Characteristics of SHM",
+        subtopic_description: "Amplitude, frequency, period",
+        subtopic_duration_minutes: 50,
+      },
+      {
+        chapter_number: 3,
+        chapter_title: "Waves and Oscillations",
+        chapter_description: "Periodic motion and wave phenomena",
+        topic_number: 1,
+        topic_title: "Simple Harmonic Motion",
+        topic_duration_minutes: 100,
+        topic_content: "# SHM\nPeriodic oscillatory motion",
+        subtopic_order: 2,
+        subtopic_title: "Energy in SHM",
+        subtopic_description: "Kinetic and potential energy",
+        subtopic_duration_minutes: 50,
+      },
+      {
+        chapter_number: 3,
+        chapter_title: "Waves and Oscillations",
+        chapter_description: "Periodic motion and wave phenomena",
+        topic_number: 2,
+        topic_title: "Wave Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Waves\nEnergy transfer through medium",
+        subtopic_order: 1,
+        subtopic_title: "Transverse and Longitudinal Waves",
+        subtopic_description: "Types of mechanical waves",
+        subtopic_duration_minutes: 60,
+      },
+      {
+        chapter_number: 3,
+        chapter_title: "Waves and Oscillations",
+        chapter_description: "Periodic motion and wave phenomena",
+        topic_number: 2,
+        topic_title: "Wave Motion",
+        topic_duration_minutes: 120,
+        topic_content: "# Waves\nEnergy transfer through medium",
+        subtopic_order: 2,
+        subtopic_title: "Wave Equation and Properties",
+        subtopic_description: "Mathematical representation",
+        subtopic_duration_minutes: 60,
       },
     ];
 
@@ -515,10 +685,10 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
       { wch: 40 }, // chapter_description
       { wch: 15 }, // topic_number
       { wch: 30 }, // topic_title
-      { wch: 20 }, // topic_duration_minutes
+      { wch: 25 }, // topic_duration_minutes
       { wch: 40 }, // topic_content
       { wch: 15 }, // subtopic_order
-      { wch: 30 }, // subtopic_title
+      { wch: 35 }, // subtopic_title
       { wch: 40 }, // subtopic_description
       { wch: 25 }, // subtopic_duration_minutes
     ];
@@ -529,7 +699,7 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
     
     toast({
       title: "Template Downloaded",
-      description: "Excel template with examples downloaded successfully",
+      description: "Excel template with 3 complete chapter examples downloaded",
     });
   };
 
@@ -560,15 +730,71 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
                 Organize {subjectName} curriculum into chapters and topics
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                <Download className="mr-2 h-4 w-4" />
-                Download Template
+            <div className="flex gap-2 flex-wrap">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTreeView(!showTreeView)}
+                    >
+                      <List className="mr-2 h-4 w-4" />
+                      {showTreeView ? "Table View" : "Tree View"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Toggle between table and tree view of curriculum</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Template
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <div className="space-y-2 text-xs">
+                      <p className="font-semibold">Excel Import Instructions:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Download the template with 3 example chapters</li>
+                        <li>Fill chapter_number, chapter_title, chapter_description</li>
+                        <li>Add topic_number, topic_title for each topic</li>
+                        <li>Add subtopic_order, subtopic_title for subtopics</li>
+                        <li>Duplicate chapters will be skipped automatically</li>
+                      </ul>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" onClick={() => setIsExcelImportOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Bulk Import
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Import chapters from Excel file</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <Button
+                variant="default"
+                onClick={() => setIsAIGenerateOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Generate
               </Button>
-              <Button variant="outline" onClick={() => setIsExcelImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Bulk Import
-              </Button>
+
               <Dialog
                 open={isAddChapterOpen || !!editingChapter}
                 onOpenChange={(open) => {
@@ -771,10 +997,23 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
           </div>
         </CardHeader>
         <CardContent>
+          {/* Bulk Operations Bar */}
+          {chapters && chapters.length > 0 && !showTreeView && (
+            <div className="mb-4">
+              <ChapterBulkOperations
+                subjectId={subjectId}
+                chapters={chapters}
+                subjects={allSubjects || []}
+              />
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
+          ) : showTreeView ? (
+            <CurriculumTreeView subjectId={subjectId} subjectName={subjectName} />
           ) : chapters && chapters.length > 0 ? (
             <DndContext
               sensors={sensors}
@@ -1128,6 +1367,14 @@ export function SubjectChaptersTab({ subjectId, subjectName }: SubjectChaptersTa
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Generate Curriculum Dialog */}
+      <AIGenerateCurriculumDialog
+        open={isAIGenerateOpen}
+        onOpenChange={setIsAIGenerateOpen}
+        subjectId={subjectId}
+        subjectName={subjectName}
+      />
     </div>
   );
 }

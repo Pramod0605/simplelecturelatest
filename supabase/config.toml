@@ -62,3 +62,9 @@ verify_jwt = true
 
 [functions.voice-to-text]
 verify_jwt = true
+
+[functions.ai-generate-curriculum]
+verify_jwt = true
+
+[functions.check-replit-job-status]
+verify_jwt = false
