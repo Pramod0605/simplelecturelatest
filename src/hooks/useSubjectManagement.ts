@@ -345,6 +345,43 @@ export const useDeleteTopic = () => {
   });
 };
 
+export const useUpdateTopicContent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      topicId,
+      content_markdown,
+      notes_markdown,
+    }: {
+      topicId: string;
+      content_markdown: string;
+      notes_markdown: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("subject_topics")
+        .update({
+          content_markdown,
+          notes_markdown,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", topicId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subject-topics", data.chapter_id] });
+      toast({ title: "Success", description: "Topic content updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: "Failed to update topic content: " + error.message, variant: "destructive" });
+    },
+  });
+};
+
 // Order update hooks
 export const useUpdateChapterOrder = () => {
   const queryClient = useQueryClient();

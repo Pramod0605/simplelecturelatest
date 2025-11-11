@@ -72,6 +72,7 @@ import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { AIGenerateCurriculumDialog } from "./AIGenerateCurriculumDialog";
+import { AIGenerateTopicContentDialog } from "./AIGenerateTopicContentDialog";
 import { ChapterBulkOperations } from "./ChapterBulkOperations";
 import { CurriculumTreeView } from "./CurriculumTreeView";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -92,6 +93,10 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
   const [isAIGenerateOpen, setIsAIGenerateOpen] = useState(false);
   const [showTreeView, setShowTreeView] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [generateContentTopicId, setGenerateContentTopicId] = useState<string | null>(null);
+  const [generateContentDialogOpen, setGenerateContentDialogOpen] = useState(false);
+  const [currentChapterForContent, setCurrentChapterForContent] = useState<any>(null);
+  const [currentTopicForContent, setCurrentTopicForContent] = useState<any>(null);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [editingChapter, setEditingChapter] = useState<any>(null);
   const [editingTopic, setEditingTopic] = useState<any>(null);
@@ -1069,6 +1074,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                     setSelectedChapter(chapter.id);
                     setDeleteTopicId(topicId);
                   }}
+                  onGenerateContent={(topicId, topicData, chapterData) => {
+                    setGenerateContentTopicId(topicId);
+                    setCurrentChapterForContent(chapterData);
+                    setCurrentTopicForContent(topicData);
+                    setGenerateContentDialogOpen(true);
+                  }}
                 />
                 ))}
               </div>
@@ -1377,6 +1388,18 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
         subjectName={subjectName}
         categoryName={categoryName}
       />
+
+      {/* AI Generate Topic Content Dialog */}
+      <AIGenerateTopicContentDialog
+        open={generateContentDialogOpen}
+        onOpenChange={setGenerateContentDialogOpen}
+        topicId={generateContentTopicId}
+        topicData={currentTopicForContent}
+        chapterTitle={currentChapterForContent?.title || ""}
+        chapterDescription={currentChapterForContent?.description}
+        subjectName={subjectName}
+        categoryName={categoryName || ""}
+      />
     </div>
   );
 }
@@ -1419,6 +1442,7 @@ interface ChapterItemProps {
   onAddTopic: () => void;
   onEditTopic: (topic: any) => void;
   onDeleteTopic: (topicId: string) => void;
+  onGenerateContent: (topicId: string, topicData: any, chapterData: any) => void;
   dragHandleProps?: any;
 }
 
@@ -1431,6 +1455,7 @@ function ChapterItem({
   onAddTopic,
   onEditTopic,
   onDeleteTopic,
+  onGenerateContent,
   dragHandleProps,
 }: ChapterItemProps) {
   const { data: topics } = useChapterTopics(chapter.id);
@@ -1516,14 +1541,38 @@ function ChapterItem({
                                 Has PDF
                               </Badge>
                             )}
-                            {topic.notes_markdown && (
+                           {topic.notes_markdown && (
                               <Badge variant="secondary" className="text-xs">
                                 Has Notes
+                              </Badge>
+                            )}
+                            {topic.content_markdown && (
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Sparkles className="h-3 w-3" />
+                                AI Content
                               </Badge>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onGenerateContent(topic.id, topic, chapter)}
+                                  className="text-purple-600 hover:text-purple-700"
+                                >
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  Generate Content
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Use AI to create detailed learning content, examples, and practice questions</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <Button
                             variant="ghost"
                             size="icon"
