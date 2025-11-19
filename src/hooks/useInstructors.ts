@@ -143,7 +143,6 @@ export const useUpdateInstructorSubjects = () => {
           .from('instructor_subjects')
           .insert(subjects.map(s => ({
             instructor_id: instructorId,
-            category_id: s.category_id,
             subject_id: s.subject_id,
           })));
         
