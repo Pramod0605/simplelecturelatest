@@ -12,10 +12,9 @@ export const useInstructors = () => {
           *,
           department:departments!teacher_profiles_department_id_fkey(id, name),
           subjects:instructor_subjects(
-            category_id,
+            id,
             subject_id,
-            category:categories(name),
-            subject:popular_subjects(name)
+            subject:popular_subjects(id, name, category_id, categories(id, name))
           )
         `)
         .order('full_name');
@@ -37,10 +36,8 @@ export const useInstructor = (id: string) => {
           department:departments!teacher_profiles_department_id_fkey(id, name),
           subjects:instructor_subjects(
             id,
-            category_id,
             subject_id,
-            category:categories(id, name),
-            subject:popular_subjects(id, name)
+            subject:popular_subjects(id, name, category_id, categories(id, name))
           )
         `)
         .eq('id', id)
@@ -118,8 +115,7 @@ export const useInstructorSubjects = (instructorId: string) => {
         .from('instructor_subjects')
         .select(`
           *,
-          category:categories(id, name),
-          subject:popular_subjects(id, name)
+          subject:popular_subjects(id, name, category_id, categories(id, name))
         `)
         .eq('instructor_id', instructorId);
 
