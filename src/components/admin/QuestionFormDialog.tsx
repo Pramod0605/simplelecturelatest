@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateQuestion } from "@/hooks/useSubjectQuestions";
+import { useCreateQuestion, useUpdateQuestion } from "@/hooks/useSubjectQuestions";
 import { toast } from "sonner";
 import { useCategoriesWithSubjects } from "@/hooks/useCategoriesWithSubjects";
 import { useAdminPopularSubjects } from "@/hooks/useAdminPopularSubjects";
@@ -14,9 +14,10 @@ import { DetailsTabContent } from "./question/DetailsTabContent";
 interface QuestionFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  editQuestion?: any;
 }
 
-export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps) {
+export function QuestionFormDialog({ isOpen, onClose, editQuestion }: QuestionFormDialogProps) {
   const [activeTab, setActiveTab] = useState("question");
   const [formData, setFormData] = useState({
     id: "",
@@ -43,6 +44,34 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
   const { data: chapters } = useSubjectChapters(formData.subjectId);
   const { data: topics } = useChapterTopics(formData.chapter_id);
   const createQuestionMutation = useCreateQuestion();
+  const updateQuestionMutation = useUpdateQuestion();
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editQuestion) {
+      setFormData({
+        id: editQuestion.id,
+        categoryId: editQuestion.categories?.id || "",
+        subjectId: editQuestion.popular_subjects?.id || editQuestion.subject_id || "",
+        chapter_id: editQuestion.chapter_id || "",
+        topic_id: editQuestion.topic_id || "",
+        question_text: editQuestion.question_text || "",
+        question_format: editQuestion.question_format || "single_choice",
+        question_type: editQuestion.question_type || "objective",
+        difficulty: editQuestion.difficulty || "medium",
+        marks: editQuestion.marks || 1,
+        correct_answer: editQuestion.correct_answer || "",
+        explanation: editQuestion.explanation || "",
+        contains_formula: editQuestion.contains_formula || false,
+        options: editQuestion.options || {},
+        question_images: editQuestion.question_image_url ? [editQuestion.question_image_url] : [],
+        option_images: editQuestion.option_images || {},
+        explanation_images: [],
+      });
+    } else {
+      resetForm();
+    }
+  }, [editQuestion]);
 
   // Filter subjects by selected category
   const subjects = allSubjects?.filter(subject => {
@@ -135,7 +164,7 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
         }
       });
 
-      await createQuestionMutation.mutateAsync({
+      const questionData = {
         question_text: formData.question_text,
         question_format: formData.question_format,
         question_type: formData.question_type,
@@ -150,13 +179,23 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
         contains_formula: formData.contains_formula,
         question_image_url,
         option_images: Object.keys(option_images_obj).length > 0 ? option_images_obj : null,
-      });
+      };
 
-      toast.success("Question created successfully");
+      if (editQuestion) {
+        await updateQuestionMutation.mutateAsync({
+          id: formData.id,
+          updates: questionData,
+        });
+        toast.success("Question updated successfully");
+      } else {
+        await createQuestionMutation.mutateAsync(questionData);
+        toast.success("Question created successfully");
+      }
+
       onClose();
       resetForm();
     } catch (error: any) {
-      toast.error(error.message || "Failed to create question");
+      toast.error(error.message || `Failed to ${editQuestion ? 'update' : 'create'} question`);
     }
   };
 
@@ -187,9 +226,9 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Question</DialogTitle>
+          <DialogTitle>{editQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
           <DialogDescription>
-            Create a new question with rich content and image support
+            {editQuestion ? 'Update the question details below' : 'Create a new question with rich content and image support'}
           </DialogDescription>
         </DialogHeader>
 
@@ -233,8 +272,12 @@ export function QuestionFormDialog({ isOpen, onClose }: QuestionFormDialogProps)
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createQuestionMutation.isPending}>
-              {createQuestionMutation.isPending ? "Creating..." : "Create Question"}
+            <Button 
+              type="submit" 
+              disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+            >
+              {(createQuestionMutation.isPending || updateQuestionMutation.isPending) && "Saving..."}
+              {!createQuestionMutation.isPending && !updateQuestionMutation.isPending && (editQuestion ? 'Update Question' : 'Create Question')}
             </Button>
           </DialogFooter>
         </form>
