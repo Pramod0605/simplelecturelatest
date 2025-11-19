@@ -9,11 +9,8 @@ export const useSubjectsByCategory = (categoryId?: string) => {
 
       const { data, error } = await supabase
         .from("popular_subjects")
-        .select(`
-          *,
-          subject_categories!inner(category_id)
-        `)
-        .eq("subject_categories.category_id", categoryId)
+        .select("*")
+        .eq("category_id", categoryId)
         .eq("is_active", true)
         .order("name");
 
