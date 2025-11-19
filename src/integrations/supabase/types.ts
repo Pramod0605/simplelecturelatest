@@ -1280,6 +1280,47 @@ export type Database = {
         }
         Relationships: []
       }
+      image_enhancements: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          enhanced_image_path: string | null
+          id: string
+          job_id: string | null
+          mmd_position: number | null
+          original_image_path: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          enhanced_image_path?: string | null
+          id: string
+          job_id?: string | null
+          mmd_position?: number | null
+          original_image_path?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          enhanced_image_path?: string | null
+          id?: string
+          job_id?: string | null
+          mmd_position?: number | null
+          original_image_path?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_enhancements_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instructor_subjects: {
         Row: {
           course_id: string | null
@@ -1479,6 +1520,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      learning_summaries: {
+        Row: {
+          created_at: string
+          generated_images: Json | null
+          id: string
+          job_id: string
+          llm_model: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          status: string
+          summary_content: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_images?: Json | null
+          id: string
+          job_id: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          status?: string
+          summary_content: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_images?: Json | null
+          id?: string
+          job_id?: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          status?: string
+          summary_content?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_summaries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notice_reads: {
         Row: {
@@ -2240,6 +2328,56 @@ export type Database = {
             columns: ["timetable_entry_id"]
             isOneToOne: false
             referencedRelation: "instructor_timetables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slide_results: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          llm_model: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          raw_llm_response: string | null
+          repaired_json: string | null
+          slides: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          job_id: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          raw_llm_response?: string | null
+          repaired_json?: string | null
+          slides: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          raw_llm_response?: string | null
+          repaired_json?: string | null
+          slides?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_results_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]

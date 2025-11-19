@@ -28,6 +28,7 @@ export default function QuestionBank() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<any>(null);
 
   const { data: categories } = useAdminCategories();
   const { data: subjects } = useAdminPopularSubjects();
@@ -305,12 +306,12 @@ export default function QuestionBank() {
               <div className="space-y-4">
                 {filteredQuestions.map((question, index) => (
                   <div key={question.id}>
-                    <QuestionPreview
-                      question={question}
-                      onEdit={() => {}}
-                      onDelete={() => {}}
-                      onVerify={handleVerifyQuestion}
-                    />
+                  <QuestionPreview
+                    question={question}
+                    onEdit={(q) => setEditingQuestion(q)}
+                    onDelete={() => {}}
+                    onVerify={handleVerifyQuestion}
+                  />
                     {index < filteredQuestions.length - 1 && (
                       <Separator className="my-4" />
                     )}
@@ -338,6 +339,12 @@ export default function QuestionBank() {
         <QuestionFormDialog
           isOpen={isAddQuestionOpen}
           onClose={() => setIsAddQuestionOpen(false)}
+        />
+
+        <QuestionFormDialog
+          isOpen={!!editingQuestion}
+          onClose={() => setEditingQuestion(null)}
+          editQuestion={editingQuestion}
         />
       </div>
   );
