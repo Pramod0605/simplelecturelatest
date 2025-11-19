@@ -8,20 +8,30 @@ export const useCourseInstructors = (courseId?: string) => {
     queryFn: async () => {
       if (!courseId) return [];
 
-      // First get instructor_subjects entries for this course
+      // Step 1: Get subjects for this course
+      const { data: courseSubjects, error: csError } = await supabase
+        .from("course_subjects")
+        .select("subject_id")
+        .eq("course_id", courseId);
+
+      if (csError) throw csError;
+      if (!courseSubjects || courseSubjects.length === 0) return [];
+
+      const subjectIds = courseSubjects.map(cs => cs.subject_id);
+
+      // Step 2: Get instructor_subjects for these subjects
       const { data: instructorSubjects, error: isError } = await supabase
         .from("instructor_subjects")
         .select("*")
-        .eq("course_id", courseId);
+        .in("subject_id", subjectIds);
 
       if (isError) throw isError;
       if (!instructorSubjects || instructorSubjects.length === 0) return [];
 
-      // Get unique instructor and subject IDs
-      const instructorIds = [...new Set(instructorSubjects.map(row => row.instructor_id))];
-      const subjectIds = [...new Set(instructorSubjects.map(row => row.subject_id).filter(Boolean))];
+      // Step 3: Get unique instructor IDs
+      const instructorIds = [...new Set(instructorSubjects.map(row => row.instructor_id).filter(Boolean))];
 
-      // Fetch teachers
+      // Step 4: Fetch teachers with departments
       const { data: teachers, error: teachersError } = await supabase
         .from("teacher_profiles")
         .select(`
@@ -35,23 +45,18 @@ export const useCourseInstructors = (courseId?: string) => {
 
       if (teachersError) throw teachersError;
 
-      // Fetch subjects (try popular_subjects first, then subjects table)
-      let subjects: any[] = [];
-      if (subjectIds.length > 0) {
-        const { data: subs, error: subsError } = await supabase
-          .from("popular_subjects")
-          .select("id, name")
-          .in("id", subjectIds);
-        
-        if (!subsError && subs) {
-          subjects = subs;
-        }
-      }
+      // Step 5: Fetch subjects
+      const { data: subjects, error: subsError } = await supabase
+        .from("popular_subjects")
+        .select("id, name")
+        .in("id", subjectIds);
 
-      // Map the data
+      if (subsError) throw subsError;
+
+      // Step 6: Map the data
       return instructorSubjects.map(is => {
         const teacher = teachers?.find(t => t.id === is.instructor_id);
-        const subject = subjects.find(s => s.id === is.subject_id);
+        const subject = subjects?.find(s => s.id === is.subject_id);
         
         return {
           ...is,
@@ -80,7 +85,6 @@ export const useAddCourseInstructor = () => {
       const { data, error } = await supabase
         .from("instructor_subjects")
         .insert({
-          course_id: courseId,
           instructor_id: instructorId,
           subject_id: subjectId,
         })
