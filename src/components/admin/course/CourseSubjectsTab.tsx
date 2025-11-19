@@ -30,21 +30,12 @@ export const CourseSubjectsTab = ({ courseId, selectedCategories }: CourseSubjec
       
       const { data, error } = await supabase
         .from("popular_subjects")
-        .select(`
-          *,
-          subject_categories!inner(category_id)
-        `)
-        .in("subject_categories.category_id", selectedCategories)
+        .select("*")
+        .in("category_id", selectedCategories)
         .eq("is_active", true);
       
       if (error) throw error;
-      
-      // Remove duplicates
-      const unique = data.filter((subject, index, self) => 
-        index === self.findIndex(s => s.id === subject.id)
-      );
-      
-      return unique;
+      return data || [];
     },
     enabled: selectedCategories.length > 0,
   });
