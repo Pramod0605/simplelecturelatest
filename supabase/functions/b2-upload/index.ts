@@ -143,7 +143,9 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Authorization': uploadUrlData.authorizationToken,
-          'X-Bz-File-Name': encodeURIComponent(filePath),
+          // Use the logical file path directly so folder structure
+          // in B2 matches our app hierarchy
+          'X-Bz-File-Name': filePath,
           'Content-Type': file.type,
           'Content-Length': fileBytes.length.toString(),
           'X-Bz-Content-Sha1': sha1Hash
