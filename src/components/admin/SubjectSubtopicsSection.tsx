@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, Upload } from "lucide-react";
+import { VideoPreview } from "./VideoPreview";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -87,10 +88,17 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
       return;
     }
 
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedSubtopicForm = {
+      ...subtopicForm,
+      video_platform: subtopicForm.video_platform || null,
+      video_id: subtopicForm.video_id || null,
+    };
+
     createSubtopic.mutate(
       {
         topic_id: topicId,
-        ...subtopicForm,
+        ...sanitizedSubtopicForm,
       },
       {
         onSuccess: () => {
@@ -104,10 +112,17 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
   const handleUpdateSubtopic = () => {
     if (!editingSubtopic) return;
     
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedSubtopicForm = {
+      ...subtopicForm,
+      video_platform: subtopicForm.video_platform || null,
+      video_id: subtopicForm.video_id || null,
+    };
+
     updateSubtopic.mutate(
       {
         id: editingSubtopic.id,
-        ...subtopicForm,
+        ...sanitizedSubtopicForm,
       },
       {
         onSuccess: () => {
@@ -291,13 +306,21 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
 
               <div className="space-y-2">
                 <Label>Video ID</Label>
-                <Input
-                  value={subtopicForm.video_id}
-                  onChange={(e) =>
-                    setSubtopicForm({ ...subtopicForm, video_id: e.target.value })
-                  }
-                  placeholder="e.g., dQw4w9WgXcQ"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={subtopicForm.video_id}
+                    onChange={(e) =>
+                      setSubtopicForm({ ...subtopicForm, video_id: e.target.value })
+                    }
+                    placeholder="e.g., dQw4w9WgXcQ"
+                  />
+                  {subtopicForm.video_id && subtopicForm.video_platform && (
+                    <VideoPreview 
+                      platform={subtopicForm.video_platform} 
+                      videoId={subtopicForm.video_id} 
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
