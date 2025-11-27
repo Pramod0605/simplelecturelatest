@@ -62,15 +62,8 @@ serve(async (req) => {
     const authData = await authResponse.json();
     console.log('B2 authorized, API URL:', authData.apiUrl);
 
-    // Encode file path for B2 URL (encode each segment to preserve folder structure)
-    const encodedFilePath = filePath
-      .split('/')
-      .map((segment: string) => encodeURIComponent(segment))
-      .join('/');
-    
-    console.log('Encoded filePath for download URL:', encodedFilePath);
-
     // Step 2: Get download authorization (valid for 1 hour)
+    // IMPORTANT: Use raw filePath for authorization to match how files are stored in B2
     const authTokenResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_download_authorization`, {
       method: 'POST',
       headers: {
@@ -79,7 +72,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         bucketId: B2_BUCKET_ID,
-        fileNamePrefix: encodedFilePath,
+        fileNamePrefix: filePath, // Raw path - matches stored file name
         validDurationInSeconds: 3600 // 1 hour
       })
     });
@@ -94,6 +87,14 @@ serve(async (req) => {
     console.log('Download authorization obtained successfully');
 
     // Step 3: Generate authorized download URL
+    // Encode file path for browser URL (encode each segment to preserve folder structure)
+    const encodedFilePath = filePath
+      .split('/')
+      .map((segment: string) => encodeURIComponent(segment))
+      .join('/');
+    
+    console.log('Encoded filePath for browser URL:', encodedFilePath);
+    
     const downloadUrl = `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${encodedFilePath}?Authorization=${authTokenData.authorizationToken}`;
     
     console.log('Generated download URL (auth token masked):', downloadUrl.replace(/Authorization=[^&]+/, 'Authorization=***'));
