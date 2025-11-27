@@ -15,8 +15,9 @@ interface UploadResult {
   success: boolean;
   fileId: string;
   filePath: string;
-  downloadUrl: string;
+  storageFile?: any;
 }
+
 
 export function useB2Upload() {
   const [uploading, setUploading] = useState(false);
