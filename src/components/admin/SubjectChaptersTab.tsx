@@ -67,7 +67,7 @@ import {
   useUpdateChapterOrder,
   useUpdateTopicOrder,
 } from "@/hooks/useSubjectManagement";
-import { FileUploadWidget } from "./FileUploadWidget";
+import { B2FileUploadWidget } from "./B2FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { VideoPreview } from "./VideoPreview";
 import { PDFPreview } from "./PDFPreview";
@@ -81,6 +81,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminCategories } from "@/hooks/useAdminCategories";
 
 interface SubjectChaptersTabProps {
   subjectId: string;
@@ -98,6 +99,49 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
   const [generateContentTopicId, setGenerateContentTopicId] = useState<string | null>(null);
   const [generateContentDialogOpen, setGenerateContentDialogOpen] = useState(false);
   const [currentChapterForContent, setCurrentChapterForContent] = useState<any>(null);
+  
+  const { data: categories } = useAdminCategories();
+  
+  // Fetch subject to get category_id
+  const { data: subject } = useQuery({
+    queryKey: ['subject', subjectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('popular_subjects')
+        .select('category_id')
+        .eq('id', subjectId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get category hierarchy for B2 paths
+  const getCategoryHierarchy = () => {
+    if (!subject?.category_id || !categories) {
+      return { parentCategory: 'General', subCategory: 'General' };
+    }
+    
+    const category = categories.find(c => c.id === subject.category_id);
+    if (!category) {
+      return { parentCategory: 'General', subCategory: 'General' };
+    }
+    
+    // If this is a level 1 category (has parent), find the parent
+    if (category.level === 1 && category.parent_id) {
+      const parent = categories.find(c => c.id === category.parent_id);
+      return {
+        parentCategory: parent?.name || 'General',
+        subCategory: category.name
+      };
+    }
+    
+    // If level 0, use same name for both
+    return {
+      parentCategory: category.name,
+      subCategory: category.name
+    };
+  };
   const [currentTopicForContent, setCurrentTopicForContent] = useState<any>(null);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [editingChapter, setEditingChapter] = useState<any>(null);
@@ -1021,13 +1065,28 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
 
                       <div className="space-y-2">
                         <Label>PDF Document</Label>
-                        <FileUploadWidget
-                          bucket="chapter-pdfs"
+                        <B2FileUploadWidget
                           currentFileUrl={chapterForm.pdf_url}
                           onFileUploaded={(url) =>
                             setChapterForm({ ...chapterForm, pdf_url: url })
                           }
                           label="Upload Chapter PDF"
+                          acceptedTypes="application/pdf"
+                          maxSizeMB={50}
+                          pathParams={{
+                            parentCategoryName: getCategoryHierarchy().parentCategory,
+                            subCategoryName: getCategoryHierarchy().subCategory,
+                            subjectName: subjectName,
+                            chapterName: chapterForm.title || 'New_Chapter',
+                            entityType: 'chapter',
+                            entityName: chapterForm.title || 'New_Chapter',
+                          }}
+                          metadata={{
+                            entityType: 'chapter',
+                            categoryId: subject?.category_id || '',
+                            subjectId: subjectId,
+                            chapterId: editingChapter?.id || '',
+                          }}
                         />
                         {chapterForm.pdf_url && (
                           <PDFPreview 
@@ -1163,6 +1222,11 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                     setCurrentTopicForContent(topicData);
                     setGenerateContentDialogOpen(true);
                   }}
+                  subjectId={subjectId}
+                  subjectName={subjectName}
+                  categoryId={subject?.category_id || ''}
+                  parentCategoryName={getCategoryHierarchy().parentCategory}
+                  subCategoryName={getCategoryHierarchy().subCategory}
                 />
                 ))}
               </div>
@@ -1337,13 +1401,29 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             {/* PDF Upload for Topics */}
             <div className="space-y-2">
               <Label>Topic PDF Document</Label>
-              <FileUploadWidget
-                bucket="chapter-pdfs"
+              <B2FileUploadWidget
                 currentFileUrl={topicForm.pdf_url}
                 onFileUploaded={(url) =>
                   setTopicForm({ ...topicForm, pdf_url: url })
                 }
                 label="Upload Topic PDF"
+                acceptedTypes="application/pdf"
+                maxSizeMB={50}
+                pathParams={{
+                  parentCategoryName: getCategoryHierarchy().parentCategory,
+                  subCategoryName: getCategoryHierarchy().subCategory,
+                  subjectName: subjectName,
+                  chapterName: selectedChapter ? (chapters?.find(c => c.id === selectedChapter)?.title || 'General') : 'General',
+                  entityType: 'topic',
+                  entityName: topicForm.title || 'New_Topic',
+                }}
+                metadata={{
+                  entityType: 'topic',
+                  categoryId: subject?.category_id || '',
+                  subjectId: subjectId,
+                  chapterId: selectedChapter || '',
+                  topicId: editingTopic?.id || '',
+                }}
               />
               {topicForm.pdf_url && (
                 <PDFPreview 
@@ -1554,6 +1634,11 @@ interface ChapterItemProps {
   onDeleteTopic: (topicId: string) => void;
   onGenerateContent: (topicId: string, topicData: any, chapterData: any) => void;
   dragHandleProps?: any;
+  subjectId: string;
+  subjectName: string;
+  categoryId: string;
+  parentCategoryName: string;
+  subCategoryName: string;
 }
 
 function ChapterItem({
@@ -1567,6 +1652,11 @@ function ChapterItem({
   onDeleteTopic,
   onGenerateContent,
   dragHandleProps,
+  subjectId,
+  subjectName,
+  categoryId,
+  parentCategoryName,
+  subCategoryName,
 }: ChapterItemProps) {
   const { data: topics } = useChapterTopics(chapter.id);
 
@@ -1704,6 +1794,12 @@ function ChapterItem({
                       <SubjectSubtopicsSection
                         topicId={topic.id}
                         topicTitle={topic.title}
+                        subjectId={subjectId}
+                        subjectName={subjectName}
+                        categoryId={categoryId}
+                        parentCategoryName={parentCategoryName}
+                        subCategoryName={subCategoryName}
+                        chapterName={chapter.title}
                       />
                     </CardContent>
                   </Card>
