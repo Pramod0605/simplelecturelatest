@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Upload, Download, FileText, Loader2 } from "lucide-react";
+import { PDFPreview } from "./PDFPreview";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -187,9 +188,15 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                     />
                     {selectedFile && (
-                      <p className="text-xs text-muted-foreground">
-                        Selected: {selectedFile.name}
-                      </p>
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          Selected: {selectedFile.name}
+                        </p>
+                        <PDFPreview 
+                          pdfUrl={URL.createObjectURL(selectedFile)}
+                          fileName={selectedFile.name}
+                        />
+                      </>
                     )}
                   </div>
                 </div>
