@@ -3407,6 +3407,71 @@ export type Database = {
           },
         ]
       }
+      video_storyboards: {
+        Row: {
+          audio_error_message: string | null
+          audio_generation_completed_at: string | null
+          audio_generation_started_at: string | null
+          audio_generation_status: string | null
+          audio_urls: Json | null
+          chunk_plan: Json | null
+          created_at: string
+          id: string
+          job_id: string
+          llm_model: string | null
+          processing_completed_at: string | null
+          processing_started_at: string | null
+          slides: Json
+          status: string
+          total_duration: number | null
+          updated_at: string
+        }
+        Insert: {
+          audio_error_message?: string | null
+          audio_generation_completed_at?: string | null
+          audio_generation_started_at?: string | null
+          audio_generation_status?: string | null
+          audio_urls?: Json | null
+          chunk_plan?: Json | null
+          created_at?: string
+          id: string
+          job_id: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          slides: Json
+          status?: string
+          total_duration?: number | null
+          updated_at?: string
+        }
+        Update: {
+          audio_error_message?: string | null
+          audio_generation_completed_at?: string | null
+          audio_generation_started_at?: string | null
+          audio_generation_status?: string | null
+          audio_urls?: Json | null
+          chunk_plan?: Json | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          llm_model?: string | null
+          processing_completed_at?: string | null
+          processing_started_at?: string | null
+          slides?: Json
+          status?: string
+          total_duration?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_video_storyboards_job"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       student_analytics: {

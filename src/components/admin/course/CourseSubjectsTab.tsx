@@ -70,39 +70,11 @@ export const CourseSubjectsTab = ({ courseId, selectedCategories }: CourseSubjec
     );
   }
 
-  if (selectedCategories.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        Please select categories first in the Categories tab
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
+      {/* Section A: Always show existing subjects */}
       <div>
-        <Label>Add Subject</Label>
-        <div className="flex gap-2 mt-2">
-          <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Select a subject" />
-            </SelectTrigger>
-            <SelectContent className="bg-background z-50">
-              {availableSubjects?.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button onClick={handleAddSubject} type="button" disabled={addSubject.isPending}>
-            Add
-          </Button>
-        </div>
-      </div>
-
-      <div>
-        <Label>Course Subjects</Label>
+        <Label className="text-lg font-semibold">Currently Mapped Subjects</Label>
         {courseSubjects && courseSubjects.length > 0 ? (
           <Table className="mt-2">
             <TableHeader>
@@ -119,7 +91,7 @@ export const CourseSubjectsTab = ({ courseId, selectedCategories }: CourseSubjec
                   <TableCell>
                     <GripVertical className="w-4 h-4 text-muted-foreground" />
                   </TableCell>
-                  <TableCell>{cs.subject?.name}</TableCell>
+                  <TableCell>{cs.subject?.name || "Unknown"}</TableCell>
                   <TableCell>
                     <Input
                       type="number"
@@ -143,7 +115,38 @@ export const CourseSubjectsTab = ({ courseId, selectedCategories }: CourseSubjec
             </TableBody>
           </Table>
         ) : (
-          <p className="text-sm text-muted-foreground mt-2">No subjects added yet</p>
+          <p className="text-sm text-muted-foreground mt-2 p-4 bg-muted/50 rounded">
+            No subjects mapped to this course yet. Select categories in the Categories tab, then add subjects below.
+          </p>
+        )}
+      </div>
+
+      {/* Section B: Add new subjects - requires categories */}
+      <div className="border-t pt-6">
+        <Label className="text-lg font-semibold">Add New Subjects</Label>
+        
+        {selectedCategories.length === 0 ? (
+          <div className="mt-2 p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
+            ⚠️ Please select categories first in the <strong>Categories tab</strong> to see available subjects
+          </div>
+        ) : (
+          <div className="flex gap-2 mt-2">
+            <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select a subject to add" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                {availableSubjects?.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddSubject} type="button" disabled={addSubject.isPending}>
+              Add Subject
+            </Button>
+          </div>
         )}
       </div>
     </div>
