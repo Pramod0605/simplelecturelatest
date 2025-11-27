@@ -24,7 +24,9 @@ import {
   Video,
   Upload,
   CheckSquare,
-  TestTube2
+  TestTube2,
+  Folder,
+  Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -407,6 +409,22 @@ export const AdminSidebar = () => {
         >
           <Settings className="h-4 w-4" />
           <span>Settings</span>
+        </NavLink>
+
+        {/* File Manager */}
+        <NavLink
+          to="/admin/files"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-medium",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )
+          }
+        >
+          <Folder className="h-4 w-4" />
+          <span>File Manager</span>
         </NavLink>
       </nav>
 
