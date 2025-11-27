@@ -82,7 +82,8 @@ serve(async (req) => {
     const requestData: UploadRequest = await req.json();
     const { file, filePath, metadata } = requestData;
 
-    console.log('Upload request:', { filePath, metadata });
+    console.log('Upload request - Raw filePath:', filePath);
+    console.log('Upload metadata:', metadata);
 
     // Get B2 credentials
     const B2_KEY_ID = Deno.env.get('B2_KEY_ID');
@@ -137,15 +138,21 @@ serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
+    // Encode file path for B2 (encode each segment to preserve folder structure)
+    const encodedFilePath = filePath
+      .split('/')
+      .map((segment: string) => encodeURIComponent(segment))
+      .join('/');
+    
+    console.log('Encoded filePath for B2:', encodedFilePath);
+
     // Step 4: Upload file to B2 with retry logic
     const uploadResult = await retryWithBackoff(async () => {
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': uploadUrlData.authorizationToken,
-          // Use the logical file path directly so folder structure
-          // in B2 matches our app hierarchy
-          'X-Bz-File-Name': filePath,
+          'X-Bz-File-Name': encodedFilePath,
           'Content-Type': file.type,
           'Content-Length': fileBytes.length.toString(),
           'X-Bz-Content-Sha1': sha1Hash
