@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, Upload, HelpCircle } from "lucide-react";
 import { VideoPreview } from "./VideoPreview";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -305,7 +306,20 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
               </div>
 
               <div className="space-y-2">
-                <Label>Video ID</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Video ID</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        <p>Enter the video ID from the URL</p>
+                        <p className="text-muted-foreground mt-1">YouTube: dQw4w9WgXcQ | Vimeo: 123456789</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <div className="flex gap-2">
                   <Input
                     value={subtopicForm.video_id}

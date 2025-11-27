@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2, GripVertical, List } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, Sparkles, Upload, Download, Loader2, GripVertical, List, HelpCircle } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -940,7 +940,31 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
 
                     {/* Video Upload Section */}
                     <div className="space-y-4 border-t pt-4">
-                      <h4 className="text-sm font-medium">Media & Resources</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-medium">Media & Resources</h4>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-sm">
+                              <div className="space-y-2 text-xs">
+                                <p className="font-semibold">How to find Video IDs:</p>
+                                <div>
+                                  <p className="font-medium">YouTube:</p>
+                                  <p>• From URL: youtube.com/watch?v=<span className="font-mono bg-muted px-1">VIDEO_ID</span></p>
+                                  <p>• Example: dQw4w9WgXcQ</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium">Vimeo:</p>
+                                  <p>• From URL: vimeo.com/<span className="font-mono bg-muted px-1">VIDEO_ID</span></p>
+                                  <p>• Example: 123456789</p>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -962,7 +986,20 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Video ID</Label>
+                          <div className="flex items-center gap-2">
+                            <Label>Video ID</Label>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">
+                                  <p>Enter the video ID from the URL</p>
+                                  <p className="text-muted-foreground mt-1">YouTube: dQw4w9WgXcQ | Vimeo: 123456789</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                           <div className="flex gap-2">
                             <Input
                               placeholder="e.g., dQw4w9WgXcQ"
@@ -1236,7 +1273,20 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="topic-video">Video ID</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="topic-video">Video ID</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      <p>Enter the video ID from the URL</p>
+                      <p className="text-muted-foreground mt-1">YouTube: dQw4w9WgXcQ | Vimeo: 123456789</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <div className="flex gap-2">
                 <Input
                   id="topic-video"
