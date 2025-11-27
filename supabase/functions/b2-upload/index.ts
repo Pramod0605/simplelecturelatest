@@ -6,6 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if it's a 503 error that we should retry
+      if (errorMessage.includes('503') || errorMessage.includes('service_unavailable') || errorMessage.includes('no tomes available')) {
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          console.log(`Attempt ${attempt + 1} failed with 503, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      } else {
+        // If it's not a transient error, don't retry
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError || new Error('All retry attempts failed');
+}
+
 interface UploadRequest {
   file: {
     name: string;
@@ -76,21 +108,25 @@ serve(async (req) => {
     const authData = await authResponse.json();
     console.log('B2 authorized successfully');
 
-    // Step 2: Get upload URL
-    const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
-      method: 'POST',
-      headers: {
-        'Authorization': authData.authorizationToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ bucketId: B2_BUCKET_ID })
+    // Step 2: Get upload URL with retry logic
+    const uploadUrlData = await retryWithBackoff(async () => {
+      const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authData.authorizationToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bucketId: B2_BUCKET_ID })
+      });
+
+      if (!uploadUrlResponse.ok) {
+        const errorText = await uploadUrlResponse.text();
+        throw new Error(`Failed to get upload URL (${uploadUrlResponse.status}): ${errorText}`);
+      }
+
+      return await uploadUrlResponse.json();
     });
 
-    if (!uploadUrlResponse.ok) {
-      throw new Error(`Failed to get upload URL: ${await uploadUrlResponse.text()}`);
-    }
-
-    const uploadUrlData = await uploadUrlResponse.json();
     console.log('Got upload URL');
 
     // Step 3: Convert base64 to bytes
@@ -101,24 +137,27 @@ serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // Step 4: Upload file to B2
-    const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': uploadUrlData.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(filePath),
-        'Content-Type': file.type,
-        'Content-Length': fileBytes.length.toString(),
-        'X-Bz-Content-Sha1': sha1Hash
-      },
-      body: fileBytes
+    // Step 4: Upload file to B2 with retry logic
+    const uploadResult = await retryWithBackoff(async () => {
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': uploadUrlData.authorizationToken,
+          'X-Bz-File-Name': encodeURIComponent(filePath),
+          'Content-Type': file.type,
+          'Content-Length': fileBytes.length.toString(),
+          'X-Bz-Content-Sha1': sha1Hash
+        },
+        body: fileBytes
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed (${uploadResponse.status}): ${errorText}`);
+      }
+
+      return await uploadResponse.json();
     });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${await uploadResponse.text()}`);
-    }
-
-    const uploadResult = await uploadResponse.json();
     console.log('File uploaded successfully:', uploadResult.fileId);
 
     // Step 5: Save metadata to database
@@ -146,15 +185,12 @@ serve(async (req) => {
       throw new Error(`Failed to save file metadata: ${dbError.message}`);
     }
 
-    // Generate public URL
-    const downloadUrl = `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${filePath}`;
-
+    // Return file path (for private buckets, authorized URLs will be generated on demand)
     return new Response(
       JSON.stringify({
         success: true,
         fileId: uploadResult.fileId,
         filePath,
-        downloadUrl,
         storageFile
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

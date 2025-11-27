@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useB2Files } from "@/hooks/useB2Files";
+import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
 import {
   Folder,
   File,
@@ -32,6 +33,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
+
+function DownloadButton({ fileName }: { fileName: string }) {
+  const { downloadUrl, isLoading } = useB2DownloadUrl(fileName);
+
+  const handleDownload = () => {
+    if (downloadUrl) {
+      window.open(downloadUrl, '_blank');
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleDownload}
+      disabled={isLoading || !downloadUrl}
+    >
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+    </Button>
+  );
+}
 
 export function B2FileBrowser() {
   const [currentPath, setCurrentPath] = useState<string>("");
@@ -178,19 +200,7 @@ export function B2FileBrowser() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                      >
-                        <a
-                          href={file.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
+                      <DownloadButton fileName={file.fileName} />
                       <Button
                         variant="ghost"
                         size="sm"
