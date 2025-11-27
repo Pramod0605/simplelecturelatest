@@ -54,11 +54,25 @@ export function generateB2Path(params: B2PathParams): string {
   // Generate timestamp for uniqueness
   const timestamp = Date.now();
 
-  // Build path: {Parent}--{Sub}/{Subject}/{Chapter}/{entityType}_{entityName}_{timestamp}.{ext}
+  // Build base path: {Parent}--{Sub}/{Subject}/{Chapter}
   const categoryFolder = `${sanitizedParent}--${sanitizedSub}`;
   const fullFileName = `${entityType}_${sanitizedEntity}_${timestamp}.${fileExt}`;
+
+  // Add an extra folder level based on entity type so chapter/topic/subtopic
+  // files are organised separately under each chapter
+  const levelFolder =
+    entityType === 'chapter'
+      ? ''
+      : entityType === 'topic'
+        ? 'Topics'
+        : entityType === 'subtopic'
+          ? 'Subtopics'
+          : 'PreviousYearPapers';
+
+  const basePath = `${categoryFolder}/${sanitizedSubject}/${sanitizedChapter}`;
+  const folderPath = levelFolder ? `${basePath}/${levelFolder}` : basePath;
   
-  return `${categoryFolder}/${sanitizedSubject}/${sanitizedChapter}/${fullFileName}`;
+  return `${folderPath}/${fullFileName}`;
 }
 
 /**
@@ -77,8 +91,14 @@ export function parseB2Path(path: string): {
     return null;
   }
 
-  const [categoryPart, subject, chapter, fileName] = parts;
+  // Always treat the first three segments as:
+  //   0: Parent--Sub
+  //   1: Subject
+  //   2: Chapter
+  // Remaining segments (including any sub-folders) are joined back as fileName
+  const [categoryPart, subject, chapter, ...rest] = parts;
   const [parentCategory, subCategory] = categoryPart.split('--');
+  const fileName = rest.join('/') || '';
 
   return {
     parentCategory: parentCategory || '',
