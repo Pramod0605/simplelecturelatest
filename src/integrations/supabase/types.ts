@@ -2429,6 +2429,96 @@ export type Database = {
           },
         ]
       }
+      storage_files: {
+        Row: {
+          b2_file_id: string | null
+          category_id: string | null
+          chapter_id: string | null
+          created_at: string | null
+          entity_type: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          subject_id: string | null
+          subtopic_id: string | null
+          topic_id: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          b2_file_id?: string | null
+          category_id?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          entity_type: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          subject_id?: string | null
+          subtopic_id?: string | null
+          topic_id?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          b2_file_id?: string | null
+          category_id?: string | null
+          chapter_id?: string | null
+          created_at?: string | null
+          entity_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          subject_id?: string | null
+          subtopic_id?: string | null
+          topic_id?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_files_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_files_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_files_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_files_subtopic_id_fkey"
+            columns: ["subtopic_id"]
+            isOneToOne: false
+            referencedRelation: "subtopics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_files_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_activity_log: {
         Row: {
           activity_type: Database["public"]["Enums"]["activity_type"]

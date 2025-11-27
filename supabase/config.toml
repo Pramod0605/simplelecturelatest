@@ -1,5 +1,14 @@
 project_id = "oxwhqvsoelqqsblmqkxx"
 
+[functions.b2-upload]
+verify_jwt = true
+
+[functions.b2-list-files]
+verify_jwt = true
+
+[functions.b2-delete-file]
+verify_jwt = true
+
 [functions.ai-suggest-chapter-topic]
 verify_jwt = false
 
