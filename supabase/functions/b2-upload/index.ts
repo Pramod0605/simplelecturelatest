@@ -138,16 +138,21 @@ serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sha1Hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-    console.log('Using raw filePath for B2 storage:', filePath);
+    // Percent-encode file path for B2 (required by B2 API)
+    const encodedFilePath = filePath
+      .split('/')
+      .map((segment: string) => encodeURIComponent(segment))
+      .join('/');
+    
+    console.log('Encoded filePath for B2:', encodedFilePath);
 
     // Step 4: Upload file to B2 with retry logic
-    // IMPORTANT: Use raw filePath - B2 handles encoding internally
     const uploadResult = await retryWithBackoff(async () => {
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': uploadUrlData.authorizationToken,
-          'X-Bz-File-Name': filePath, // Raw path - B2 handles encoding
+          'X-Bz-File-Name': encodedFilePath, // Percent-encoded as per B2 API requirements
           'Content-Type': file.type,
           'Content-Length': fileBytes.length.toString(),
           'X-Bz-Content-Sha1': sha1Hash
@@ -164,12 +169,36 @@ serve(async (req) => {
     });
     console.log('File uploaded successfully:', uploadResult.fileId);
 
-    // Step 5: Save metadata to database
+    // Step 5: Verify file exists in B2
+    const verifyResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_list_file_names`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authData.authorizationToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        bucketId: B2_BUCKET_ID,
+        prefix: encodedFilePath,
+        maxFileCount: 1
+      })
+    });
+
+    if (!verifyResponse.ok) {
+      console.error('File verification failed:', await verifyResponse.text());
+    } else {
+      const verifyData = await verifyResponse.json();
+      if (verifyData.files.length === 0) {
+        throw new Error('File upload verification failed - file not found in B2');
+      }
+      console.log('File verified in B2 storage');
+    }
+
+    // Step 6: Save metadata to database
     const { data: storageFile, error: dbError } = await supabase
       .from('storage_files')
       .insert({
         file_name: file.name,
-        file_path: filePath,
+        file_path: encodedFilePath, // Store encoded path to match B2
         file_size: fileBytes.length,
         file_type: file.type,
         b2_file_id: uploadResult.fileId,
@@ -194,7 +223,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         fileId: uploadResult.fileId,
-        filePath,
+        filePath: encodedFilePath, // Return encoded path for consistency
         storageFile
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
