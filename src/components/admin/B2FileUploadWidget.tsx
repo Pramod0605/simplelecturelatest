@@ -56,9 +56,10 @@ export function B2FileUploadWidget({
     const result = await uploadFile(file, filePath, metadata);
     
     if (result) {
-      setLocalFileUrl(result.downloadUrl);
-      onFileUploaded(result.downloadUrl);
+      setLocalFileUrl(result.filePath);
+      onFileUploaded(result.filePath);
     }
+
 
     // Reset input
     if (fileInputRef.current) {
