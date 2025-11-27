@@ -4,6 +4,7 @@ import { Upload, Loader2, FileText, ExternalLink, X } from "lucide-react";
 import { useB2Upload } from "@/hooks/useB2Upload";
 import { generateB2Path, B2PathParams } from "@/lib/b2PathGenerator";
 import { Progress } from "@/components/ui/progress";
+import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
 
 interface B2FileUploadWidgetProps {
   onFileUploaded: (url: string) => void;
@@ -114,30 +115,7 @@ export function B2FileUploadWidget({
         <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm flex-1 truncate">File uploaded successfully</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            asChild
-          >
-            <a
-              href={localFileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="gap-1"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View
-            </a>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleRemove}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <B2UploadedFileActions filePath={localFileUrl} onRemove={handleRemove} />
         </div>
       )}
 
@@ -145,5 +123,43 @@ export function B2FileUploadWidget({
         Max file size: {maxSizeMB}MB. Accepted: {acceptedTypes.split(',').map(t => t.split('/')[1]).join(', ')}
       </p>
     </div>
+  );
+}
+
+interface B2UploadedFileActionsProps {
+  filePath: string;
+  onRemove: () => void;
+}
+
+function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProps) {
+  const { downloadUrl, isLoading } = useB2DownloadUrl(filePath);
+  const effectiveUrl = downloadUrl || filePath;
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => effectiveUrl && window.open(effectiveUrl, "_blank")}
+        disabled={isLoading || !effectiveUrl}
+        className="gap-1"
+      >
+        {isLoading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <ExternalLink className="h-3 w-3" />
+        )}
+        View
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onRemove}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </>
   );
 }
