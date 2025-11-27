@@ -11,12 +11,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PDFPreviewProps {
   pdfUrl: string;
+  /** Optional override for the display name. If omitted, we derive it from the URL/path. */
   fileName?: string;
 }
 
-export function PDFPreview({ pdfUrl, fileName = "Document" }: PDFPreviewProps) {
+export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
+  // Derive a human-friendly file name from the URL/path if not explicitly provided
+  const derivedFileName = fileName || decodeURIComponent(pdfUrl.split("/").pop() || "Document");
+
   // Get authorized download URL for B2 files
   const { downloadUrl, isLoading, error } = useB2DownloadUrl(pdfUrl);
   const effectiveUrl = downloadUrl || pdfUrl;
@@ -54,7 +58,7 @@ export function PDFPreview({ pdfUrl, fileName = "Document" }: PDFPreviewProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => effectiveUrl && window.open(effectiveUrl, '_blank')}
+          onClick={() => effectiveUrl && window.open(effectiveUrl, "_blank")}
           disabled={isLoading || !effectiveUrl}
           className="gap-2"
         >
@@ -71,7 +75,7 @@ export function PDFPreview({ pdfUrl, fileName = "Document" }: PDFPreviewProps) {
         ) : (
           <div className="relative border rounded-lg overflow-hidden bg-muted/10">
             <div className="flex items-center justify-between p-2 bg-muted/50 border-b">
-              <span className="text-sm font-medium">{fileName}</span>
+              <span className="text-sm font-medium">{derivedFileName}</span>
               <Button
                 type="button"
                 variant="ghost"
@@ -84,7 +88,7 @@ export function PDFPreview({ pdfUrl, fileName = "Document" }: PDFPreviewProps) {
             <iframe
               src={effectiveUrl}
               className="w-full h-[600px]"
-              title={`PDF Preview: ${fileName}`}
+              title={`PDF Preview: ${derivedFileName}`}
             />
           </div>
         )}

@@ -1089,11 +1089,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                           }}
                         />
                         {chapterForm.pdf_url && (
-                          <PDFPreview 
-                            pdfUrl={chapterForm.pdf_url} 
-                            fileName={`${chapterForm.title || 'Chapter'}.pdf`}
-                          />
-                        )}
+                           <PDFPreview 
+-                            pdfUrl={chapterForm.pdf_url} 
+-                            fileName={`${chapterForm.title || 'Chapter'}.pdf`}
++                            pdfUrl={chapterForm.pdf_url}
+                           />
+                         )}
                       </div>
 
                       <div className="space-y-2">
@@ -1425,12 +1426,13 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                   topicId: editingTopic?.id || '',
                 }}
               />
-              {topicForm.pdf_url && (
-                <PDFPreview 
-                  pdfUrl={topicForm.pdf_url} 
-                  fileName={`${topicForm.title || 'Topic'}.pdf`}
-                />
-              )}
+               {topicForm.pdf_url && (
+                 <PDFPreview 
+-                  pdfUrl={topicForm.pdf_url} 
+-                  fileName={`${topicForm.title || 'Topic'}.pdf`}
++                  pdfUrl={topicForm.pdf_url}
+                 />
+               )}
             </div>
           </div>
           <DialogFooter>
