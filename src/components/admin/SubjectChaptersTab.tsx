@@ -70,6 +70,7 @@ import {
 import { FileUploadWidget } from "./FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { VideoPreview } from "./VideoPreview";
+import { PDFPreview } from "./PDFPreview";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { AIGenerateCurriculumDialog } from "./AIGenerateCurriculumDialog";
@@ -1028,6 +1029,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                           }
                           label="Upload Chapter PDF"
                         />
+                        {chapterForm.pdf_url && (
+                          <PDFPreview 
+                            pdfUrl={chapterForm.pdf_url} 
+                            fileName={`${chapterForm.title || 'Chapter'}.pdf`}
+                          />
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -1338,6 +1345,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                 }
                 label="Upload Topic PDF"
               />
+              {topicForm.pdf_url && (
+                <PDFPreview 
+                  pdfUrl={topicForm.pdf_url} 
+                  fileName={`${topicForm.title || 'Topic'}.pdf`}
+                />
+              )}
             </div>
           </div>
           <DialogFooter>
