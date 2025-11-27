@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
-import { useCourses } from "@/hooks/useCourses";
+import { useCoursesByCategory } from "@/hooks/useCoursesByCategory";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
 import { useCourseInstructors } from "@/hooks/useCourseInstructors";
@@ -29,14 +29,11 @@ export default function AcademicsTimetable() {
   });
 
   const { data: categories } = useAdminCategories();
-  const { data: allCourses } = useCourses();
+  const { data: courses } = useCoursesByCategory(selectedCategory || undefined);
   const { data: batches } = useAdminBatches();
   const { data: courseSubjects } = useCourseSubjects(selectedCourse);
   const { data: courseInstructors } = useCourseInstructors(selectedCourse);
   const saveTimetableMutation = useSaveTimetable();
-  
-  // Filter courses by selected category  
-  const courses = allCourses;
 
   const [dayEntries, setDayEntries] = useState<Record<number, any[]>>({
     1: [],
@@ -220,6 +217,20 @@ export default function AcademicsTimetable() {
               />
             </div>
           </div>
+
+          {/* Validation Messages */}
+          {selectedCourse && courseSubjects && courseSubjects.length === 0 && (
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
+              ⚠️ This course has no subjects mapped. Please map subjects in the Course Edit page first.
+            </div>
+          )}
+
+          {selectedCourse && courseSubjects && courseSubjects.length > 0 && 
+           courseInstructors && courseInstructors.length === 0 && (
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
+              ⚠️ No instructors assigned to teach subjects in this course. Please assign instructors in the Course Edit page → Instructors tab.
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -320,16 +331,28 @@ export default function AcademicsTimetable() {
                               <Select
                                 value={entry.instructor_id}
                                 onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'instructor_id', v)}
+                                disabled={!entry.subject_id}
                               >
                                 <SelectTrigger className="bg-background">
-                                  <SelectValue placeholder="Select instructor" />
+                                  <SelectValue placeholder={
+                                    !entry.subject_id 
+                                      ? "Select subject first" 
+                                      : "Select instructor"
+                                  } />
                                 </SelectTrigger>
                                 <SelectContent className="bg-background z-50">
-                                  {courseInstructors?.map((ci) => (
-                                    <SelectItem key={ci.instructor_id} value={ci.instructor_id}>
-                                      {ci.teacher?.full_name || "Unknown"}
-                                    </SelectItem>
-                                  ))}
+                                  {courseInstructors
+                                    ?.filter(ci => ci.subject_id === entry.subject_id)
+                                    ?.map((ci) => (
+                                      <SelectItem key={ci.instructor_id} value={ci.instructor_id}>
+                                        {ci.teacher?.full_name || "Unknown"}
+                                      </SelectItem>
+                                    ))}
+                                  {courseInstructors?.filter(ci => ci.subject_id === entry.subject_id)?.length === 0 && (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                      No instructors assigned to this subject
+                                    </div>
+                                  )}
                                 </SelectContent>
                               </Select>
                             </div>
