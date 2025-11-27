@@ -77,12 +77,19 @@ serve(async (req) => {
       fileMetadata = metaData || [];
     }
 
-    // Enrich files with metadata
+    // Enrich files with metadata and properly encode download URLs
     const enrichedFiles = listData.files.map((file: any) => {
       const meta = fileMetadata.find((m: any) => m.file_path === file.fileName);
+      
+      // Encode file path for download URL (encode each segment to preserve folder structure)
+      const encodedFileName = file.fileName
+        .split('/')
+        .map((segment: string) => encodeURIComponent(segment))
+        .join('/');
+      
       return {
         ...file,
-        downloadUrl: `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${file.fileName}`,
+        downloadUrl: `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${encodedFileName}`,
         metadata: meta || null
       };
     });

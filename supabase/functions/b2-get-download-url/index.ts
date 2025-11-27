@@ -36,7 +36,7 @@ serve(async (req) => {
       throw new Error('File path is required');
     }
 
-    console.log('Generating authorized download URL for:', filePath);
+    console.log('Download URL request - Raw filePath:', filePath);
 
     // Get B2 credentials
     const B2_KEY_ID = Deno.env.get('B2_KEY_ID');
@@ -60,6 +60,15 @@ serve(async (req) => {
     }
 
     const authData = await authResponse.json();
+    console.log('B2 authorized, API URL:', authData.apiUrl);
+
+    // Encode file path for B2 URL (encode each segment to preserve folder structure)
+    const encodedFilePath = filePath
+      .split('/')
+      .map((segment: string) => encodeURIComponent(segment))
+      .join('/');
+    
+    console.log('Encoded filePath for download URL:', encodedFilePath);
 
     // Step 2: Get download authorization (valid for 1 hour)
     const authTokenResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_download_authorization`, {
@@ -70,19 +79,24 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         bucketId: B2_BUCKET_ID,
-        fileNamePrefix: filePath,
+        fileNamePrefix: encodedFilePath,
         validDurationInSeconds: 3600 // 1 hour
       })
     });
 
     if (!authTokenResponse.ok) {
-      throw new Error(`Failed to get download authorization: ${await authTokenResponse.text()}`);
+      const errorText = await authTokenResponse.text();
+      console.error('Failed to get download authorization:', errorText);
+      throw new Error(`Failed to get download authorization: ${errorText}`);
     }
 
     const authTokenData = await authTokenResponse.json();
+    console.log('Download authorization obtained successfully');
 
     // Step 3: Generate authorized download URL
-    const downloadUrl = `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${filePath}?Authorization=${authTokenData.authorizationToken}`;
+    const downloadUrl = `${authData.downloadUrl}/file/${Deno.env.get('B2_BUCKET_NAME')}/${encodedFilePath}?Authorization=${authTokenData.authorizationToken}`;
+    
+    console.log('Generated download URL (auth token masked):', downloadUrl.replace(/Authorization=[^&]+/, 'Authorization=***'));
 
     return new Response(
       JSON.stringify({
