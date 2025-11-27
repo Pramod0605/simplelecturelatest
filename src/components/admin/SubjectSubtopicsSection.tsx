@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, Trash2, Upload, HelpCircle } from "lucide-react";
 import { VideoPreview } from "./VideoPreview";
+import { PDFPreview } from "./PDFPreview";
+import { B2FileUploadWidget } from "./B2FileUploadWidget";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -43,9 +45,24 @@ import { toast } from "@/hooks/use-toast";
 interface SubtopicsSectionProps {
   topicId: string;
   topicTitle: string;
+  subjectId: string;
+  subjectName: string;
+  categoryId: string;
+  parentCategoryName: string;
+  subCategoryName: string;
+  chapterName: string;
 }
 
-export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectionProps) {
+export function SubjectSubtopicsSection({ 
+  topicId, 
+  topicTitle,
+  subjectId,
+  subjectName,
+  categoryId,
+  parentCategoryName,
+  subCategoryName,
+  chapterName
+}: SubtopicsSectionProps) {
   const [isAddSubtopicOpen, setIsAddSubtopicOpen] = useState(false);
   const [editingSubtopic, setEditingSubtopic] = useState<any>(null);
   const [deleteSubtopicId, setDeleteSubtopicId] = useState<string | null>(null);
@@ -59,6 +76,7 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
     video_platform: "",
     notes_markdown: "",
     content_markdown: "",
+    pdf_url: "",
   });
 
   const { data: subtopics, isLoading } = useSubtopics(topicId);
@@ -76,6 +94,7 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
       video_platform: "",
       notes_markdown: "",
       content_markdown: "",
+      pdf_url: "",
     });
   };
 
@@ -153,6 +172,7 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
       video_platform: subtopic.video_platform || "",
       notes_markdown: subtopic.notes_markdown || "",
       content_markdown: subtopic.content_markdown || "",
+      pdf_url: subtopic.pdf_url || "",
     });
   };
 
@@ -360,6 +380,41 @@ export function SubjectSubtopicsSection({ topicId, topicTitle }: SubtopicsSectio
                 placeholder="# Main content..."
                 rows={4}
               />
+            </div>
+
+            {/* PDF Upload for Subtopics */}
+            <div className="space-y-2">
+              <Label>Subtopic PDF Document</Label>
+              <B2FileUploadWidget
+                currentFileUrl={subtopicForm.pdf_url}
+                onFileUploaded={(url) =>
+                  setSubtopicForm({ ...subtopicForm, pdf_url: url })
+                }
+                label="Upload Subtopic PDF"
+                acceptedTypes="application/pdf"
+                maxSizeMB={50}
+                pathParams={{
+                  parentCategoryName,
+                  subCategoryName,
+                  subjectName,
+                  chapterName,
+                  entityType: 'subtopic',
+                  entityName: subtopicForm.title || 'New_Subtopic',
+                }}
+                metadata={{
+                  entityType: 'subtopic',
+                  categoryId,
+                  subjectId,
+                  topicId,
+                  subtopicId: editingSubtopic?.id || '',
+                }}
+              />
+              {subtopicForm.pdf_url && (
+                <PDFPreview 
+                  pdfUrl={subtopicForm.pdf_url} 
+                  fileName={`${subtopicForm.title || 'Subtopic'}.pdf`}
+                />
+              )}
             </div>
           </div>
 
