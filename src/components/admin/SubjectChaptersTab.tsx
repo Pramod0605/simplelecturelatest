@@ -69,6 +69,7 @@ import {
 } from "@/hooks/useSubjectManagement";
 import { FileUploadWidget } from "./FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
+import { VideoPreview } from "./VideoPreview";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
 import { AIGenerateCurriculumDialog } from "./AIGenerateCurriculumDialog";
@@ -192,10 +193,17 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     console.log("Chapter Form Data:", chapterForm);
     console.log("Current Chapters Count:", chapters?.length);
 
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedForm = {
+      ...chapterForm,
+      video_platform: chapterForm.video_platform || null,
+      video_id: chapterForm.video_id || null,
+    };
+
     createChapter.mutate(
       {
         subject_id: subjectId,
-        ...chapterForm,
+        ...sanitizedForm,
       },
       {
         onSuccess: (data) => {
@@ -242,10 +250,18 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
 
   const handleUpdateChapter = () => {
     if (!editingChapter) return;
+
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedForm = {
+      ...chapterForm,
+      video_platform: chapterForm.video_platform || null,
+      video_id: chapterForm.video_id || null,
+    };
+
     updateChapter.mutate(
       {
         id: editingChapter.id,
-        updates: chapterForm,
+        updates: sanitizedForm,
       },
       {
         onSuccess: () => {
@@ -300,10 +316,17 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     console.log("Chapter ID:", selectedChapter);
     console.log("Topic Form Data:", topicForm);
 
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedTopicForm = {
+      ...topicForm,
+      video_platform: topicForm.video_platform || null,
+      video_id: topicForm.video_id || null,
+    };
+
     createTopic.mutate(
       {
         chapter_id: selectedChapter,
-        ...topicForm,
+        ...sanitizedTopicForm,
       },
       {
         onSuccess: (data) => {
@@ -351,10 +374,18 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
 
   const handleUpdateTopic = () => {
     if (!editingTopic) return;
+
+    // Sanitize video fields - convert empty strings to null
+    const sanitizedTopicForm = {
+      ...topicForm,
+      video_platform: topicForm.video_platform || null,
+      video_id: topicForm.video_id || null,
+    };
+
     updateTopic.mutate(
       {
         id: editingTopic.id,
-        updates: topicForm,
+        updates: sanitizedTopicForm,
       },
       {
         onSuccess: () => {
@@ -932,13 +963,21 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
 
                         <div className="space-y-2">
                           <Label>Video ID</Label>
-                          <Input
-                            placeholder="e.g., dQw4w9WgXcQ"
-                            value={chapterForm.video_id}
-                            onChange={(e) =>
-                              setChapterForm({ ...chapterForm, video_id: e.target.value })
-                            }
-                          />
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="e.g., dQw4w9WgXcQ"
+                              value={chapterForm.video_id}
+                              onChange={(e) =>
+                                setChapterForm({ ...chapterForm, video_id: e.target.value })
+                              }
+                            />
+                            {chapterForm.video_id && chapterForm.video_platform && (
+                              <VideoPreview 
+                                platform={chapterForm.video_platform} 
+                                videoId={chapterForm.video_id} 
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1198,12 +1237,20 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             </div>
             <div className="space-y-2">
               <Label htmlFor="topic-video">Video ID</Label>
-              <Input
-                id="topic-video"
-                placeholder="e.g., dQw4w9WgXcQ"
-                value={topicForm.video_id}
-                onChange={(e) => setTopicForm({ ...topicForm, video_id: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="topic-video"
+                  placeholder="e.g., dQw4w9WgXcQ"
+                  value={topicForm.video_id}
+                  onChange={(e) => setTopicForm({ ...topicForm, video_id: e.target.value })}
+                />
+                {topicForm.video_id && topicForm.video_platform && (
+                  <VideoPreview 
+                    platform={topicForm.video_platform} 
+                    videoId={topicForm.video_id} 
+                  />
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="topic-notes">Notes (Markdown)</Label>
