@@ -25,11 +25,28 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
   const { downloadUrl, isLoading, error } = useB2DownloadUrl(pdfUrl);
   const effectiveUrl = downloadUrl || pdfUrl;
 
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
   if (error) {
+    const errorType = error.includes('404') ? 'not found in storage' :
+                     error.includes('401') || error.includes('403') ? 'authorization failed' :
+                     'unknown error';
+    
     return (
       <Alert variant="destructive">
-        <AlertDescription>
-          Failed to load PDF: {error}
+        <AlertDescription className="flex items-center justify-between">
+          <span>Failed to load PDF: {errorType} - {error}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            className="ml-4"
+          >
+            Retry
+          </Button>
         </AlertDescription>
       </Alert>
     );
