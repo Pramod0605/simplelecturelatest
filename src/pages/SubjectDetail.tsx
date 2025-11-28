@@ -122,31 +122,31 @@ const SubjectDetail = () => {
         {/* Hero Section - Enhanced */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-2 relative">
-            <div className="grid lg:grid-cols-2 gap-8 items-center">
-              <div className="space-y-4">
+          <div className="container mx-auto px-4 py-1 relative">
+            <div className="grid lg:grid-cols-2 gap-4 items-center">
+              <div className="space-y-2">
                 {subject.categories && (
                   <Badge variant="secondary" className="text-xs px-2 py-0.5">
                     {subject.categories.name}
                   </Badge>
                 )}
                 
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
                   {subject.name}
                 </h1>
                 
                 {subject.description && (
-                  <p className="text-base md:text-lg opacity-90 leading-relaxed">
+                  <p className="text-sm md:text-base opacity-90 leading-relaxed">
                     {subject.description}
                   </p>
                 )}
                 
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
+                <div className="flex flex-wrap gap-3 pt-1">
+                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-2 py-0.5">
                     <BookOpen className="h-4 w-4" />
                     <span className="text-sm font-semibold">{chaptersData?.length || 0} Chapters</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
+                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-2 py-0.5">
                     <FileText className="h-4 w-4" />
                     <span className="text-sm font-semibold">
                       {chaptersData?.reduce((acc: number, ch: any) => acc + (ch.subject_topics?.length || 0), 0) || 0} Topics
@@ -155,7 +155,7 @@ const SubjectDetail = () => {
                 </div>
 
                 {isEnrolled ? (
-                  <div className="space-y-2 pt-2">
+                  <div className="space-y-2 pt-1">
                     <div className="flex items-center gap-2 bg-green-500/20 text-white border-2 border-white/30 rounded-full px-3 py-1 w-fit">
                       <CheckCircle2 className="h-4 w-4" />
                       <span className="text-sm font-semibold">You're Enrolled</span>
@@ -163,17 +163,17 @@ const SubjectDetail = () => {
                     <p className="text-xs opacity-80">
                       Available via: {enrolledCourses.map((c: any) => c.name).join(", ")}
                     </p>
-                    <Button size="default" variant="secondary" asChild className="mt-2">
+                    <Button size="sm" variant="secondary" asChild className="mt-2">
                       <Link to="/dashboard">Start Learning</Link>
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-3 pt-2">
+                  <div className="space-y-3 pt-1">
                     <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-2">
                       <Lock className="h-5 w-5" />
                       <span className="text-sm">Unlock all content by enrolling in a course</span>
                     </div>
-                    <Button size="default" variant="secondary" asChild className="shadow-xl">
+                    <Button size="sm" variant="secondary" asChild className="shadow-xl">
                       <Link to={enrolledCourses.length > 0 ? `/programs/${enrolledCourses[0].slug}` : "/programs"}>
                         <Target className="h-4 w-4 mr-2" />
                         {enrolledCourses.length > 0 ? "Back to Course" : "Explore Courses"}
@@ -189,7 +189,7 @@ const SubjectDetail = () => {
                   <img
                     src={subject.thumbnail_url}
                     alt={subject.name}
-                    className="rounded-2xl shadow-2xl w-full h-auto border-4 border-white/20"
+                    className="rounded-2xl shadow-2xl w-full h-auto max-h-48 object-cover border-4 border-white/20"
                   />
                 </div>
               )}
