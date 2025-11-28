@@ -93,7 +93,7 @@ const SubjectDetail = () => {
         {/* Hero Section - Enhanced */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-16 relative">
+          <div className="container mx-auto px-4 py-8 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 {subject.categories && (
@@ -225,7 +225,7 @@ const SubjectDetail = () => {
                             Ch {chapter.chapter_number}
                           </Badge>
                           <div className="flex-1">
-                            <h3 className="text-lg font-semibold">{chapter.chapter_name}</h3>
+                            <h3 className="text-lg font-semibold">{chapter.title}</h3>
                             {chapter.description && (
                               <p className="text-sm text-muted-foreground mt-1">
                                 {chapter.description}
@@ -259,9 +259,9 @@ const SubjectDetail = () => {
                               <div className="flex items-center gap-3 flex-1">
                                 <Badge variant="outline" className="text-xs">
                                   {topic.topic_number}
-                                </Badge>
+                                 </Badge>
                                 <div className="flex-1">
-                                  <p className="font-medium">{topic.topic_name}</p>
+                                  <p className="font-medium">{topic.title}</p>
                                   {topic.description && (
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                       {topic.description}

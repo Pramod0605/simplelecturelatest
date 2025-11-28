@@ -39,8 +39,7 @@ export const useSubjectChapterTopics = (subjectId?: string) => {
         .from("subject_chapters")
         .select("*")
         .eq("subject_id", subjectId)
-        .eq("is_active", true)
-        .order("display_order");
+        .order("sequence_order");
 
       if (chaptersError) throw chaptersError;
       if (!chapters) return [];
@@ -52,8 +51,7 @@ export const useSubjectChapterTopics = (subjectId?: string) => {
           .from("subject_topics")
           .select("*")
           .eq("chapter_id", chapter.id)
-          .eq("is_active", true)
-          .order("display_order");
+          .order("sequence_order");
 
         if (topicsError) throw topicsError;
 
