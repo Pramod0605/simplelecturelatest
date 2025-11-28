@@ -122,7 +122,7 @@ const SubjectDetail = () => {
         {/* Hero Section - Enhanced */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-6 relative">
+          <div className="container mx-auto px-4 py-4 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 {subject.categories && (
