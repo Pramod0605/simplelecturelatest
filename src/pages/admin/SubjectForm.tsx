@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft } from "lucide-react";
+import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
 import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
@@ -29,6 +29,8 @@ import {
   useUpdateSubject,
 } from "@/hooks/useAdminPopularSubjects";
 import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdminCategories";
+import { useAICourseContent } from "@/hooks/useAICourseContent";
+import { Skeleton } from "@/components/ui/skeleton";
 // Subject management components
 import { SubjectChaptersTab } from "@/components/admin/SubjectChaptersTab";
 import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
@@ -54,10 +56,11 @@ export default function SubjectForm() {
   const isEdit = !!id;
   const [activeTab, setActiveTab] = useState("basic");
 
-  const { data: subject } = useAdminSubject(id);
+  const { data: subject, isLoading: isLoadingSubject } = useAdminSubject(id);
   const createSubject = useCreateSubject();
   const updateSubject = useUpdateSubject();
-  const { data: categories } = useAdminCategories();
+  const { data: categories, isLoading: isLoadingCategories } = useAdminCategories();
+  const generateContent = useAICourseContent();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -114,6 +117,55 @@ export default function SubjectForm() {
       });
     }
   };
+
+  const handleGenerateDescription = async () => {
+    const subjectName = form.watch("name");
+    const categoryId = form.watch("category_id");
+    
+    if (!subjectName) {
+      return;
+    }
+
+    const selectedCategory = categories?.find(c => c.id === categoryId);
+    const categoryName = selectedCategory 
+      ? getCategoryHierarchyDisplay(selectedCategory.id, categories || [])
+      : undefined;
+
+    generateContent.mutate({
+      type: 'subject_description',
+      context: {
+        subjectName,
+        categoryName,
+      },
+    }, {
+      onSuccess: (data) => {
+        if (data?.content) {
+          form.setValue('description', data.content);
+        }
+      },
+    });
+  };
+
+  const isLoading = isLoadingSubject || isLoadingCategories;
+
+  if (isLoading && isEdit) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -207,7 +259,24 @@ export default function SubjectForm() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Description</FormLabel>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleGenerateDescription}
+                            disabled={!form.watch("name") || generateContent.isPending}
+                            className="gap-2"
+                          >
+                            {generateContent.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            AI Write
+                          </Button>
+                        </div>
                         <FormControl>
                           <Textarea
                             placeholder="Brief description of this subject..."

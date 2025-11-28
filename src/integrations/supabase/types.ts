@@ -3167,6 +3167,56 @@ export type Database = {
           },
         ]
       }
+      topic_videos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          language: string
+          topic_id: string
+          updated_at: string | null
+          video_id: string
+          video_name: string
+          video_platform: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          topic_id: string
+          updated_at?: string | null
+          video_id: string
+          video_name: string
+          video_platform?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          topic_id?: string
+          updated_at?: string | null
+          video_id?: string
+          video_name?: string
+          video_platform?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_videos_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           ai_slides_url: string | null
