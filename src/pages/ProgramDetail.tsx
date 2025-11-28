@@ -150,81 +150,93 @@ const ProgramDetail = () => {
         {/* Hero Section with Gradient */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-4 relative">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="container mx-auto px-4 py-2 relative">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
               {/* Left Content */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {categories.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {categories.map((cat: any) => (
-                      <Badge key={cat.id} variant="secondary" className="text-sm px-3 py-1">
+                      <Badge key={cat.id} variant="secondary" className="text-xs px-2 py-0.5">
                         {cat.name}
                       </Badge>
                     ))}
                   </div>
                 )}
                 
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
                   {course.name}
                 </h1>
                 
                 {course.short_description && (
-                  <p className="text-xl md:text-2xl opacity-90 leading-relaxed">
+                  <p className="text-base md:text-lg opacity-90 leading-relaxed">
                     {course.short_description}
                   </p>
                 )}
 
+                {/* Mapped Subjects Display */}
+                {subjects.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center bg-white/10 rounded-lg px-3 py-2">
+                    <span className="text-xs font-semibold opacity-80">Subjects:</span>
+                    {subjects.map((subject: any) => (
+                      <Badge key={subject.id} variant="secondary" className="text-xs bg-white/20 hover:bg-white/30 border-white/30">
+                        {subject.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
                 {/* Stats - Conditional Display */}
-                <div className="flex flex-wrap gap-6 pt-4">
+                <div className="flex flex-wrap gap-4 pt-2">
                   {course.rating > 0 && course.review_count > 1000 && course.rating >= 4.5 && (
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1">
-                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold">{course.rating}</span>
+                      <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm font-semibold">{course.rating}</span>
                       </div>
-                      <span className="text-sm opacity-80">({course.review_count.toLocaleString()} reviews)</span>
+                      <span className="text-xs opacity-80">({course.review_count.toLocaleString()} reviews)</span>
                     </div>
                   )}
                   
                   {course.student_count > 20000 && (
-                    <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
-                      <Users className="h-5 w-5" />
-                      <span className="font-semibold">{course.student_count.toLocaleString()} students</span>
+                    <div className="flex items-center gap-2 bg-white/20 rounded-full px-2 py-0.5">
+                      <Users className="h-4 w-4" />
+                      <span className="text-sm font-semibold">{course.student_count.toLocaleString()} students</span>
                     </div>
                   )}
                   
                   {course.duration_months && (
-                    <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
-                      <Clock className="h-5 w-5" />
-                      <span className="font-semibold">{course.duration_months} months</span>
+                    <div className="flex items-center gap-2 bg-white/20 rounded-full px-2 py-0.5">
+                      <Clock className="h-4 w-4" />
+                      <span className="text-sm font-semibold">{course.duration_months} months</span>
                     </div>
                   )}
                 </div>
 
                 {/* Price and CTA */}
-                <div className="flex flex-wrap items-center gap-4 pt-4">
+                <div className="flex flex-wrap items-center gap-4 pt-2">
                   <div>
                     {course.price_inr > 0 ? (
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-4xl font-bold">₹{course.price_inr.toLocaleString()}</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold">₹{course.price_inr.toLocaleString()}</span>
                         {course.original_price_inr && course.original_price_inr > course.price_inr && (
                           <>
-                            <span className="text-xl line-through opacity-60">
+                            <span className="text-lg line-through opacity-60">
                               ₹{course.original_price_inr.toLocaleString()}
                             </span>
-                            <Badge variant="secondary" className="bg-green-500 text-white">
+                            <Badge variant="secondary" className="bg-green-500 text-white text-xs">
                               {Math.round((1 - course.price_inr / course.original_price_inr) * 100)}% OFF
                             </Badge>
                           </>
                         )}
                       </div>
                     ) : (
-                      <span className="text-4xl font-bold text-green-400">Free</span>
+                      <span className="text-3xl font-bold text-green-400">Free</span>
                     )}
                   </div>
                   
-                  <Button size="lg" variant="secondary" className="text-lg px-8 shadow-xl hover:shadow-2xl">
-                    <ShoppingCart className="h-5 w-5 mr-2" />
+                  <Button size="default" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
                     Enroll Now
                   </Button>
                 </div>
