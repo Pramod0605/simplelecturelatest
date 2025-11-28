@@ -257,6 +257,19 @@ export const AdminSidebar = () => {
               Batches
             </NavLink>
             <NavLink
+              to="/admin/promo-codes"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              Promo Codes
+            </NavLink>
+            <NavLink
               to="/admin/parents"
               className={({ isActive }) =>
                 cn(

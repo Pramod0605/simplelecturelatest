@@ -63,17 +63,21 @@ const PaymentSuccess = () => {
           </div>
 
           <div className="bg-primary/10 p-6 rounded-lg mb-6">
-            <h3 className="font-bold mb-2">🎉 You now have access to:</h3>
-            <ul className="list-disc list-inside space-y-1 text-sm">
+            <h3 className="font-bold mb-3 text-lg">🎉 Enrollment Confirmed!</h3>
+            <p className="mb-3 text-sm">You now have full access to:</p>
+            <ul className="list-disc list-inside space-y-1 text-sm mb-4">
               <li>All course videos and materials</li>
               <li>AI-powered doubt clearing assistant</li>
               <li>Practice quizzes and assignments</li>
               <li>Daily practice tests (DPT)</li>
               <li>Certificate upon completion</li>
+              <li>Live doubt sessions (if applicable)</li>
             </ul>
-            <p className="text-sm text-muted-foreground mt-3">
-              <strong>Access valid for:</strong> 1 Year from today
-            </p>
+            <div className="bg-background/80 p-3 rounded-md">
+              <p className="text-sm font-semibold">
+                ✨ Access valid for: <span className="text-primary">1 Year from today</span>
+              </p>
+            </div>
           </div>
 
           <div className="text-center text-sm text-muted-foreground mb-6">

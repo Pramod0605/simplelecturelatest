@@ -235,9 +235,11 @@ const ProgramDetail = () => {
                     )}
                   </div>
                   
-                  <Button size="sm" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Enroll Now
+                  <Button size="sm" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl" asChild>
+                    <Link to={`/enroll/${course.slug}`}>
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Enroll Now
+                    </Link>
                   </Button>
                 </div>
               </div>

@@ -29,6 +29,9 @@ import Programs from "./pages/Programs";
 import ProgramDetail from "./pages/ProgramDetail";
 import ExploreByGoal from "./pages/ExploreByGoal";
 import SubjectDetail from "./pages/SubjectDetail";
+import Enroll from "./pages/Enroll";
+import PromoCodesList from "./pages/admin/PromoCodesList";
+import PromoCodeForm from "./pages/admin/PromoCodeForm";
 import MobileCart from "./pages/mobile/MobileCart";
 import MobileCheckout from "./pages/mobile/MobileCheckout";
 import MobilePaymentSuccess from "./pages/mobile/MobilePaymentSuccess";
@@ -89,6 +92,7 @@ const App = () => (
         <Route path="/programs/:slug" element={<ProgramDetail />} />
         <Route path="/explore/:goalSlug" element={<ExploreByGoal />} />
         <Route path="/subject/:subjectSlug" element={<SubjectDetail />} />
+        <Route path="/enroll/:courseSlug" element={<Enroll />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
@@ -138,6 +142,9 @@ const App = () => (
                 <Route path="batches/new" element={<BatchForm />} />
                 <Route path="batches/:id" element={<BatchDetails />} />
                 <Route path="batches/:id/edit" element={<BatchForm />} />
+                <Route path="promo-codes" element={<PromoCodesList />} />
+                <Route path="promo-codes/add" element={<PromoCodeForm />} />
+                <Route path="promo-codes/edit/:id" element={<PromoCodeForm />} />
                 <Route path="users" element={<UsersList />} />
                 <Route path="parents" element={<ParentsList />} />
                 <Route path="instructors" element={<InstructorsList />} />
