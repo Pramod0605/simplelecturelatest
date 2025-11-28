@@ -41,13 +41,13 @@ Deno.serve(async (req) => {
         userPrompt = prompt || `Create a compelling, informative description for the subject "${context.subjectName}"${context.categoryName ? ` in the ${context.categoryName} category` : ''}.
 
 The description should:
-- Be MAXIMUM 200 characters (strictly enforce this limit)
-- Be 1-2 sentences only
+- Be between 180-200 characters (aim for 190-200 to maximize content)
+- Be 1-2 well-crafted sentences
 - Highlight the key value or benefit of studying this subject
 - Be engaging and motivational for students
 - Use clear, accessible language
 
-CRITICAL: The description must be 200 characters or less. Do not exceed this limit.
+CRITICAL: The description must be at least 180 characters and MAXIMUM 200 characters. Aim for 190-200 characters to provide substantive content.
 Return ONLY the description text, without any headings or formatting.`;
         break;
 
