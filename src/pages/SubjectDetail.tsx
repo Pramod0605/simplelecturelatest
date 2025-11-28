@@ -21,7 +21,9 @@ import {
   FileText,
   ClipboardCheck,
   PlayCircle,
-  FileDown
+  FileDown,
+  ArrowLeft,
+  GraduationCap
 } from "lucide-react";
 
 const SubjectDetail = () => {
@@ -90,10 +92,37 @@ const SubjectDetail = () => {
       <Header />
       
       <main className="flex-1">
+        {/* Breadcrumb Navigation */}
+        {enrolledCourses.length > 0 && (
+          <div className="bg-muted/30 border-b">
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Available in:
+                </span>
+                {enrolledCourses.map((course: any, index: number) => (
+                  <div key={course.id} className="flex items-center gap-2">
+                    <Button asChild variant="link" className="h-auto p-0 text-sm font-medium">
+                      <Link to={`/programs/${course.slug}`} className="flex items-center gap-1 hover:text-primary">
+                        <ArrowLeft className="h-3 w-3" />
+                        {course.name}
+                      </Link>
+                    </Button>
+                    {index < enrolledCourses.length - 1 && (
+                      <span className="text-muted-foreground">•</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Hero Section - Enhanced */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-8 relative">
+          <div className="container mx-auto px-4 py-6 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 {subject.categories && (
