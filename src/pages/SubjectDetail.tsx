@@ -136,7 +136,7 @@ const SubjectDetail = () => {
                 </h1>
                 
                 {subject.description && (
-                  <p className="text-sm md:text-base opacity-90 leading-relaxed">
+                  <p className="text-base opacity-90 leading-normal max-w-2xl">
                     {subject.description}
                   </p>
                 )}

@@ -37,17 +37,17 @@ Deno.serve(async (req) => {
 
     switch (type) {
       case 'subject_description':
-        systemPrompt = 'You are an expert education content writer specializing in creating engaging subject descriptions for online learning platforms.';
+        systemPrompt = 'You are an expert education content writer specializing in creating concise, engaging subject descriptions for online learning platforms.';
         userPrompt = prompt || `Create a compelling, informative description for the subject "${context.subjectName}"${context.categoryName ? ` in the ${context.categoryName} category` : ''}.
 
 The description should:
-- Be 2-3 paragraphs long (100-150 words)
-- Highlight why students should study this subject
-- Mention key topics and concepts covered
-- Emphasize practical applications and career benefits
+- Be MAXIMUM 200 characters (strictly enforce this limit)
+- Be 1-2 sentences only
+- Highlight the key value or benefit of studying this subject
 - Be engaging and motivational for students
 - Use clear, accessible language
 
+CRITICAL: The description must be 200 characters or less. Do not exceed this limit.
 Return ONLY the description text, without any headings or formatting.`;
         break;
 
