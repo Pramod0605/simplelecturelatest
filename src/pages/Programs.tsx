@@ -198,59 +198,62 @@ const Programs = () => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
                 {displayedCourses.map((course: any) => (
-                  <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                    <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
-                      {course.thumbnail_url && (
-                        <img
-                          src={course.thumbnail_url}
-                          alt={course.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      )}
-                      {course.price_inr === 0 && (
-                        <Badge className="absolute top-3 right-3 bg-green-500">Free</Badge>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2">{course.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {course.short_description || course.detailed_description}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                        {course.duration_months && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {course.duration_months}m
-                          </div>
+                  <Link 
+                    key={course.id} 
+                    to={`/programs/${course.slug}`}
+                    className="block"
+                  >
+                    <Card className="overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer h-full">
+                      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
+                        {course.thumbnail_url && (
+                          <img
+                            src={course.thumbnail_url}
+                            alt={course.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
                         )}
-                        {course.student_count > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {course.student_count}
-                          </div>
+                        {course.price_inr === 0 && (
+                          <Badge className="absolute top-3 right-3 bg-green-500">Free</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          {course.price_inr > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold">₹{course.price_inr}</span>
-                              {course.original_price_inr && course.original_price_inr > course.price_inr && (
-                                <span className="text-xs text-muted-foreground line-through">
-                                  ₹{course.original_price_inr}
-                                </span>
-                              )}
+                      <div className="p-4">
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">{course.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                          {course.short_description || course.detailed_description}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+                          {course.duration_months && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {course.duration_months}m
                             </div>
-                          ) : (
-                            <span className="text-lg font-bold text-green-600">Free</span>
+                          )}
+                          {course.student_count > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {course.student_count}
+                            </div>
                           )}
                         </div>
-                        <Button asChild size="sm">
-                          <Link to={`/programs/${course.slug}`}>View</Link>
-                        </Button>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            {course.price_inr > 0 ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold">₹{course.price_inr}</span>
+                                {course.original_price_inr && course.original_price_inr > course.price_inr && (
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    ₹{course.original_price_inr}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-lg font-bold text-green-600">Free</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </Link>
                 ))}
               </div>
 
