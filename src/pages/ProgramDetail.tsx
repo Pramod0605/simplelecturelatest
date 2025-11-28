@@ -282,12 +282,15 @@ const ProgramDetail = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid md:grid-cols-2 gap-4">
-                      {learningPoints.map((point: string, index: number) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <p className="text-muted-foreground">{point}</p>
-                        </div>
-                      ))}
+                      {learningPoints.map((point: any, index: number) => {
+                        const text = typeof point === 'string' ? point : point.text || point.title || '';
+                        return (
+                          <div key={index} className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <p className="text-muted-foreground">{text}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -412,12 +415,15 @@ const ProgramDetail = () => {
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className="space-y-3">
-                      {courseIncludes.map((item: string, index: number) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <p className="text-sm text-muted-foreground">{item}</p>
-                        </div>
-                      ))}
+                      {courseIncludes.map((item: any, index: number) => {
+                        const text = typeof item === 'string' ? item : item.text || item.title || '';
+                        return (
+                          <div key={index} className="flex items-start gap-3">
+                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <p className="text-sm text-muted-foreground">{text}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
