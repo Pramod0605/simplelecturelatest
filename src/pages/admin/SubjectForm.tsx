@@ -41,7 +41,7 @@ import { SubjectCoursesTab } from "@/components/admin/SubjectCoursesTab";
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase with hyphens only"),
-  description: z.string().max(500).optional(),
+  description: z.string().max(2000).optional(),
   thumbnail_url: z.string().optional(),
   category_id: z.string().min(1, "Category is required"),
   display_order: z.number().int().min(0).default(0),
