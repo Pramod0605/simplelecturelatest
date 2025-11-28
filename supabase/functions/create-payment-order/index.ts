@@ -59,8 +59,9 @@ serve(async (req) => {
         amount_inr: amount,
         discount_amount: discountAmount,
         final_amount: finalAmount,
-        status: 'completed', // In production, this would be 'pending' until Razorpay confirms
+        status: 'success', // Simulating successful payment (production would start as 'pending')
         payment_gateway: 'razorpay',
+        completed_at: new Date().toISOString(),
         metadata: { customerInfo, promoCode: promoCode || null }
       })
       .select()
