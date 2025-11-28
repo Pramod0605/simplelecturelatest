@@ -69,12 +69,25 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background shadow-sm">
       <div className="container mx-auto px-4">
-        {/* First Row: Logo and Right Menu */}
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img src={logo} alt="SimpleLecture" className="h-10 object-contain" />
           </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-4xl">
+            <MegaMenu />
+
+            {/* Search Bar */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="What do you want to learn?"
+                className="pl-10 bg-muted/50"
+              />
+            </div>
+          </div>
 
           {/* Desktop Right Menu */}
           <nav className="hidden lg:flex items-center gap-4">
@@ -113,20 +126,6 @@ export const Header = () => {
           >
             <Menu className="w-5 h-5" />
           </Button>
-        </div>
-
-        {/* Second Row: Menu and Search - Desktop Only */}
-        <div className="hidden lg:flex items-center gap-4 pb-3 border-t pt-3">
-          <MegaMenu />
-
-          {/* Search Bar */}
-          <div className="relative flex-1 max-w-2xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="What do you want to learn?"
-              className="pl-10 bg-muted/50"
-            />
-          </div>
         </div>
 
         {/* Mobile Menu */}
