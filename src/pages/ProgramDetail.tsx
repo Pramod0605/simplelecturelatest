@@ -150,7 +150,7 @@ const ProgramDetail = () => {
         {/* Hero Section with Gradient */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-16 relative">
+          <div className="container mx-auto px-4 py-8 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="space-y-6">
@@ -174,21 +174,19 @@ const ProgramDetail = () => {
                   </p>
                 )}
 
-                {/* Stats */}
+                {/* Stats - Conditional Display */}
                 <div className="flex flex-wrap gap-6 pt-4">
-                  {course.rating > 0 && (
+                  {course.rating > 0 && course.review_count > 1000 && course.rating >= 4.5 && (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1">
                         <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                         <span className="font-semibold">{course.rating}</span>
                       </div>
-                      {course.review_count > 0 && (
-                        <span className="text-sm opacity-80">({course.review_count} reviews)</span>
-                      )}
+                      <span className="text-sm opacity-80">({course.review_count.toLocaleString()} reviews)</span>
                     </div>
                   )}
                   
-                  {course.student_count > 0 && (
+                  {course.student_count > 20000 && (
                     <div className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1">
                       <Users className="h-5 w-5" />
                       <span className="font-semibold">{course.student_count.toLocaleString()} students</span>

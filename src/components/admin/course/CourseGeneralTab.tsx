@@ -205,6 +205,44 @@ export const CourseGeneralTab = ({ formData, onChange }: CourseGeneralTabProps) 
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="student_count">Student Count</Label>
+          <Input
+            id="student_count"
+            type="number"
+            value={formData.student_count || ""}
+            onChange={(e) => onChange("student_count", parseInt(e.target.value) || 0)}
+            placeholder="Total enrolled students"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="review_count">Review Count</Label>
+          <Input
+            id="review_count"
+            type="number"
+            value={formData.review_count || ""}
+            onChange={(e) => onChange("review_count", parseInt(e.target.value) || 0)}
+            placeholder="Total reviews"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="rating">Rating (0-5)</Label>
+          <Input
+            id="rating"
+            type="number"
+            step="0.1"
+            min="0"
+            max="5"
+            value={formData.rating || ""}
+            onChange={(e) => onChange("rating", parseFloat(e.target.value) || 0)}
+            placeholder="Average rating"
+          />
+        </div>
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>What You'll Learn</Label>
