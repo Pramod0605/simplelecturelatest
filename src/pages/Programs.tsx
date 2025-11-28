@@ -71,10 +71,14 @@ const Programs = () => {
         `)
         .eq("is_active", true);
 
-      // Filter by subcategory if selected, otherwise by parent category
-      const filterCategoryId = selectedSubcategory?.id || selectedParentCategory?.id;
-      if (filterCategoryId) {
-        query = query.eq("course_categories.category_id", filterCategoryId);
+      // If subcategory is selected, filter by subcategory only
+      if (selectedSubcategory?.id) {
+        query = query.eq("course_categories.category_id", selectedSubcategory.id);
+      } 
+      // If parent category is selected, filter by parent OR any of its subcategories
+      else if (selectedParentCategory?.id) {
+        const categoryIds = [selectedParentCategory.id, ...subcategories.map(s => s.id)];
+        query = query.in("course_categories.category_id", categoryIds);
       }
 
       const { data, error } = await query;
