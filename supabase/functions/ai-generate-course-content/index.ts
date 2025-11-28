@@ -36,6 +36,21 @@ Deno.serve(async (req) => {
     let userPrompt = '';
 
     switch (type) {
+      case 'subject_description':
+        systemPrompt = 'You are an expert education content writer specializing in creating engaging subject descriptions for online learning platforms.';
+        userPrompt = prompt || `Create a compelling, informative description for the subject "${context.subjectName}"${context.categoryName ? ` in the ${context.categoryName} category` : ''}.
+
+The description should:
+- Be 2-3 paragraphs long (100-150 words)
+- Highlight why students should study this subject
+- Mention key topics and concepts covered
+- Emphasize practical applications and career benefits
+- Be engaging and motivational for students
+- Use clear, accessible language
+
+Return ONLY the description text, without any headings or formatting.`;
+        break;
+
       case 'description':
         systemPrompt = 'You are an expert course description writer. Create engaging, clear, and compelling course descriptions.';
         userPrompt = prompt || `Write a ${context.shortDescription ? 'detailed' : 'short'} description for a course named "${context.courseName}". ${context.shortDescription ? `The short description is: ${context.shortDescription}` : ''} Make it engaging and highlight the key benefits.`;

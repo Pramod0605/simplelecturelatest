@@ -69,6 +69,7 @@ import {
 } from "@/hooks/useSubjectManagement";
 import { B2FileUploadWidget } from "./B2FileUploadWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
+import { TopicVideosManager } from "./TopicVideosManager";
 import { VideoPreview } from "./VideoPreview";
 import { PDFPreview } from "./PDFPreview";
 import { toast } from "@/hooks/use-toast";
@@ -1351,7 +1352,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                       <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-xs">
-                      <p>Enter the video ID from the URL</p>
+                      <p>Single video preview only. For multiple videos with multi-language support, use the section below.</p>
                       <p className="text-muted-foreground mt-1">YouTube: dQw4w9WgXcQ | Vimeo: 123456789</p>
                     </TooltipContent>
                   </Tooltip>
@@ -1372,6 +1373,14 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                 )}
               </div>
             </div>
+
+            {/* Multi-Language Video Manager */}
+            {editingTopic && (
+              <div className="space-y-2 pt-4 border-t">
+                <TopicVideosManager topicId={editingTopic.id} />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="topic-notes">Notes (Markdown)</Label>
               <Textarea
