@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { GoalCoursesTab } from "@/components/admin/GoalCoursesTab";
 import {
   Form,
   FormControl,
@@ -31,6 +35,9 @@ const formSchema = z.object({
   icon: z.string().optional(),
   display_order: z.number().int().min(0).default(0),
   is_active: z.boolean().default(true),
+  link_type: z.enum(['courses', 'internal', 'external']).default('courses'),
+  link_url: z.string().optional(),
+  open_in_new_tab: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -53,6 +60,9 @@ export default function ExploreByGoalForm() {
       icon: "",
       display_order: 0,
       is_active: true,
+      link_type: 'courses',
+      link_url: "",
+      open_in_new_tab: false,
     },
   });
 
@@ -65,6 +75,9 @@ export default function ExploreByGoalForm() {
         icon: goal.icon || "",
         display_order: goal.display_order,
         is_active: goal.is_active,
+        link_type: (goal as any).link_type || 'courses',
+        link_url: (goal as any).link_url || "",
+        open_in_new_tab: (goal as any).open_in_new_tab || false,
       });
     }
   }, [goal, form]);
@@ -84,9 +97,7 @@ export default function ExploreByGoalForm() {
     if (isEdit && id) {
       updateGoal.mutate(
         { id, ...data },
-        {
-          onSuccess: () => navigate("/admin/explore-by-goal"),
-        }
+        { onSuccess: () => navigate("/admin/explore-by-goal") }
       );
     } else {
       createGoal.mutate(data as any, {
@@ -105,142 +116,189 @@ export default function ExploreByGoalForm() {
           <h1 className="text-3xl font-bold">
             {isEdit ? "Edit Goal" : "Add Goal"}
           </h1>
-          <p className="text-muted-foreground">
-            {isEdit ? "Update goal details" : "Create a new learning goal"}
-          </p>
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Goal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Goal Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Crack NEET" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <Tabs defaultValue="basic" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="basic">Basic Info</TabsTrigger>
+          <TabsTrigger value="courses" disabled={!id}>Mapped Courses</TabsTrigger>
+        </TabsList>
 
-              <FormField
-                control={form.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., crack-neet" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      URL-friendly identifier
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <TabsContent value="basic">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Goal Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Goal Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Crack NEET" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="icon"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Icon (Emoji)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 🎯" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Slug *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., crack-neet" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Brief description of this goal..."
-                        {...field}
+                  <FormField
+                    control={form.control}
+                    name="icon"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Icon (Emoji)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 🎯" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Brief description..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="display_order"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display Order</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="link_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Link Type</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="courses" id="courses" />
+                              <Label htmlFor="courses">Map Courses</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="internal" id="internal" />
+                              <Label htmlFor="internal">Internal URL</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="external" id="external" />
+                              <Label htmlFor="external">External URL</Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {(form.watch("link_type") === "internal" || form.watch("link_type") === "external") && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="link_url"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="/programs or https://example.com" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-              <FormField
-                control={form.control}
-                name="display_order"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display Order</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Lower numbers appear first
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {form.watch("link_type") === "external" && (
+                        <FormField
+                          control={form.control}
+                          name="open_in_new_tab"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                              <FormLabel className="!mt-0">Open in new tab</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </>
+                  )}
 
-              <FormField
-                control={form.control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Active Status</FormLabel>
-                      <FormDescription>
-                        Make this goal visible to users
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                  <FormField
+                    control={form.control}
+                    name="is_active"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                          <FormLabel>Active Status</FormLabel>
+                          <FormDescription>Make this goal visible</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-          <div className="flex items-center gap-4">
-            <Button
-              type="submit"
-              disabled={createGoal.isPending || updateGoal.isPending}
-            >
-              {isEdit ? "Update Goal" : "Create Goal"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/admin/explore-by-goal")}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Form>
+              <div className="flex gap-4">
+                <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending}>
+                  {isEdit ? "Update Goal" : "Create Goal"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => navigate("/admin/explore-by-goal")}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </TabsContent>
+
+        <TabsContent value="courses">
+          {id && <GoalCoursesTab goalId={id} />}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

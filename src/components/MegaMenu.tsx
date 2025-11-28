@@ -6,10 +6,24 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { educationCategories, exploreByGoal, popularSubjects } from "@/data/educationCategories";
+import { educationCategories, popularSubjects } from "@/data/educationCategories";
+import { useExploreByGoalPublic } from "@/hooks/useExploreByGoalPublic";
 import { ChevronDown } from "lucide-react";
 
 export const MegaMenu = () => {
+  const { data: goals } = useExploreByGoalPublic();
+
+  const handleGoalClick = (goal: any, e: React.MouseEvent) => {
+    if (goal.link_type === 'external' && goal.link_url) {
+      e.preventDefault();
+      if (goal.open_in_new_tab) {
+        window.open(goal.link_url, '_blank');
+      } else {
+        window.location.href = goal.link_url;
+      }
+    }
+  };
+
   return (
     <NavigationMenu>
       <NavigationMenuList>
@@ -21,17 +35,17 @@ export const MegaMenu = () => {
           <NavigationMenuContent>
             <div className="w-[800px] p-6">
               <div className="grid grid-cols-3 gap-8">
-                {/* Column 1: Explore by Goal */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
                     Explore by Goal
                   </h3>
                   <ul className="space-y-2">
-                    {exploreByGoal.map((goal) => (
-                      <li key={goal.slug}>
+                    {goals?.map((goal: any) => (
+                      <li key={goal.id}>
                         <Link
-                          to={`/courses?goal=${goal.slug}`}
+                          to={goal.link_type === 'courses' ? `/explore/${goal.slug}` : (goal.link_url || `/explore/${goal.slug}`)}
                           className="text-sm text-muted-foreground hover:text-primary transition-colors block py-1"
+                          onClick={(e) => handleGoalClick(goal, e)}
                         >
                           {goal.name}
                         </Link>
@@ -40,7 +54,6 @@ export const MegaMenu = () => {
                   </ul>
                 </div>
 
-                {/* Column 2: Categories & Subcategories */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
                     Browse by Class/Exam
@@ -72,7 +85,6 @@ export const MegaMenu = () => {
                   </ul>
                 </div>
 
-                {/* Column 3: Popular Subjects */}
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
                     Popular Subjects

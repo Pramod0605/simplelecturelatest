@@ -27,6 +27,8 @@ import MyCourses from "./pages/MyCourses";
 import AITutorial from "./pages/AITutorial";
 import Programs from "./pages/Programs";
 import ProgramDetail from "./pages/ProgramDetail";
+import ExploreByGoal from "./pages/ExploreByGoal";
+import SubjectDetail from "./pages/SubjectDetail";
 import MobileCart from "./pages/mobile/MobileCart";
 import MobileCheckout from "./pages/mobile/MobileCheckout";
 import MobilePaymentSuccess from "./pages/mobile/MobilePaymentSuccess";
@@ -83,8 +85,10 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/student-dashboard" element={<StudentDashboard />} />
             <Route path="/my-courses" element={<MyCourses />} />
-            <Route path="/programs" element={<Programs />} />
-            <Route path="/programs/:slug" element={<ProgramDetail />} />
+        <Route path="/programs" element={<Programs />} />
+        <Route path="/programs/:slug" element={<ProgramDetail />} />
+        <Route path="/explore/:goalSlug" element={<ExploreByGoal />} />
+        <Route path="/subject/:subjectSlug" element={<SubjectDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />

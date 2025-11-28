@@ -1222,7 +1222,10 @@ export type Database = {
           icon: string | null
           id: string
           is_active: boolean | null
+          link_type: string | null
+          link_url: string | null
           name: string
+          open_in_new_tab: boolean | null
           slug: string
           updated_at: string | null
         }
@@ -1233,7 +1236,10 @@ export type Database = {
           icon?: string | null
           id?: string
           is_active?: boolean | null
+          link_type?: string | null
+          link_url?: string | null
           name: string
+          open_in_new_tab?: boolean | null
           slug: string
           updated_at?: string | null
         }
@@ -1244,7 +1250,10 @@ export type Database = {
           icon?: string | null
           id?: string
           is_active?: boolean | null
+          link_type?: string | null
+          link_url?: string | null
           name?: string
+          open_in_new_tab?: boolean | null
           slug?: string
           updated_at?: string | null
         }
