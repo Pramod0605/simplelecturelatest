@@ -74,20 +74,26 @@ export const Header = () => {
     : programs.filter(p => p.category === selectedCategory);
 
   useEffect(() => {
-    // Set up auth state listener
+    // Fetch user profile helper
+    const fetchProfile = async (userId: string) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+      setUserProfile(profile);
+    };
+
+    // Set up auth state listener (MUST be synchronous)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setUser(session?.user ?? null);
         
+        // Defer Supabase calls with setTimeout to prevent deadlock
         if (session?.user) {
-          // Fetch user profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .single();
-          
-          setUserProfile(profile);
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+          }, 0);
         } else {
           setUserProfile(null);
         }
@@ -95,17 +101,11 @@ export const Header = () => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', session.user.id)
-          .single();
-        
-        setUserProfile(profile);
+        fetchProfile(session.user.id);
       }
     });
 
@@ -185,6 +185,12 @@ export const Header = () => {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
+                      <Link to="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        My Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/dashboard" className="cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Dashboard
@@ -192,7 +198,7 @@ export const Header = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/my-courses" className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
                         My Courses
                       </Link>
                     </DropdownMenuItem>
@@ -267,6 +273,9 @@ export const Header = () => {
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
+                  <Link to="/profile" className="text-sm font-medium hover:text-primary transition-colors" onClick={() => setIsMenuOpen(false)}>
+                    Profile
+                  </Link>
                   <Link to="/dashboard" className="text-sm font-medium hover:text-primary transition-colors" onClick={() => setIsMenuOpen(false)}>
                     Dashboard
                   </Link>
