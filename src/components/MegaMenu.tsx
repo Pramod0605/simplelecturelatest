@@ -60,7 +60,38 @@ export const MegaMenu = () => {
                     Browse by Class/Exam
                   </h3>
                   <ul className="space-y-3">
-                    {categories?.map((category) => (
+                    {categories?.slice(0, Math.ceil((categories?.length || 0) / 2)).map((category) => (
+                      <li key={category.id}>
+                        <Link
+                          to={`/programs?category=${category.slug}`}
+                          className="text-sm font-medium text-foreground hover:text-primary transition-colors block"
+                        >
+                          <span className="mr-2">{category.icon || "📚"}</span>
+                          {category.name}
+                        </Link>
+                        <ul className="ml-6 mt-1 space-y-1">
+                          {category.subcategories.map((sub) => (
+                            <li key={sub.id}>
+                              <Link
+                                to={`/programs?category=${category.slug}&subcategory=${sub.slug}`}
+                                className="text-xs text-muted-foreground hover:text-primary transition-colors block"
+                              >
+                                {sub.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-4 invisible">
+                    Browse by Class/Exam
+                  </h3>
+                  <ul className="space-y-3">
+                    {categories?.slice(Math.ceil((categories?.length || 0) / 2)).map((category) => (
                       <li key={category.id}>
                         <Link
                           to={`/programs?category=${category.slug}`}
