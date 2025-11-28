@@ -35,7 +35,7 @@ export const MegaMenu = () => {
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="w-[1100px] p-6 max-h-[600px] overflow-y-auto">
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
                     Explore by Goal
