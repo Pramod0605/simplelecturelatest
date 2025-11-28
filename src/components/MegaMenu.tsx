@@ -34,7 +34,7 @@ export const MegaMenu = () => {
             <ChevronDown className="ml-1 h-4 w-4" />
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="w-[700px] p-6">
+            <div className="w-[900px] p-6 max-h-[600px] overflow-y-auto">
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-4">
@@ -60,7 +60,7 @@ export const MegaMenu = () => {
                     Browse by Class/Exam
                   </h3>
                   <ul className="space-y-3">
-                    {categories?.slice(0, 4).map((category) => (
+                    {categories?.map((category) => (
                       <li key={category.id}>
                         <Link
                           to={`/programs?category=${category.slug}`}
@@ -70,7 +70,7 @@ export const MegaMenu = () => {
                           {category.name}
                         </Link>
                         <ul className="ml-6 mt-1 space-y-1">
-                          {category.subcategories.slice(0, 3).map((sub) => (
+                          {category.subcategories.map((sub) => (
                             <li key={sub.id}>
                               <Link
                                 to={`/programs?category=${category.slug}&subcategory=${sub.slug}`}
