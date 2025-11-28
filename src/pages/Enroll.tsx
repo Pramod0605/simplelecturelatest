@@ -23,10 +23,12 @@ import {
   Award
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const Enroll = () => {
   const { courseSlug } = useParams<{ courseSlug: string }>();
   const navigate = useNavigate();
+  const { data: userData } = useCurrentUser();
   const [isProcessing, setIsProcessing] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
@@ -40,6 +42,19 @@ const Enroll = () => {
     state: '',
     city: '',
   });
+
+  // Pre-fill form data from user profile
+  useEffect(() => {
+    if (userData?.profile) {
+      setFormData({
+        fullName: userData.profile.full_name || '',
+        email: userData.email || '',
+        phone: userData.profile.phone_number || '',
+        state: '',
+        city: '',
+      });
+    }
+  }, [userData]);
 
   // Fetch course details
   const { data: course, isLoading } = useQuery({

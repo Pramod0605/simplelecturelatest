@@ -30,6 +30,7 @@ import ProgramDetail from "./pages/ProgramDetail";
 import ExploreByGoal from "./pages/ExploreByGoal";
 import SubjectDetail from "./pages/SubjectDetail";
 import Enroll from "./pages/Enroll";
+import Profile from "./pages/Profile";
 import PromoCodesList from "./pages/admin/PromoCodesList";
 import PromoCodeForm from "./pages/admin/PromoCodeForm";
 import MobileCart from "./pages/mobile/MobileCart";
@@ -85,6 +86,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/student-dashboard" element={<StudentDashboard />} />
             <Route path="/my-courses" element={<MyCourses />} />
