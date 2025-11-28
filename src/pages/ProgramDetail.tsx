@@ -150,7 +150,7 @@ const ProgramDetail = () => {
         {/* Hero Section with Gradient */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-6 relative">
+          <div className="container mx-auto px-4 py-4 relative">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
               <div className="space-y-6">
@@ -294,16 +294,16 @@ const ProgramDetail = () => {
                 </Card>
               )}
 
-              {/* Subjects Covered - Highlighted */}
+              {/* Subjects Covered - Enhanced Clickable Cards */}
               {subjects.length > 0 && (
-                <Card className="border-2 border-primary/20 shadow-lg">
+                <Card className="border-2 border-primary/20 shadow-lg overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
                     <CardTitle className="flex items-center gap-2 text-2xl">
                       <GraduationCap className="h-6 w-6 text-primary" />
                       Subjects You'll Master
                     </CardTitle>
                     <p className="text-muted-foreground mt-2">
-                      Comprehensive coverage of {subjects.length} subjects designed for success
+                      Click on any subject to explore the complete curriculum
                     </p>
                   </CardHeader>
                   <CardContent className="pt-6">
@@ -312,34 +312,38 @@ const ProgramDetail = () => {
                         <Link 
                           key={subject.id}
                           to={`/subject/${subject.slug}`}
-                          className="group"
+                          className="block group"
                         >
-                          <Card className="h-full hover:shadow-lg transition-all hover:scale-[1.02] border-2 hover:border-primary/40">
-                            <CardContent className="p-4">
+                          <Card className="h-full hover:shadow-xl transition-all duration-300 hover:scale-[1.03] border-2 hover:border-primary cursor-pointer bg-gradient-to-br from-background to-muted/20">
+                            <CardContent className="p-5">
                               <div className="flex items-start gap-4">
                                 {subject.thumbnail_url ? (
-                                  <img
-                                    src={subject.thumbnail_url}
-                                    alt={subject.name}
-                                    className="w-16 h-16 rounded-lg object-cover"
-                                  />
+                                  <div className="relative">
+                                    <img
+                                      src={subject.thumbnail_url}
+                                      alt={subject.name}
+                                      className="w-16 h-16 rounded-lg object-cover group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-primary/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </div>
                                 ) : (
-                                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center group-hover:from-primary/40 group-hover:to-primary/20 transition-colors">
                                     <BookOpen className="h-8 w-8 text-primary" />
                                   </div>
                                 )}
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-lg group-hover:text-primary transition-colors mb-1">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-lg group-hover:text-primary transition-colors mb-1 line-clamp-1">
                                     {subject.name}
                                   </h4>
                                   {subject.description && (
-                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                                       {subject.description}
                                     </p>
                                   )}
-                                  <Button variant="link" className="px-0 h-auto mt-2">
-                                    View Details →
-                                  </Button>
+                                  <div className="flex items-center gap-2 text-xs text-primary font-medium">
+                                    <span>Explore Curriculum</span>
+                                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                                  </div>
                                 </div>
                               </div>
                             </CardContent>
