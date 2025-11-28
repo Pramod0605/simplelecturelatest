@@ -150,10 +150,10 @@ const ProgramDetail = () => {
         {/* Hero Section with Gradient */}
         <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="container mx-auto px-4 py-2 relative">
-            <div className="grid lg:grid-cols-2 gap-8 items-center">
+          <div className="container mx-auto px-4 py-1 relative">
+            <div className="grid lg:grid-cols-2 gap-4 items-center">
               {/* Left Content */}
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {categories.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {categories.map((cat: any) => (
@@ -164,19 +164,19 @@ const ProgramDetail = () => {
                   </div>
                 )}
                 
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
                   {course.name}
                 </h1>
                 
                 {course.short_description && (
-                  <p className="text-base md:text-lg opacity-90 leading-relaxed">
+                  <p className="text-sm md:text-base opacity-90 leading-relaxed">
                     {course.short_description}
                   </p>
                 )}
 
                 {/* Mapped Subjects Display */}
                 {subjects.length > 0 && (
-                  <div className="flex flex-wrap gap-2 items-center bg-white/10 rounded-lg px-3 py-2">
+                  <div className="flex flex-wrap gap-2 items-center bg-white/10 rounded-lg px-2 py-1">
                     <span className="text-xs font-semibold opacity-80">Subjects:</span>
                     {subjects.map((subject: any) => (
                       <Badge key={subject.id} variant="secondary" className="text-xs bg-white/20 hover:bg-white/30 border-white/30">
@@ -187,7 +187,7 @@ const ProgramDetail = () => {
                 )}
 
                 {/* Stats - Conditional Display */}
-                <div className="flex flex-wrap gap-4 pt-2">
+                <div className="flex flex-wrap gap-4">
                   {course.rating > 0 && course.review_count > 1000 && course.rating >= 4.5 && (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
@@ -214,7 +214,7 @@ const ProgramDetail = () => {
                 </div>
 
                 {/* Price and CTA */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
+                <div className="flex flex-wrap items-center gap-4">
                   <div>
                     {course.price_inr > 0 ? (
                       <div className="flex items-baseline gap-2">
@@ -235,7 +235,7 @@ const ProgramDetail = () => {
                     )}
                   </div>
                   
-                  <Button size="default" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl">
+                  <Button size="sm" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl">
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     Enroll Now
                   </Button>
@@ -249,7 +249,7 @@ const ProgramDetail = () => {
                   <img
                     src={course.thumbnail_url}
                     alt={course.name}
-                    className="rounded-2xl shadow-2xl w-full h-auto border-4 border-white/20"
+                    className="rounded-2xl shadow-2xl w-full h-auto max-h-48 object-cover border-4 border-white/20"
                   />
                   <div className="absolute -bottom-4 -right-4 bg-white text-foreground rounded-xl p-4 shadow-xl">
                     <Sparkles className="h-8 w-8 text-primary" />
