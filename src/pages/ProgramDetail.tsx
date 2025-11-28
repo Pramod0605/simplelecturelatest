@@ -144,10 +144,12 @@ const ProgramDetail = () => {
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold mb-8">What You'll Learn</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {course.what_you_learn.map((item: string, index: number) => (
+                {course.what_you_learn.map((item: any, index: number) => (
                   <div key={index} className="flex items-start gap-3">
                     <CheckCircle2 className="h-6 w-6 text-primary shrink-0 mt-1" />
-                    <span className="text-muted-foreground">{item}</span>
+                    <span className="text-muted-foreground">
+                      {typeof item === 'string' ? item : item.text || item}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -161,11 +163,11 @@ const ProgramDetail = () => {
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold mb-8">This Course Includes</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {course.course_includes.map((item: string, index: number) => (
+                {course.course_includes.map((item: any, index: number) => (
                   <Card key={index}>
                     <CardContent className="p-6 flex items-center gap-3">
                       <BookOpen className="h-6 w-6 text-primary" />
-                      <span>{item}</span>
+                      <span>{typeof item === 'string' ? item : item.text || JSON.stringify(item)}</span>
                     </CardContent>
                   </Card>
                 ))}
