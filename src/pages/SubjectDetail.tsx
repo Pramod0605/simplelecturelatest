@@ -90,58 +90,77 @@ const SubjectDetail = () => {
       <Header />
       
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-b from-primary/10 to-background py-12">
-          <div className="container mx-auto px-4">
-            <div className="grid md:grid-cols-2 gap-8 items-center">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-4">{subject.name}</h1>
+        {/* Hero Section - Enhanced */}
+        <section className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground overflow-hidden">
+          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+          <div className="container mx-auto px-4 py-16 relative">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                {subject.categories && (
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    {subject.categories.name}
+                  </Badge>
+                )}
+                
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+                  {subject.name}
+                </h1>
+                
                 {subject.description && (
-                  <p className="text-xl text-muted-foreground mb-6">
+                  <p className="text-xl md:text-2xl opacity-90 leading-relaxed">
                     {subject.description}
                   </p>
                 )}
                 
-                <div className="flex gap-4 mb-6">
-                  <Badge variant="secondary" className="text-base py-2 px-4">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    {chaptersData?.length || 0} Chapters
-                  </Badge>
-                  <Badge variant="secondary" className="text-base py-2 px-4">
-                    <FileText className="h-4 w-4 mr-2" />
-                    {chaptersData?.reduce((acc: number, ch: any) => acc + (ch.subject_topics?.length || 0), 0) || 0} Topics
-                  </Badge>
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2">
+                    <BookOpen className="h-5 w-5" />
+                    <span className="font-semibold">{chaptersData?.length || 0} Chapters</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-2">
+                    <FileText className="h-5 w-5" />
+                    <span className="font-semibold">
+                      {chaptersData?.reduce((acc: number, ch: any) => acc + (ch.subject_topics?.length || 0), 0) || 0} Topics
+                    </span>
+                  </div>
                 </div>
 
                 {isEnrolled ? (
-                  <div className="space-y-2">
-                    <Badge variant="default" className="text-base py-2 px-4">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Enrolled
-                    </Badge>
-                    <p className="text-sm text-muted-foreground">
-                      Via: {enrolledCourses.map((c: any) => c.name).join(", ")}
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-center gap-2 bg-green-500/20 text-white border-2 border-white/30 rounded-full px-4 py-2 w-fit">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="font-semibold">You're Enrolled</span>
+                    </div>
+                    <p className="text-sm opacity-80">
+                      Available via: {enrolledCourses.map((c: any) => c.name).join(", ")}
                     </p>
+                    <Button size="lg" variant="secondary" asChild className="mt-4">
+                      <Link to="/dashboard">Start Learning</Link>
+                    </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Lock className="h-5 w-5" />
-                      <span>Enroll in a course to unlock all content</span>
+                  <div className="space-y-4 pt-4">
+                    <div className="flex items-center gap-3 bg-white/20 rounded-lg px-4 py-3">
+                      <Lock className="h-6 w-6" />
+                      <span className="text-lg">Unlock all content by enrolling in a course</span>
                     </div>
-                    <Button size="lg" asChild>
-                      <Link to="/programs">Browse Courses</Link>
+                    <Button size="lg" variant="secondary" asChild className="shadow-xl">
+                      <Link to="/programs">
+                        <Target className="h-5 w-5 mr-2" />
+                        Explore Courses
+                      </Link>
                     </Button>
                   </div>
                 )}
               </div>
 
               {subject.thumbnail_url && (
-                <div className="rounded-lg overflow-hidden shadow-xl">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/50 to-transparent rounded-2xl" />
                   <img
                     src={subject.thumbnail_url}
                     alt={subject.name}
-                    className="w-full h-auto"
+                    className="rounded-2xl shadow-2xl w-full h-auto border-4 border-white/20"
                   />
                 </div>
               )}
@@ -149,19 +168,28 @@ const SubjectDetail = () => {
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-12 bg-muted/30">
+        {/* Features Section - Enhanced */}
+        <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-8 text-center">What You'll Get</h2>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Complete Learning Experience</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Everything you need to master {subject.name} in one comprehensive package
+              </p>
+            </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((feature, index) => (
-                <Card key={index}>
+                <Card key={index} className="relative border-2 hover:shadow-xl transition-all hover:scale-[1.02] group">
                   <CardContent className="p-6">
-                    <feature.icon className="h-10 w-10 text-primary mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                    <div className="p-3 bg-primary/10 rounded-xl w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+                      <feature.icon className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                    <p className="text-muted-foreground">{feature.description}</p>
                     {!isEnrolled && (
-                      <Lock className="h-4 w-4 text-muted-foreground mt-2" />
+                      <div className="absolute top-4 right-4 p-2 bg-muted rounded-full">
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -170,10 +198,15 @@ const SubjectDetail = () => {
           </div>
         </section>
 
-        {/* Curriculum Section */}
-        <section className="py-12">
+        {/* Curriculum Section - Enhanced */}
+        <section className="py-16 bg-background">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-8">Curriculum</h2>
+            <div className="mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Complete Course Curriculum</h2>
+              <p className="text-lg text-muted-foreground">
+                Structured learning path with {chaptersData?.length || 0} comprehensive chapters covering all essential topics
+              </p>
+            </div>
             
             {!chaptersData || chaptersData.length === 0 ? (
               <Card>
@@ -269,17 +302,30 @@ const SubjectDetail = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* CTA Section - Enhanced */}
         {!isEnrolled && (
-          <section className="py-12 bg-primary text-primary-foreground">
+          <section className="py-16 bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground">
             <div className="container mx-auto px-4 text-center">
-              <h2 className="text-3xl font-bold mb-4">Ready to Start Learning?</h2>
-              <p className="text-xl mb-8 opacity-90">
-                Enroll in a course to unlock all {subject.name} content and features
-              </p>
-              <Button size="lg" variant="secondary" asChild>
-                <Link to="/programs">View Courses</Link>
-              </Button>
+              <div className="max-w-3xl mx-auto space-y-6">
+                <h2 className="text-3xl md:text-4xl font-bold">
+                  Ready to Master {subject.name}?
+                </h2>
+                <p className="text-xl md:text-2xl opacity-90">
+                  Join thousands of students and unlock complete access to all chapters, topics, practice tests, and AI-powered learning tools
+                </p>
+                <div className="flex flex-wrap gap-4 justify-center pt-4">
+                  <Button size="lg" variant="secondary" asChild className="shadow-xl text-lg px-8">
+                    <Link to="/programs">
+                      <Target className="h-5 w-5 mr-2" />
+                      Explore Courses
+                    </Link>
+                  </Button>
+                  <Button size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 text-lg px-8">
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    Talk to Advisor
+                  </Button>
+                </div>
+              </div>
             </div>
           </section>
         )}
