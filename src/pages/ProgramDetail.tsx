@@ -194,6 +194,36 @@ const ProgramDetail = () => {
           </section>
         )}
 
+        {/* Subjects Section */}
+        {course.course_subjects && course.course_subjects.length > 0 && (
+          <section className="py-16 bg-background">
+            <div className="container mx-auto px-4">
+              <h2 className="text-3xl font-bold mb-8">Subjects Covered</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {course.course_subjects.map((cs: any) => (
+                  <Link key={cs.id} to={`/subject/${cs.popular_subjects.slug}`}>
+                    <Card className="h-full hover:shadow-lg transition-shadow">
+                      <CardContent className="p-6">
+                        {cs.popular_subjects.thumbnail_url && (
+                          <img
+                            src={cs.popular_subjects.thumbnail_url}
+                            alt={cs.popular_subjects.name}
+                            className="w-full h-40 object-cover rounded-lg mb-4"
+                          />
+                        )}
+                        <h3 className="text-xl font-semibold mb-2">{cs.popular_subjects.name}</h3>
+                        <Button variant="outline" className="w-full mt-4">
+                          View Details
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* FAQs */}
         {course.course_faqs && course.course_faqs.length > 0 && (
           <section className="py-16 bg-muted/30">
