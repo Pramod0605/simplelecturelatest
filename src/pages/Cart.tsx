@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowLeft, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { SEOHead } from '@/components/SEO';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { formatINR } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +18,28 @@ const Cart = () => {
   const [discountCode, setDiscountCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [discountApplied, setDiscountApplied] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const applyDiscount = async () => {
     try {
@@ -54,11 +76,45 @@ const Cart = () => {
 
   const finalAmount = total - discount;
 
-  if (loading) {
+  if (checkingAuth || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading cart...</p>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center">
+          <p>Loading...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // If user is not logged in, show login prompt
+  if (!user) {
+    return (
+      <>
+        <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
+        <Header />
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="container mx-auto px-4 py-16">
+            <Card className="max-w-md mx-auto p-8 text-center">
+              <LogIn className="h-16 w-16 mx-auto mb-4 text-primary" />
+              <h2 className="text-2xl font-bold mb-2">Login Required</h2>
+              <p className="text-muted-foreground mb-6">
+                Please login or sign up to view your cart and make purchases
+              </p>
+              <div className="flex gap-3">
+                <Link to="/auth?tab=login" className="flex-1">
+                  <Button size="lg" className="w-full">Login</Button>
+                </Link>
+                <Link to="/auth?tab=signup" className="flex-1">
+                  <Button size="lg" variant="outline" className="w-full">Sign Up</Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
@@ -66,18 +122,20 @@ const Cart = () => {
     return (
       <>
         <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
+        <Header />
         <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-16">
             <Card className="max-w-md mx-auto p-8 text-center">
               <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
               <h2 className="text-2xl font-bold mb-2">Your cart is empty</h2>
-              <p className="text-muted-foreground mb-6">Start exploring our courses</p>
-              <Link to="/courses">
-                <Button size="lg">Explore Courses</Button>
+              <p className="text-muted-foreground mb-6">Start exploring our programs</p>
+              <Link to="/programs">
+                <Button size="lg">Explore Programs</Button>
               </Link>
             </Card>
           </div>
         </div>
+        <Footer />
       </>
     );
   }
@@ -85,6 +143,7 @@ const Cart = () => {
   return (
     <>
       <SEOHead title="Shopping Cart | SimpleLecture" description="Review your selected programs" />
+      <Header />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <Link to="/courses">
@@ -177,6 +236,7 @@ const Cart = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 };
