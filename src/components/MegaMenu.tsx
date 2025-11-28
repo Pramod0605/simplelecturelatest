@@ -6,12 +6,13 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { educationCategories } from "@/data/educationCategories";
 import { useExploreByGoalPublic } from "@/hooks/useExploreByGoalPublic";
+import { useCategoriesHierarchy } from "@/hooks/useCategoriesHierarchy";
 import { ChevronDown } from "lucide-react";
 
 export const MegaMenu = () => {
   const { data: goals } = useExploreByGoalPublic();
+  const { data: categories } = useCategoriesHierarchy();
 
   const handleGoalClick = (goal: any, e: React.MouseEvent) => {
     if (goal.link_type === 'external' && goal.link_url) {
@@ -59,23 +60,23 @@ export const MegaMenu = () => {
                     Browse by Class/Exam
                   </h3>
                   <ul className="space-y-3">
-                    {educationCategories.slice(0, 4).map((category) => (
+                    {categories?.slice(0, 4).map((category) => (
                       <li key={category.id}>
                         <Link
                           to={`/programs?category=${category.slug}`}
                           className="text-sm font-medium text-foreground hover:text-primary transition-colors block"
                         >
-                          <span className="mr-2">{category.icon}</span>
+                          <span className="mr-2">{category.icon || "📚"}</span>
                           {category.name}
                         </Link>
                         <ul className="ml-6 mt-1 space-y-1">
                           {category.subcategories.slice(0, 3).map((sub) => (
-                            <li key={sub}>
+                            <li key={sub.id}>
                               <Link
-                                to={`/programs?category=${category.slug}&subcategory=${sub.toLowerCase().replace(/\s+/g, '-')}`}
+                                to={`/programs?category=${category.slug}&subcategory=${sub.slug}`}
                                 className="text-xs text-muted-foreground hover:text-primary transition-colors block"
                               >
-                                {sub}
+                                {sub.name}
                               </Link>
                             </li>
                           ))}
