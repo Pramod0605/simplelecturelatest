@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useGoalCourses, useAddCourseToGoal, useRemoveCourseFromGoal } from "@/hooks/useGoalCourses";
-import { useAdminCourses } from "@/hooks/useAdminCourses";
+import { useCoursesByCategory } from "@/hooks/useCoursesByCategory";
 import { CategorySelector } from "@/components/admin/CategorySelector";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -23,19 +23,17 @@ export const GoalCoursesTab = ({ goalId }: GoalCoursesTabProps) => {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
 
   const { data: mappedCourses, isLoading: loadingMapped } = useGoalCourses(goalId);
-  const { data: allCourses, isLoading: loadingCourses } = useAdminCourses();
+  const { data: allCourses, isLoading: loadingCourses } = useCoursesByCategory(
+    selectedCategory === "all" ? undefined : selectedCategory
+  );
   const addMutation = useAddCourseToGoal();
   const removeMutation = useRemoveCourseFromGoal();
 
   const mappedCourseIds = mappedCourses?.map((mc: any) => mc.course_id) || [];
   
-  const availableCourses = allCourses?.filter((course) => {
-    if (mappedCourseIds.includes(course.id)) return false;
-    if (selectedCategory === "all") return true;
-    
-    // Filter by category (would need course_categories join)
-    return true; // Simplified for now
-  });
+  const availableCourses = allCourses?.filter((course) => 
+    !mappedCourseIds.includes(course.id)
+  );
 
   const handleAddCourse = () => {
     if (!selectedCourse) return;
