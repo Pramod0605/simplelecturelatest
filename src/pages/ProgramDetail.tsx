@@ -23,7 +23,13 @@ const ProgramDetail = () => {
             categories(*)
           ),
           course_subjects(
-            popular_subjects(*)
+            id,
+            popular_subjects(
+              id,
+              name,
+              slug,
+              thumbnail_url
+            )
           ),
           course_faqs(*)
         `)
