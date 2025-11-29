@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.ai-generate-topic-content]
 verify_jwt = true
+
+[functions.ai-sales-assistant]
+verify_jwt = false
