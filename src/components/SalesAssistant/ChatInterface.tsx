@@ -32,6 +32,7 @@ export const ChatInterface = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>("");
   const sentTranscriptRef = useRef<string>("");
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     isListening,
@@ -81,26 +82,43 @@ export const ChatInterface = ({
     }
   }, [messages, autoSpeak, speak]);
 
-  // Handle voice input and auto-send when finished (prevent duplicates)
+  // Handle voice input with silence detection (prevent duplicates)
   useEffect(() => {
-    if (!transcript) return;
+    if (!transcript || !isListening) {
+      // Clear timer if not listening or no transcript
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      return;
+    }
 
-    console.log("Voice transcript received:", transcript, "listening:", isListening, "loading:", isLoading);
+    console.log("Voice transcript received:", transcript);
     setInput(transcript);
 
-    // When recognition stops and we have a transcript, auto-send it (if not already sent)
-    if (
-      !isListening && 
-      !isLoading && 
-      transcript.trim() && 
-      transcript !== sentTranscriptRef.current
-    ) {
-      sentTranscriptRef.current = transcript;
-      onSendMessage(transcript.trim());
-      setInput("");
-      clearTranscript();
+    // Clear existing silence timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
     }
-  }, [transcript, isListening, isLoading, onSendMessage, clearTranscript]);
+
+    // Set new timer - auto-send after 2 seconds of silence
+    silenceTimerRef.current = setTimeout(() => {
+      if (transcript.trim() && transcript !== sentTranscriptRef.current) {
+        console.log("Silence detected, auto-sending:", transcript);
+        sentTranscriptRef.current = transcript;
+        stopListening();
+        onSendMessage(transcript.trim());
+        setInput("");
+        clearTranscript();
+      }
+    }, 2000);
+
+    return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, [transcript, isListening, onSendMessage, clearTranscript, stopListening]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
