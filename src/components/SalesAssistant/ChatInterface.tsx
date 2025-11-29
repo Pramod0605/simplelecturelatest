@@ -57,13 +57,19 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
     }
   }, [messages, autoSpeak, speak]);
 
-  // Handle voice input
+  // Handle voice input and auto-send when finished
   useEffect(() => {
-    if (transcript && !isListening) {
-      console.log("Voice transcript received:", transcript);
-      setInput(transcript);
+    if (!transcript) return;
+
+    console.log("Voice transcript received:", transcript, "listening:", isListening, "loading:", isLoading);
+    setInput(transcript);
+
+    // When recognition stops and we have a transcript, auto-send it
+    if (!isListening && !isLoading && transcript.trim()) {
+      onSendMessage(transcript.trim());
+      setInput("");
     }
-  }, [transcript, isListening]);
+  }, [transcript, isListening, isLoading, onSendMessage]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
