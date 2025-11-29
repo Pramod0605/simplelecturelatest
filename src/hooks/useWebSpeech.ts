@@ -110,9 +110,20 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    // Clean text: remove markdown, asterisks, quotes, and special characters
+    let cleanText = text
+      .replace(/\*\*/g, '') // Remove bold markdown
+      .replace(/\*/g, '') // Remove asterisks
+      .replace(/["""''`]/g, '') // Remove fancy quotes and backticks
+      .replace(/[_~]/g, '') // Remove other markdown
+      .replace(/#{1,6}\s/g, '') // Remove headers
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to text
+      .replace(/\n+/g, '. ') // Convert newlines to pauses
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = language;
-    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.rate = 0.8; // Slower for better clarity
     utterance.pitch = 1.0;
 
     // Try to find an Indian English voice
