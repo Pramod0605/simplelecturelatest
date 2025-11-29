@@ -74,20 +74,25 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     console.log("Sending message to AI:", { leadId, messageCount: messages.length + 1 });
 
     try {
-      const response = await fetch(
-        `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/ai-sales-assistant`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94d2hxdnNvZWxxcXNibG1xa3h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MTU4NTgsImV4cCI6MjA3NTA5MTg1OH0.nZbWSb9AQK5uGAQmc7zXAceTHm9GRQJvqkg4-LNo_DM`,
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage],
-            leadId,
-          }),
-        }
-      );
+      const AI_SALES_ASSISTANT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-sales-assistant`;
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (publishableKey) {
+        headers["Authorization"] = `Bearer ${publishableKey}`;
+      }
+
+      const response = await fetch(AI_SALES_ASSISTANT_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          leadId,
+        }),
+      });
 
       console.log("Edge function response status:", response.status);
 
