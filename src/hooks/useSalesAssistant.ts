@@ -7,10 +7,14 @@ interface Message {
   content: string;
 }
 
+export type ConversationState = "idle" | "listening" | "processing" | "speaking";
+
 interface UseSalesAssistantReturn {
   messages: Message[];
   isLoading: boolean;
   leadId: string | null;
+  conversationState: ConversationState;
+  setConversationState: (state: ConversationState) => void;
   sendMessage: (content: string) => Promise<void>;
   createLead: (name: string, email: string, mobile: string) => Promise<boolean>;
 }
@@ -19,6 +23,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [conversationState, setConversationState] = useState<ConversationState>("idle");
   const { toast } = useToast();
 
   const createLead = useCallback(async (name: string, email: string, mobile: string): Promise<boolean> => {
@@ -169,6 +174,8 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     messages,
     isLoading,
     leadId,
+    conversationState,
+    setConversationState,
     sendMessage,
     createLead,
   };

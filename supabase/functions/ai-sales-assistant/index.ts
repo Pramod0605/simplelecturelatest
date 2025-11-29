@@ -137,6 +137,13 @@ ${ragContext}`;
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
+    // Count tokens for analytics (rough estimate)
+    const totalTokens = messages.reduce((sum: number, msg: { content: string }) => {
+      return sum + (msg.content.length / 4); // Rough estimate: 1 token ≈ 4 characters
+    }, 0);
+
+    console.log(`Conversation stats - Lead: ${leadId}, Messages: ${messages.length}, Est. Tokens: ${Math.round(totalTokens)}`);
+
     // Update conversation history in database
     if (leadId) {
       await supabase
