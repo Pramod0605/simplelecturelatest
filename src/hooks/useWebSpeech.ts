@@ -34,14 +34,14 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     recog.interimResults = true;
 
     recog.onresult = (event: any) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
+      let combinedTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        combinedTranscript += event.results[i][0].transcript + ' ';
       }
-      if (finalTranscript) {
-        setTranscript(finalTranscript);
+      combinedTranscript = combinedTranscript.trim();
+      if (combinedTranscript) {
+        console.log("Speech recognition transcript:", combinedTranscript);
+        setTranscript(combinedTranscript);
       }
     };
 
