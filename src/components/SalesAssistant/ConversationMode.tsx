@@ -15,6 +15,8 @@ interface ConversationModeProps {
   messages: Message[];
   conversationState: ConversationState;
   autoSpeak: boolean;
+  transcript: string;
+  isListening: boolean;
   onToggleAutoSpeak: () => void;
   onInterrupt: () => void;
   onClose: () => void;
@@ -24,6 +26,8 @@ export const ConversationMode = ({
   messages,
   conversationState,
   autoSpeak,
+  transcript,
+  isListening,
   onToggleAutoSpeak,
   onInterrupt,
   onClose,
@@ -108,6 +112,15 @@ export const ConversationMode = ({
                   </div>
                 </div>
               ))}
+              {/* Real-time transcript preview */}
+              {isListening && transcript && (
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-lg p-3 bg-primary/50 text-primary-foreground border-2 border-primary">
+                    <p className="text-xs font-semibold mb-1 opacity-70">You (speaking...)</p>
+                    <p className="text-sm whitespace-pre-wrap italic">{transcript}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>

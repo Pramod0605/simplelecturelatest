@@ -23,7 +23,17 @@ export const SalesAssistantWidget = () => {
     sendMessage, 
     createLead 
   } = useSalesAssistant();
-  const { stopSpeaking, startListening, isSupported } = useWebSpeech();
+  const { 
+    isListening,
+    isSpeaking,
+    transcript,
+    startListening,
+    stopListening,
+    speak,
+    stopSpeaking,
+    clearTranscript,
+    isSupported 
+  } = useWebSpeech();
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
     const success = await createLead(name, email, mobile);
@@ -109,6 +119,15 @@ export const SalesAssistantWidget = () => {
                     conversationState={conversationState}
                     onSendMessage={sendMessage}
                     onStateChange={setConversationState}
+                    isListening={isListening}
+                    isSpeaking={isSpeaking}
+                    transcript={transcript}
+                    startListening={startListening}
+                    stopListening={stopListening}
+                    speak={speak}
+                    stopSpeaking={stopSpeaking}
+                    clearTranscript={clearTranscript}
+                    isSupported={isSupported}
                   />
                 </div>
                 {isSupported && (
@@ -135,6 +154,8 @@ export const SalesAssistantWidget = () => {
           messages={messages}
           conversationState={conversationState}
           autoSpeak={autoSpeak}
+          transcript={transcript}
+          isListening={isListening}
           onToggleAutoSpeak={() => setAutoSpeak(!autoSpeak)}
           onInterrupt={handleInterrupt}
           onClose={handleCloseVoiceMode}

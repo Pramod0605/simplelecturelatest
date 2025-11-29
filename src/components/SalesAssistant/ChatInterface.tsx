@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useWebSpeech } from "@/hooks/useWebSpeech";
 import { ConversationState } from "@/hooks/useSalesAssistant";
 
 interface Message {
@@ -17,6 +16,16 @@ interface ChatInterfaceProps {
   conversationState: ConversationState;
   onSendMessage: (content: string) => void;
   onStateChange: (state: ConversationState) => void;
+  // Speech props from parent
+  isListening: boolean;
+  isSpeaking: boolean;
+  transcript: string;
+  startListening: (language?: string) => void;
+  stopListening: () => void;
+  speak: (text: string, language?: string) => void;
+  stopSpeaking: () => void;
+  clearTranscript: () => void;
+  isSupported: boolean;
 }
 
 export const ChatInterface = ({ 
@@ -24,7 +33,16 @@ export const ChatInterface = ({
   isLoading, 
   conversationState,
   onSendMessage,
-  onStateChange 
+  onStateChange,
+  isListening,
+  isSpeaking,
+  transcript,
+  startListening,
+  stopListening,
+  speak,
+  stopSpeaking,
+  clearTranscript,
+  isSupported,
 }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -33,18 +51,6 @@ export const ChatInterface = ({
   const lastMessageRef = useRef<string>("");
   const sentTranscriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const {
-    isListening,
-    isSpeaking,
-    transcript,
-    startListening,
-    stopListening,
-    speak,
-    stopSpeaking,
-    clearTranscript,
-    isSupported,
-  } = useWebSpeech();
 
   console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking);
 
