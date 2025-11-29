@@ -23,7 +23,7 @@ export const SalesAssistantWidget = () => {
     sendMessage, 
     createLead 
   } = useSalesAssistant();
-  const { stopSpeaking, isSupported } = useWebSpeech();
+  const { stopSpeaking, startListening, isSupported } = useWebSpeech();
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
     const success = await createLead(name, email, mobile);
@@ -31,7 +31,19 @@ export const SalesAssistantWidget = () => {
   };
 
   const handleInterrupt = () => {
-    stopSpeaking();
+    console.log("Interrupt triggered, current state:", conversationState);
+    
+    // If AI is speaking, stop it
+    if (conversationState === "speaking") {
+      stopSpeaking();
+    }
+    
+    // Start listening if not already processing or listening
+    if (conversationState !== "listening" && conversationState !== "processing") {
+      console.log("Starting listening after interrupt");
+      setConversationState("listening");
+      startListening('en-IN');
+    }
   };
 
   const handleCloseVoiceMode = () => {
