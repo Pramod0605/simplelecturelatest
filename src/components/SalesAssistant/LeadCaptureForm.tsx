@@ -25,12 +25,15 @@ export const LeadCaptureForm = ({ onSubmit }: LeadCaptureFormProps) => {
 
     try {
       const validated = leadSchema.parse(formData);
+      console.log("Lead form validated, creating lead:", validated);
       setIsSubmitting(true);
       const success = await onSubmit(validated.name, validated.email, validated.mobile);
+      console.log("Lead creation result:", success);
       if (!success) {
         setIsSubmitting(false);
       }
     } catch (error) {
+      console.error("Lead form validation error:", error);
       if (error instanceof z.ZodError) {
         const fieldErrors: { [key: string]: string } = {};
         error.errors.forEach(err => {

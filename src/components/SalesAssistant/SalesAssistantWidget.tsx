@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, X, TestTube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeadCaptureForm } from "./LeadCaptureForm";
 import { ChatInterface } from "./ChatInterface";
+import { VoiceTestPanel } from "./VoiceTestPanel";
 import { useSalesAssistant } from "@/hooks/useSalesAssistant";
 
 export const SalesAssistantWidget = () => {
@@ -48,7 +50,21 @@ export const SalesAssistantWidget = () => {
           {/* Content */}
           <div className="flex-1 overflow-hidden">
             {!leadId ? (
-              <LeadCaptureForm onSubmit={handleLeadSubmit} />
+              <Tabs defaultValue="form" className="h-full">
+                <TabsList className="w-full">
+                  <TabsTrigger value="form" className="flex-1">Get Started</TabsTrigger>
+                  <TabsTrigger value="test" className="flex-1">
+                    <TestTube className="h-3 w-3 mr-1" />
+                    Test Voice
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="form" className="h-full">
+                  <LeadCaptureForm onSubmit={handleLeadSubmit} />
+                </TabsContent>
+                <TabsContent value="test" className="h-full overflow-auto">
+                  <VoiceTestPanel />
+                </TabsContent>
+              </Tabs>
             ) : (
               <ChatInterface
                 messages={messages}

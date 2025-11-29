@@ -57,11 +57,16 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
   }, [toast]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!leadId || !content.trim()) return;
+    if (!leadId || !content.trim()) {
+      console.log("Cannot send message - leadId:", leadId, "content:", content);
+      return;
+    }
 
     const userMessage: Message = { role: "user", content };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+
+    console.log("Sending message to AI:", { leadId, messageCount: messages.length + 1 });
 
     try {
       const response = await fetch(
@@ -79,7 +84,17 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
         }
       );
 
-      if (!response.ok || !response.body) throw new Error("Failed to get response");
+      console.log("Edge function response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Edge function error:", response.status, errorText);
+        throw new Error(`AI service error: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error("No response body from AI service");
+      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -88,6 +103,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
 
       // Add placeholder for assistant message
       setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+      console.log("Started streaming response");
 
       while (true) {
         const { done, value } = await reader.read();
@@ -130,13 +146,20 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
 
     } catch (error) {
       console.error("Error sending message:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       toast({
         title: "Error",
-        description: "Could not send message. Please try again.",
+        description: `Could not send message: ${errorMessage}`,
         variant: "destructive",
       });
-      // Remove the placeholder assistant message
-      setMessages(prev => prev.slice(0, -1));
+      // Remove the placeholder assistant message if it exists
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg?.role === "assistant" && !lastMsg.content) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
     }

@@ -64,18 +64,29 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
   const startListening = useCallback((language = 'en-IN') => {
     if (!recognition) {
+      console.error("Speech recognition not available");
       toast({
         title: "Not Supported",
-        description: "Voice input is not supported in your browser.",
+        description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
         variant: "destructive",
       });
       return;
     }
 
-    setTranscript("");
-    recognition.lang = language;
-    recognition.start();
-    setIsListening(true);
+    try {
+      setTranscript("");
+      recognition.lang = language;
+      recognition.start();
+      setIsListening(true);
+      console.log("Started listening with language:", language);
+    } catch (error) {
+      console.error("Error starting speech recognition:", error);
+      toast({
+        title: "Microphone Error",
+        description: "Please allow microphone access and try again.",
+        variant: "destructive",
+      });
+    }
   }, [recognition, toast]);
 
   const stopListening = useCallback(() => {

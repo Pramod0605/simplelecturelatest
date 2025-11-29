@@ -19,6 +19,7 @@ interface ChatInterfaceProps {
 export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [showVoiceHelp, setShowVoiceHelp] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>("");
 
@@ -32,6 +33,8 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
     stopSpeaking,
     isSupported,
   } = useWebSpeech();
+
+  console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -57,12 +60,14 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
   // Handle voice input
   useEffect(() => {
     if (transcript && !isListening) {
+      console.log("Voice transcript received:", transcript);
       setInput(transcript);
     }
   }, [transcript, isListening]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
+      console.log("Sending message:", input.trim());
       onSendMessage(input.trim());
       setInput("");
     }
@@ -77,14 +82,43 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
 
   const toggleVoiceInput = () => {
     if (isListening) {
+      console.log("Stopping voice input");
       stopListening();
     } else {
-      startListening();
+      console.log("Starting voice input");
+      startListening('en-IN');
     }
   };
 
   return (
     <div className="flex flex-col h-full">
+      {/* Voice Help Banner */}
+      {showVoiceHelp && (
+        <div className="bg-muted border-b p-2 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              {isSupported ? (
+                <span className="text-foreground">
+                  🎤 Voice enabled! Use Chrome/Edge for best results. Click mic to speak.
+                </span>
+              ) : (
+                <span className="text-destructive">
+                  ⚠️ Voice not supported. Use Chrome/Edge browser for voice features.
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowVoiceHelp(false)}
+              className="h-4 text-xs"
+            >
+              ✕
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
         <div className="space-y-4">
