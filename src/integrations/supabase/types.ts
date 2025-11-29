@@ -2261,6 +2261,39 @@ export type Database = {
           },
         ]
       }
+      sales_leads: {
+        Row: {
+          conversation_history: Json | null
+          created_at: string | null
+          email: string
+          id: string
+          last_interaction_at: string | null
+          lead_status: string | null
+          mobile: string
+          name: string
+        }
+        Insert: {
+          conversation_history?: Json | null
+          created_at?: string | null
+          email: string
+          id?: string
+          last_interaction_at?: string | null
+          lead_status?: string | null
+          mobile: string
+          name: string
+        }
+        Update: {
+          conversation_history?: Json | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          last_interaction_at?: string | null
+          lead_status?: string | null
+          mobile?: string
+          name?: string
+        }
+        Relationships: []
+      }
       scheduled_classes: {
         Row: {
           chapter_id: string | null
