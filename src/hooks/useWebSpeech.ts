@@ -9,6 +9,7 @@ interface UseWebSpeechReturn {
   stopListening: () => void;
   speak: (text: string, language?: string) => void;
   stopSpeaking: () => void;
+  clearTranscript: () => void;
   isSupported: boolean;
 }
 
@@ -147,6 +148,10 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [speechSynthesisSupported]);
 
+  const clearTranscript = useCallback(() => {
+    setTranscript("");
+  }, []);
+
   return {
     isListening,
     isSpeaking,
@@ -155,6 +160,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     stopListening,
     speak,
     stopSpeaking,
+    clearTranscript,
     isSupported,
   };
 };

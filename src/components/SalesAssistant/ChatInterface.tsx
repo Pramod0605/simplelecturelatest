@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWebSpeech } from "@/hooks/useWebSpeech";
+import { ConversationState } from "@/hooks/useSalesAssistant";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,15 +14,24 @@ interface Message {
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
+  conversationState: ConversationState;
   onSendMessage: (content: string) => void;
+  onStateChange: (state: ConversationState) => void;
 }
 
-export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterfaceProps) => {
+export const ChatInterface = ({ 
+  messages, 
+  isLoading, 
+  conversationState,
+  onSendMessage,
+  onStateChange 
+}: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [showVoiceHelp, setShowVoiceHelp] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>("");
+  const sentTranscriptRef = useRef<string>("");
 
   const {
     isListening,
@@ -31,6 +41,7 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
     stopListening,
     speak,
     stopSpeaking,
+    clearTranscript,
     isSupported,
   } = useWebSpeech();
 
@@ -42,6 +53,19 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Update conversation state based on listening/speaking
+  useEffect(() => {
+    if (isListening) {
+      onStateChange("listening");
+    } else if (isSpeaking) {
+      onStateChange("speaking");
+    } else if (isLoading) {
+      onStateChange("processing");
+    } else {
+      onStateChange("idle");
+    }
+  }, [isListening, isSpeaking, isLoading, onStateChange]);
 
   // Auto-speak new assistant messages
   useEffect(() => {
@@ -57,19 +81,26 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
     }
   }, [messages, autoSpeak, speak]);
 
-  // Handle voice input and auto-send when finished
+  // Handle voice input and auto-send when finished (prevent duplicates)
   useEffect(() => {
     if (!transcript) return;
 
     console.log("Voice transcript received:", transcript, "listening:", isListening, "loading:", isLoading);
     setInput(transcript);
 
-    // When recognition stops and we have a transcript, auto-send it
-    if (!isListening && !isLoading && transcript.trim()) {
+    // When recognition stops and we have a transcript, auto-send it (if not already sent)
+    if (
+      !isListening && 
+      !isLoading && 
+      transcript.trim() && 
+      transcript !== sentTranscriptRef.current
+    ) {
+      sentTranscriptRef.current = transcript;
       onSendMessage(transcript.trim());
       setInput("");
+      clearTranscript();
     }
-  }, [transcript, isListening, isLoading, onSendMessage]);
+  }, [transcript, isListening, isLoading, onSendMessage, clearTranscript]);
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
@@ -92,6 +123,18 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
       stopListening();
     } else {
       console.log("Starting voice input");
+      sentTranscriptRef.current = ""; // Reset for new recording
+      startListening('en-IN');
+    }
+  };
+
+  const handleInterrupt = () => {
+    console.log("Interrupt triggered");
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    if (!isListening && !isLoading) {
+      sentTranscriptRef.current = "";
       startListening('en-IN');
     }
   };
@@ -158,11 +201,32 @@ export const ChatInterface = ({ messages, isLoading, onSendMessage }: ChatInterf
         </div>
       </ScrollArea>
 
+      {/* Interrupt Overlay when AI is speaking */}
+      {isSpeaking && (
+        <div className="absolute inset-0 bg-background/95 flex flex-col items-center justify-center z-10 cursor-pointer" onClick={handleInterrupt}>
+          <div className="text-center space-y-4">
+            <Volume2 className="h-16 w-16 text-primary mx-auto animate-pulse" />
+            <div>
+              <p className="text-lg font-semibold">AI is speaking...</p>
+              <p className="text-sm text-muted-foreground mt-2">Tap anywhere to interrupt</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="border-t p-4 space-y-2">
         {isSupported && (
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>{isListening ? "Listening..." : "Tap mic to speak"}</span>
+            <span>
+              {conversationState === "listening" 
+                ? "🎤 Listening..." 
+                : conversationState === "speaking"
+                ? "🔊 Speaking..."
+                : conversationState === "processing"
+                ? "⏳ Processing..."
+                : "Tap mic to speak"}
+            </span>
             <Button
               variant="ghost"
               size="sm"

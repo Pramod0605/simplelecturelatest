@@ -1,20 +1,43 @@
 import { useState } from "react";
-import { MessageCircle, X, TestTube } from "lucide-react";
+import { MessageCircle, X, TestTube, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeadCaptureForm } from "./LeadCaptureForm";
 import { ChatInterface } from "./ChatInterface";
+import { ConversationMode } from "./ConversationMode";
 import { VoiceTestPanel } from "./VoiceTestPanel";
 import { useSalesAssistant } from "@/hooks/useSalesAssistant";
+import { useWebSpeech } from "@/hooks/useWebSpeech";
 
 export const SalesAssistantWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { messages, isLoading, leadId, sendMessage, createLead } = useSalesAssistant();
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const { 
+    messages, 
+    isLoading, 
+    leadId, 
+    conversationState,
+    setConversationState,
+    sendMessage, 
+    createLead 
+  } = useSalesAssistant();
+  const { stopSpeaking, isSupported } = useWebSpeech();
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
     const success = await createLead(name, email, mobile);
     return success;
+  };
+
+  const handleInterrupt = () => {
+    stopSpeaking();
+  };
+
+  const handleCloseVoiceMode = () => {
+    setIsVoiceMode(false);
+    stopSpeaking();
+    setConversationState("idle");
   };
 
   return (
@@ -48,7 +71,7 @@ export const SalesAssistantWidget = () => {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden flex flex-col">
             {!leadId ? (
               <Tabs defaultValue="form" className="h-full">
                 <TabsList className="w-full">
@@ -66,14 +89,44 @@ export const SalesAssistantWidget = () => {
                 </TabsContent>
               </Tabs>
             ) : (
-              <ChatInterface
-                messages={messages}
-                isLoading={isLoading}
-                onSendMessage={sendMessage}
-              />
+              <>
+                <div className="flex-1 overflow-hidden">
+                  <ChatInterface
+                    messages={messages}
+                    isLoading={isLoading}
+                    conversationState={conversationState}
+                    onSendMessage={sendMessage}
+                    onStateChange={setConversationState}
+                  />
+                </div>
+                {isSupported && (
+                  <div className="border-t p-3 bg-muted/50">
+                    <Button
+                      onClick={() => setIsVoiceMode(true)}
+                      className="w-full"
+                      variant="default"
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Start Voice Conversation
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Card>
+      )}
+
+      {/* Voice Conversation Mode */}
+      {isVoiceMode && leadId && (
+        <ConversationMode
+          messages={messages}
+          conversationState={conversationState}
+          autoSpeak={autoSpeak}
+          onToggleAutoSpeak={() => setAutoSpeak(!autoSpeak)}
+          onInterrupt={handleInterrupt}
+          onClose={handleCloseVoiceMode}
+        />
       )}
     </>
   );
