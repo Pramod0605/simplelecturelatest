@@ -6,52 +6,76 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Normalize question for exact matching
+function normalizeQuestion(text: string): string {
+  return text.toLowerCase().trim().replace(/[^\w\s]/g, '');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { messages, leadId } = await req.json();
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get the latest user message for FAQ cache lookup
-    const latestUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content;
+    const { messages, leadId, language = 'en-IN' } = await req.json();
     
-    // Quick FAQ cache check for common questions (only if short conversation)
-    if (latestUserMessage && messages.length <= 4) {
-      const { data: cachedAnswer } = await supabase
+    if (!leadId || !messages || !Array.isArray(messages) || messages.length === 0) {
+      throw new Error('leadId and messages array are required');
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Get the latest user message
+    const latestUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    
+    if (latestUserMessage) {
+      const normalizedQuestion = normalizeQuestion(latestUserMessage.content);
+      
+      // Check FAQ cache for EXACT match
+      const { data: cachedFAQs } = await supabaseAdmin
         .from('sales_faq_cache')
-        .select('answer_text, id, usage_count')
-        .ilike('question_text', `%${latestUserMessage.slice(0, 100)}%`)
-        .limit(1)
-        .single();
+        .select('*');
 
-      if (cachedAnswer) {
-        console.log(`FAQ cache hit for lead ${leadId}`);
-        
-        // Increment usage count asynchronously (don't wait)
-        supabase
-          .from('sales_faq_cache')
-          .update({ usage_count: cachedAnswer.usage_count + 1 })
-          .eq('id', cachedAnswer.id)
-          .then();
+      if (cachedFAQs && cachedFAQs.length > 0) {
+        const exactMatch = cachedFAQs.find(faq => 
+          normalizeQuestion(faq.question_text) === normalizedQuestion
+        );
 
-        // Return cached response as stream format
-        const streamResponse = `data: {"id":"cached-${Date.now()}","provider":"Cache","model":"faq-cache","object":"chat.completion.chunk","created":${Math.floor(Date.now()/1000)},"choices":[{"index":0,"delta":{"role":"assistant","content":"${cachedAnswer.answer_text}"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n`;
-        
-        return new Response(streamResponse, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
+        if (exactMatch) {
+          // Increment usage count
+          await supabaseAdmin
+            .from('sales_faq_cache')
+            .update({ usage_count: exactMatch.usage_count + 1 })
+            .eq('id', exactMatch.id);
+
+          // Return cached answer as a stream
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              const chunk = {
+                choices: [{
+                  delta: { content: exactMatch.answer_text },
+                  index: 0
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
+            }
+          });
+
+          return new Response(stream, {
+            headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' }
+          });
+        }
       }
     }
 
     // Fetch all active courses with categories and subjects (RAG context)
-    const { data: courses, error: coursesError } = await supabase
+    const { data: courses, error: coursesError } = await supabaseAdmin
       .from('courses')
       .select(`
         *,
@@ -66,59 +90,43 @@ serve(async (req) => {
 
     if (coursesError) throw coursesError;
 
-    // Build comprehensive RAG context
-    const ragContext = `
-# SimpleLecture E-Learning Platform
+    // Build context from courses data
+    const coursesContext = courses?.map(course => {
+      const subjects = course.course_subjects?.map((cs: any) => cs.popular_subjects?.name).filter(Boolean).join(', ') || 'Not specified';
+      return `${course.name}: ${course.short_description || course.description || ''} (Subjects: ${subjects}, Price: ₹${course.price_inr || 2000})`;
+    }).join('\n') || 'No courses available';
 
-## About Us
-SimpleLecture is an AI-powered e-learning platform that revolutionizes exam preparation. We offer comprehensive courses at just ₹2000, eliminating the need for expensive tuitions or tutorials.
+    // Map language codes to language names
+    const languageNames: Record<string, string> = {
+      'en-IN': 'English',
+      'hi-IN': 'Hindi',
+      'kn-IN': 'Kannada',
+      'ta-IN': 'Tamil',
+      'te-IN': 'Telugu',
+      'ml-IN': 'Malayalam'
+    };
 
-## Key Features
-- **AI-Based Video Training**: Interactive video lessons with AI-powered explanations
-- **AI Assistant**: 24/7 intelligent tutoring assistant for instant doubt clearing
-- **Podcasts**: Learn on-the-go with audio content
-- **Question Bank & Practice Tests**: Extensive practice materials with detailed solutions
-- **Notes & Study Materials**: Comprehensive notes for all subjects
-- **Multi-language Support**: Content available in 13 Indian languages including Hindi, English, Kannada, Tamil, Telugu, Malayalam, and more
+    const selectedLanguage = languageNames[language] || 'English';
 
-## Pricing
-All courses are available at just ₹2000 - incredible value for comprehensive exam preparation!
+    const systemPrompt = `You are a warm, friendly sales assistant for SimpleLecture, an online learning platform.
+Be enthusiastic and supportive! Use phrases like "I'd love to help you with that!", "That's a great question!", "Wonderful choice!"
 
-## Available Courses
-${courses?.map(course => `
-### ${course.name}
-- **Price**: ₹${course.price_inr || 2000}
-- **Duration**: ${course.duration_months || 'Flexible'} months
-- **Description**: ${course.short_description || course.description}
-- **Categories**: ${course.course_categories?.map((cc: any) => cc.categories.name).join(', ') || 'Various'}
-- **Subjects**: ${course.course_subjects?.map((cs: any) => cs.popular_subjects.name).join(', ') || 'Multiple subjects'}
-- **AI Tutoring**: ${course.ai_tutoring_enabled ? `Yes (₹${course.ai_tutoring_price})` : 'Base package'}
-- **Live Classes**: ${course.live_classes_enabled ? `Yes (₹${course.live_classes_price})` : 'Base package'}
-- **Students Enrolled**: ${course.student_count || 'Growing community'}
-- **Rating**: ${course.rating || 'Highly rated'} ${course.review_count ? `(${course.review_count} reviews)` : ''}
-`).join('\n')}
+Available Courses:
+${coursesContext}
 
-## Success Promise
-With SimpleLecture, students can achieve their academic goals without expensive coaching centers. Our AI-powered approach ensures personalized learning at an affordable price.
-`;
+Key Points:
+- All courses are priced at ₹2000 unless specified otherwise
+- We offer AI-powered tutoring and live classes
+- Students get access to recorded videos, notes, assignments, and tests
+- Courses cover various subjects from school curriculum to competitive exams
+
+IMPORTANT: Keep responses SHORT (2-3 sentences max), conversational, and NO formatting.
+${language !== 'en-IN' ? `Respond in ${selectedLanguage} if the user speaks in that language.` : ''}
+Focus on helping the student find the right course and guiding them towards enrollment.`;
 
     // Get Lovable AI key
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
-    // System prompt for sales agent
-    const systemPrompt = `You are a friendly sales assistant for SimpleLecture. Keep responses SHORT (2-3 sentences max).
-
-Available courses:
-${ragContext}
-
-Style:
-- Very brief, natural conversation
-- NO markdown, asterisks, or special formatting
-- Simple language, like talking to a friend
-- Price is ₹2000 per course
-- Ask questions to understand needs
-- Guide to enrollment when interested`;
 
     // Call Lovable AI with streaming
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -155,53 +163,72 @@ Style:
 
     // Count tokens for analytics (rough estimate)
     const totalTokens = messages.reduce((sum: number, msg: { content: string }) => {
-      return sum + (msg.content.length / 4); // Rough estimate: 1 token ≈ 4 characters
+      return sum + (msg.content.length / 4);
     }, 0);
 
-    console.log(`Conversation stats - Lead: ${leadId}, Messages: ${messages.length}, Est. Tokens: ${Math.round(totalTokens)}`);
+    console.log(`Conversation stats - Lead: ${leadId}, Language: ${language}, Messages: ${messages.length}, Est. Tokens: ${Math.round(totalTokens)}`);
 
-    // Update conversation history in database
-    if (leadId) {
-      await supabase
-        .from('sales_leads')
-        .update({
-          conversation_history: messages,
-          last_interaction_at: new Date().toISOString(),
-        })
-        .eq('id', leadId);
-
-      // Cache frequently asked questions for faster responses
-      // Only cache if it's a short conversation (likely first-time questions)
-      if (messages.length <= 4 && latestUserMessage && messages[messages.length - 1]?.role === 'assistant') {
-        const assistantResponse = messages[messages.length - 1].content;
-        
-        // Check if this question-answer pair should be cached
-        if (assistantResponse && latestUserMessage.length < 200) {
-          // Insert or update cache (upsert based on similar question)
-          const { data: existingCache } = await supabase
-            .from('sales_faq_cache')
-            .select('id')
-            .ilike('question_text', `%${latestUserMessage.slice(0, 50)}%`)
-            .limit(1)
-            .single();
-
-          if (!existingCache) {
-            // Insert new cache entry
-            await supabase
-              .from('sales_faq_cache')
-              .insert({
-                question_text: latestUserMessage,
-                answer_text: assistantResponse,
-                usage_count: 1
-              });
-            console.log(`Cached new FAQ for lead ${leadId}`);
+    // Buffer the full response for caching
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+    const encoder = new TextEncoder();
+    
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader!.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            fullResponse += chunk;
+            controller.enqueue(value);
           }
+          controller.close();
+          
+          // Update conversation history
+          if (leadId) {
+            await supabaseAdmin
+              .from('sales_leads')
+              .update({
+                conversation_history: messages,
+                last_interaction_at: new Date().toISOString(),
+              })
+              .eq('id', leadId);
+
+            // Optionally cache the Q&A if conversation is still short
+            if (messages.length <= 4 && latestUserMessage) {
+              const normalizedQuestion = normalizeQuestion(latestUserMessage.content);
+              
+              // Check if this exact question already exists in cache
+              const { data: existingCache } = await supabaseAdmin
+                .from('sales_faq_cache')
+                .select('*');
+              
+              const alreadyCached = existingCache?.some(faq => 
+                normalizeQuestion(faq.question_text) === normalizedQuestion
+              );
+
+              if (!alreadyCached && fullResponse) {
+                await supabaseAdmin
+                  .from('sales_faq_cache')
+                  .insert({
+                    question_text: latestUserMessage.content,
+                    answer_text: fullResponse,
+                    usage_count: 1
+                  });
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Stream error:', error);
+          controller.error(error);
         }
       }
-    }
+    });
 
-    // Stream response back to client
-    return new Response(response.body, {
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
 

@@ -15,7 +15,7 @@ interface UseSalesAssistantReturn {
   leadId: string | null;
   conversationState: ConversationState;
   setConversationState: (state: ConversationState) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, language?: string) => Promise<void>;
   createLead: (name: string, email: string, mobile: string) => Promise<boolean>;
 }
 
@@ -61,7 +61,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     }
   }, [toast]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, language: string = 'en-IN') => {
     if (!leadId || !content.trim()) {
       console.log("Cannot send message - leadId:", leadId, "content:", content);
       return;
@@ -71,7 +71,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    console.log("Sending message to AI:", { leadId, messageCount: messages.length + 1 });
+    console.log("Sending message to AI:", { leadId, language, messageCount: messages.length + 1 });
 
     try {
       const AI_SALES_ASSISTANT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-sales-assistant`;
@@ -91,6 +91,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           leadId,
+          language,
         }),
       });
 
