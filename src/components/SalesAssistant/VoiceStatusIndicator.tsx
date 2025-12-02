@@ -1,5 +1,6 @@
 import { ConversationState } from "@/hooks/useSalesAssistant";
 import { Mic, Volume2, Loader2 } from "lucide-react";
+import { AudioWaveform } from "./AudioWaveform";
 
 interface VoiceStatusIndicatorProps {
   state: ConversationState;
@@ -69,6 +70,9 @@ export const VoiceStatusIndicator = ({ state, onTap }: VoiceStatusIndicatorProps
           </>
         )}
       </div>
+
+      {/* Audio Waveform */}
+      <AudioWaveform isActive={state === "speaking"} color={state === "speaking" ? "bg-blue-500" : "bg-muted"} />
 
       {/* Status Text */}
       <p className="text-lg font-medium text-foreground">{config.text}</p>

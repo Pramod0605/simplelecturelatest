@@ -5,7 +5,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { X, Volume2, VolumeX } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
-import { ConversationState } from "@/hooks/useSalesAssistant";
+import { ConversationStageIndicator } from "./ConversationStageIndicator";
+import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 
 // Language display map
 const languageNames: Record<string, { name: string; flag: string }> = {
@@ -32,6 +33,7 @@ interface Message {
 interface ConversationModeProps {
   messages: Message[];
   conversationState: ConversationState;
+  conversationStage: ConversationStage;
   autoSpeak: boolean;
   transcript: string;
   isListening: boolean;
@@ -44,6 +46,7 @@ interface ConversationModeProps {
 export const ConversationMode = ({
   messages,
   conversationState,
+  conversationStage,
   autoSpeak,
   transcript,
   isListening,
@@ -105,6 +108,9 @@ export const ConversationMode = ({
           </Button>
         </div>
       </div>
+
+      {/* Conversation Stage Indicator */}
+      <ConversationStageIndicator currentStage={conversationStage} />
 
       {/* Main Content Area - Split view */}
       <div className="flex-1 flex overflow-hidden">

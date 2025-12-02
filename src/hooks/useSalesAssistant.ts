@@ -9,11 +9,14 @@ interface Message {
 
 export type ConversationState = "idle" | "listening" | "processing" | "speaking";
 
+export type ConversationStage = "greeting" | "discovery" | "consultation" | "closing";
+
 interface UseSalesAssistantReturn {
   messages: Message[];
   isLoading: boolean;
   leadId: string | null;
   conversationState: ConversationState;
+  conversationStage: ConversationStage;
   detectedLanguage: string;
   setConversationState: (state: ConversationState) => void;
   sendMessage: (content: string) => Promise<void>;
@@ -25,8 +28,32 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [conversationState, setConversationState] = useState<ConversationState>("idle");
+  const [conversationStage, setConversationStage] = useState<ConversationStage>("greeting");
   const [detectedLanguage, setDetectedLanguage] = useState<string>("en-IN");
   const { toast } = useToast();
+
+  // Detect conversation stage based on messages
+  const detectConversationStage = useCallback((messages: Message[]): ConversationStage => {
+    const messageCount = messages.length;
+    const lastAssistantMessage = messages
+      .filter((m) => m.role === "assistant")
+      .pop()?.content.toLowerCase() || "";
+
+    // Keyword-based detection (takes priority)
+    const closingKeywords = ["enroll", "get started", "secure your spot", "enrollment", "sign up", "payment", "discount"];
+    const consultationKeywords = ["recommend", "course includes", "students improved", "perfect for you", "suggest", "based on"];
+    const discoveryKeywords = ["which class", "what subjects", "preparing for", "tell me about", "what are your", "help me understand"];
+
+    if (closingKeywords.some((k) => lastAssistantMessage.includes(k))) return "closing";
+    if (consultationKeywords.some((k) => lastAssistantMessage.includes(k))) return "consultation";
+    if (discoveryKeywords.some((k) => lastAssistantMessage.includes(k))) return "discovery";
+
+    // Fallback to message count
+    if (messageCount <= 1) return "greeting";
+    if (messageCount <= 4) return "discovery";
+    if (messageCount <= 7) return "consultation";
+    return "closing";
+  }, []);
 
   const createLead = useCallback(async (name: string, email: string, mobile: string): Promise<boolean> => {
     try {
@@ -169,6 +196,9 @@ I'm here to help you find the perfect course for your goals. Just to understand 
         }
       }
 
+      // Update conversation stage after successful response
+      setConversationStage(detectConversationStage([...messages, userMessage]));
+
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -195,6 +225,7 @@ I'm here to help you find the perfect course for your goals. Just to understand 
     isLoading,
     leadId,
     conversationState,
+    conversationStage,
     detectedLanguage,
     setConversationState,
     sendMessage,

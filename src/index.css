@@ -128,3 +128,18 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Waveform Animation */
+@keyframes waveform-bar {
+  0%, 100% {
+    height: 0.5rem;
+  }
+  50% {
+    height: 3rem;
+  }
+}
+
+.waveform-bar {
+  animation: waveform-bar 0.5s ease-in-out infinite;
+  transform-origin: bottom;
+}

@@ -20,6 +20,7 @@ export const SalesAssistantWidget = () => {
     isLoading, 
     leadId, 
     conversationState,
+    conversationStage,
     detectedLanguage,
     setConversationState,
     sendMessage, 
@@ -156,6 +157,7 @@ export const SalesAssistantWidget = () => {
         <ConversationMode
           messages={messages}
           conversationState={conversationState}
+          conversationStage={conversationStage}
           autoSpeak={autoSpeak}
           transcript={transcript}
           isListening={isListening}
