@@ -85,16 +85,10 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     };
 
     recog.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
+      console.log("Speech recognition error (silent):", event.error);
       setIsListening(false);
-      // Don't show toast for network errors, no-speech, or aborted - they're normal in continuous mode
-      if (event.error !== 'network' && event.error !== 'aborted' && event.error !== 'no-speech') {
-        toast({
-          title: "Voice Input Error",
-          description: "Please allow microphone access and try again.",
-          variant: "destructive",
-        });
-      }
+      // Silent error handling - don't show popups for common errors including permission denied
+      // Common error types: 'network', 'aborted', 'no-speech', 'not-allowed', 'audio-capture'
     };
 
     recog.onend = () => {
