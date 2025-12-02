@@ -79,6 +79,15 @@ export const ConversationMode = ({
     }
   }, [hasAutoStarted, messages.length, speak, startListening, detectedLanguage, counselorGender]);
 
+  // Auto-switch avatar based on detected language
+  useEffect(() => {
+    if (detectedLanguage === "hi-IN") {
+      setCounselorGender("female"); // Priya for Hindi
+    } else {
+      setCounselorGender("male"); // Rahul for English
+    }
+  }, [detectedLanguage]);
+
   // Track user interactions
   useEffect(() => {
     if (messages.length > 0 || isListening || conversationState === 'speaking') {

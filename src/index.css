@@ -154,6 +154,51 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes speaking-pulse-enhanced {
+  0%, 100% { 
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  25% { 
+    transform: scale(1.02);
+    filter: brightness(1.05);
+  }
+  50% { 
+    transform: scale(1.04);
+    filter: brightness(1.1);
+  }
+  75% { 
+    transform: scale(1.02);
+    filter: brightness(1.05);
+  }
+}
+
+@keyframes mouth-talk {
+  0%, 100% { 
+    transform: scaleY(0.3);
+  }
+  25% { 
+    transform: scaleY(0.7);
+  }
+  50% { 
+    transform: scaleY(1);
+  }
+  75% { 
+    transform: scaleY(0.7);
+  }
+}
+
+@keyframes speak-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
 @keyframes glow-pulse {
   0%, 100% { 
     box-shadow: 0 0 20px 5px hsl(var(--secondary) / 0.3);
@@ -182,7 +227,7 @@ All colors MUST be HSL.
 }
 
 .avatar-speaking {
-  animation: speaking-pulse 0.6s ease-in-out infinite, glow-pulse 1.5s ease-in-out infinite;
+  animation: speaking-pulse-enhanced 0.5s ease-in-out infinite, glow-pulse 1.5s ease-in-out infinite;
 }
 
 .avatar-listening {
