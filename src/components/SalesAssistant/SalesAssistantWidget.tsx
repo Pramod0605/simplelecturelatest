@@ -136,11 +136,14 @@ export const SalesAssistantWidget = () => {
                 </div>
                 {isSupported && (
                   <div className="border-t p-3 bg-muted/50">
-                    <Button
-                      onClick={() => setIsVoiceMode(true)}
-                      className="w-full"
-                      variant="default"
-                    >
+            <Button
+              onClick={() => {
+                setConversationState("idle");
+                setIsVoiceMode(true);
+              }}
+              className="w-full"
+              variant="default"
+            >
                       <Phone className="h-4 w-4 mr-2" />
                       Start Voice Conversation
                     </Button>

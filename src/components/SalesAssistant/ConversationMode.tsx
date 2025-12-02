@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -56,6 +57,8 @@ export const ConversationMode = ({
   detectedLanguage,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [counselorGender, setCounselorGender] = useState<"female" | "male">("female");
+  const { avatars, isGenerating } = useGenerateCounselorAvatars();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -80,6 +83,25 @@ export const ConversationMode = ({
           )}
         </div>
         <div className="flex gap-2">
+          {/* Gender Toggle */}
+          <div className="flex gap-1 mr-2">
+            <Button
+              variant={counselorGender === "female" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setCounselorGender("female")}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              👩 Priya
+            </Button>
+            <Button
+              variant={counselorGender === "male" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setCounselorGender("male")}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              👨 Rahul
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -116,7 +138,12 @@ export const ConversationMode = ({
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Voice Status */}
         <div className="w-1/2 flex items-center justify-center border-r bg-muted/30">
-          <VoiceStatusIndicator state={conversationState} onTap={onInterrupt} />
+          <VoiceStatusIndicator 
+            state={conversationState} 
+            gender={counselorGender}
+            avatarUrl={counselorGender === "female" ? avatars.female : avatars.male}
+            onTap={onInterrupt} 
+          />
         </div>
 
         {/* Right: Transcript */}
