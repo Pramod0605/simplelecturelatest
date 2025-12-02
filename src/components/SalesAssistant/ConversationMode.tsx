@@ -61,7 +61,7 @@ export const ConversationMode = ({
   startListening,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [counselorGender, setCounselorGender] = useState<"female" | "male">("female");
+  const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
 
   // Auto-scroll to bottom
@@ -90,20 +90,20 @@ export const ConversationMode = ({
           {/* Gender Toggle */}
           <div className="flex gap-1 mr-2">
             <Button
-              variant={counselorGender === "female" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setCounselorGender("female")}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              👩 Priya
-            </Button>
-            <Button
               variant={counselorGender === "male" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setCounselorGender("male")}
               className="text-primary-foreground hover:bg-primary-foreground/20"
             >
               👨 Rahul
+            </Button>
+            <Button
+              variant={counselorGender === "female" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setCounselorGender("female")}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              👩 Priya
             </Button>
           </div>
           <Button
