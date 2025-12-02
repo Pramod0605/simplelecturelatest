@@ -97,16 +97,16 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
-    // CRITICAL: Stop any ongoing speech before starting to listen with delay
+    // Always stop any ongoing speech before starting to listen
     if (speechSynthesisSupported && window.speechSynthesis.speaking) {
-      console.log("Stopping speech before starting to listen");
+      console.log("Stopping speech before starting to listen (interrupt)");
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
-      
-      // Add delay to ensure speech is fully stopped before starting recognition
+
+      // Slight delay so browsers fully stop TTS before mic starts
       setTimeout(() => {
         startRecognition(language);
-      }, 300);
+      }, 500);
     } else {
       startRecognition(language);
     }
