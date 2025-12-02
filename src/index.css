@@ -173,21 +173,6 @@ All colors MUST be HSL.
   }
 }
 
-@keyframes mouth-talk {
-  0%, 100% { 
-    transform: scaleY(0.3);
-  }
-  25% { 
-    transform: scaleY(0.7);
-  }
-  50% { 
-    transform: scaleY(1);
-  }
-  75% { 
-    transform: scaleY(0.7);
-  }
-}
-
 @keyframes speak-ripple {
   0% {
     transform: scale(1);

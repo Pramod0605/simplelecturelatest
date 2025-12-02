@@ -1,6 +1,5 @@
 import { ConversationState } from "@/hooks/useSalesAssistant";
 import { Loader2 } from "lucide-react";
-import { AnimatedMouth } from "./AnimatedMouth";
 
 interface CounselorAvatarProps {
   gender: "female" | "male";
@@ -72,9 +71,6 @@ export const CounselorAvatar = ({
             </div>
           )}
         </div>
-
-        {/* Animated mouth overlay when speaking */}
-        <AnimatedMouth isActive={conversationState === "speaking"} />
 
         {/* Processing overlay */}
         {conversationState === "processing" && (

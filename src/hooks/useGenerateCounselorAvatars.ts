@@ -7,28 +7,31 @@ interface CounselorAvatars {
   male: string | null;
 }
 
-const CACHE_VERSION = 3; // Increment to invalidate old cache
+const CACHE_VERSION = 4; // Increment to invalidate old cache
 const STORAGE_KEY = `counselor_avatars_v${CACHE_VERSION}`;
 const CACHE_EXPIRY_DAYS = 30;
 
 const PROMPTS = {
-  female: `PHOTOREALISTIC photograph of a professional Indian woman in her late 20s, 
-warm genuine smile showing teeth, wearing elegant burgundy saree with gold embroidery, 
-small pearl earrings, clear smooth skin, natural makeup, expressive brown eyes with warmth, 
-professional corporate headshot style, DSLR camera Canon 85mm f/1.4 portrait lens, 
-natural soft lighting from window, shallow depth of field, 
-REAL PERSON NOT ILLUSTRATION NOT CARTOON NOT CGI, 
-modern office background blurred bokeh, confident approachable expression, 
-ultra high resolution 4K photograph`,
+  female: `PHOTOREALISTIC professional headshot photograph of a young Indian woman educational counselor, age 28-30 years old, 
+authentic Indian facial features with warm medium-dark brown skin tone, expressive dark brown eyes, 
+genuine warm smile showing perfect white teeth, wearing elegant burgundy silk saree with delicate gold embroidery, 
+traditional small gold and pearl earrings, minimal natural makeup highlighting natural beauty, 
+straight black hair neatly styled in professional bun with jasmine flowers, clear glowing skin, 
+shot with professional DSLR Canon EOS R5 with 85mm f/1.2 lens creating beautiful bokeh, 
+studio lighting with soft natural window light from side, shallow depth of field f/1.8, 
+professional corporate office background softly blurred, confident and approachable expression, 
+REAL HUMAN PHOTOGRAPH NOT AI ART NOT ILLUSTRATION NOT CARTOON NOT 3D RENDER, 
+ultra high resolution 8K quality, photojournalism style authentic portrait`,
   
-  male: `PHOTOREALISTIC photograph of a professional Indian man in his late 20s, 
-warm genuine smile, wearing crisp light blue formal shirt with collar, 
-clean shaven face, well-groomed short black hair, friendly brown eyes, 
-professional corporate headshot style, DSLR camera Canon 85mm f/1.4 portrait lens,
-natural soft lighting from window, shallow depth of field, 
-REAL PERSON NOT ILLUSTRATION NOT CARTOON NOT CGI, 
-modern office background blurred bokeh, confident approachable expression, 
-ultra high resolution 4K photograph`,
+  male: `PHOTOREALISTIC professional headshot photograph of a young Indian man educational counselor, age 28-30 years old,
+authentic Indian facial features with warm medium brown skin tone, friendly dark brown eyes, 
+genuine warm smile, wearing crisp light blue formal shirt with white collar, dark blue tie, 
+clean shaven face with well-groomed short black hair professional cut, strong defined jawline,
+shot with professional DSLR Canon EOS R5 with 85mm f/1.2 lens creating beautiful bokeh,
+studio lighting with soft natural window light from side, shallow depth of field f/1.8,
+professional corporate office background softly blurred, confident and approachable expression,
+REAL HUMAN PHOTOGRAPH NOT AI ART NOT ILLUSTRATION NOT CARTOON NOT 3D RENDER,
+ultra high resolution 8K quality, photojournalism style authentic portrait`,
 };
 
 export const useGenerateCounselorAvatars = () => {
