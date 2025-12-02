@@ -145,8 +145,9 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    // Clean text: remove markdown, asterisks, quotes, and special characters
+    // Clean text: remove language tags, markdown, asterisks, quotes, and special characters
     let cleanText = text
+      .replace(/\[LANG:\w{2}-IN\]\s*/g, '') // Remove language tags FIRST
       .replace(/\*\*/g, '') // Remove bold markdown
       .replace(/\*/g, '') // Remove asterisks
       .replace(/["""''`]/g, '') // Remove fancy quotes and backticks

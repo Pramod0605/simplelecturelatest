@@ -43,6 +43,15 @@ export const SalesAssistantWidget = () => {
     return success;
   };
 
+  const handleQuickChat = async () => {
+    // Create anonymous lead for quick chat
+    const anonymousName = `Guest-${Date.now()}`;
+    const success = await createLead(anonymousName, "", "");
+    if (success) {
+      setIsVoiceMode(true);
+    }
+  };
+
   const handleInterrupt = () => {
     console.log("Interrupt triggered, current state:", conversationState);
     
@@ -98,21 +107,34 @@ export const SalesAssistantWidget = () => {
           {/* Content */}
           <div className="flex-1 overflow-hidden flex flex-col">
             {!leadId ? (
-              <Tabs defaultValue="form" className="h-full">
-                <TabsList className="w-full">
-                  <TabsTrigger value="form" className="flex-1">Get Started</TabsTrigger>
-                  <TabsTrigger value="test" className="flex-1">
-                    <TestTube className="h-3 w-3 mr-1" />
-                    Test Voice
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="form" className="h-full">
-                  <LeadCaptureForm onSubmit={handleLeadSubmit} />
-                </TabsContent>
-                <TabsContent value="test" className="h-full overflow-auto">
-                  <VoiceTestPanel />
-                </TabsContent>
-              </Tabs>
+              <div className="h-full flex flex-col">
+                <div className="p-4 space-y-3">
+                  <Button
+                    onClick={handleQuickChat}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Phone className="h-5 w-5 mr-2" />
+                    Start Voice Chat Now
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">or</div>
+                </div>
+                <Tabs defaultValue="form" className="flex-1">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="form" className="flex-1">Enter Details</TabsTrigger>
+                    <TabsTrigger value="test" className="flex-1">
+                      <TestTube className="h-3 w-3 mr-1" />
+                      Test Voice
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="form" className="h-full">
+                    <LeadCaptureForm onSubmit={handleLeadSubmit} />
+                  </TabsContent>
+                  <TabsContent value="test" className="h-full overflow-auto">
+                    <VoiceTestPanel />
+                  </TabsContent>
+                </Tabs>
+              </div>
             ) : (
               <>
                 <div className="flex-1 overflow-hidden">
