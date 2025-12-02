@@ -20,7 +20,7 @@ interface ConversationModeProps {
   onToggleAutoSpeak: () => void;
   onInterrupt: () => void;
   onClose: () => void;
-  selectedLanguage: string;
+  detectedLanguage: string;
 }
 
 export const ConversationMode = ({

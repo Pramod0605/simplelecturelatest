@@ -157,16 +157,35 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Try to find a voice for the selected language
+    // Priority-based voice selection for Indian accent
     const voices = window.speechSynthesis.getVoices();
-    const matchingVoice = voices.find(voice => 
-      voice.lang.startsWith(langCode.split('-')[0]) ||
+    const primaryLang = langCode.split('-')[0];
+    
+    // Step 1: Try exact locale match (e.g., kn-IN)
+    let matchingVoice = voices.find(voice => 
       voice.lang.replace('_', '-') === langCode
     );
+    
+    // Step 2: If no exact match, try Indian variants first
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => 
+        voice.lang.startsWith(primaryLang) && voice.lang.includes('IN')
+      );
+    }
+    
+    // Step 3: Fall back to any voice with the same primary language
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => 
+        voice.lang.startsWith(primaryLang)
+      );
+    }
 
     if (matchingVoice) {
       utterance.voice = matchingVoice;
-      console.log("Using voice:", matchingVoice.name, "for language:", langCode);
+      console.log("Using voice:", matchingVoice.name, matchingVoice.lang, "for language:", langCode);
+    } else {
+      console.log("No matching voice found for:", langCode, "Available voices:", 
+        voices.filter(v => v.lang.startsWith(primaryLang)).map(v => `${v.name} (${v.lang})`));
     }
 
     utterance.onstart = () => {
