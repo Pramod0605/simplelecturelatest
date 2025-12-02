@@ -27,7 +27,7 @@ export const CounselorAvatar = ({
     }
   };
 
-  const counselorName = gender === "female" ? "Priya" : "Rahul";
+  const counselorName = gender === "male" ? "Rahul" : "Priya";
 
   return (
     <div
@@ -48,7 +48,7 @@ export const CounselorAvatar = ({
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <div className="text-6xl">
-                {gender === "female" ? "👩‍🏫" : "👨‍🏫"}
+                {gender === "male" ? "👨‍💼" : "👩‍💼"}
               </div>
             </div>
           )}
