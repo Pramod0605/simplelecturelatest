@@ -5,6 +5,7 @@ import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ConversationState } from "@/hooks/useSalesAssistant";
+import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
 
 // Language display map - Limited to Hindi and English only (best voice quality)
 const languageNames: Record<string, { name: string; flag: string }> = {
@@ -63,7 +64,18 @@ export const ChatInterface = ({
   const sentTranscriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking);
+  // Voice Activity Detection - auto-interrupt when user speaks during AI speech
+  const { isDetecting } = useVoiceActivityDetection({
+    enabled: isSpeaking, // Only monitor when AI is speaking
+    onVoiceDetected: () => {
+      console.log("VAD: User started speaking, auto-interrupting AI");
+      handleInterrupt();
+    },
+    threshold: 40, // Adjust sensitivity (30-50 is good range)
+    detectionDuration: 300, // Wait 300ms before triggering
+  });
+
+  console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking, "VAD detecting:", isDetecting);
 
   // Auto-scroll to bottom
   useEffect(() => {

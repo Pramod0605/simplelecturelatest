@@ -156,33 +156,21 @@ export const ConversationMode = ({
           )}
         </div>
         <div className="flex gap-2">
-          {/* Gender/Language Toggle */}
-          <div className="flex gap-1 mr-2">
-            <Button
-              variant={counselorGender === "male" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleCounselorSwitch("male")}
-              disabled={isSwitchingCounselor}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              {isSwitchingCounselor && counselorGender === "male" ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : null}
-              👨 Rahul (EN)
-            </Button>
-            <Button
-              variant={counselorGender === "female" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleCounselorSwitch("female")}
-              disabled={isSwitchingCounselor}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              {isSwitchingCounselor && counselorGender === "female" ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : null}
-              👩 Priya (HI)
-            </Button>
-          </div>
+          {/* Clear Language Toggle */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleCounselorSwitch(counselorGender === "male" ? "female" : "male")}
+            disabled={isSwitchingCounselor}
+            className="text-primary-foreground bg-primary-foreground/20 hover:bg-primary-foreground/30 font-semibold border-2 border-primary-foreground/40"
+          >
+            {isSwitchingCounselor ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            {counselorGender === "male" ? "🇬🇧 English" : "🇮🇳 हिंदी"}
+            <span className="mx-2">⟷</span>
+            {counselorGender === "male" ? "🇮🇳 हिंदी" : "🇬🇧 English"}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
