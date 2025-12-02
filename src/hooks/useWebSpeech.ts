@@ -97,13 +97,22 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
-    // CRITICAL: Stop any ongoing speech before starting to listen
+    // CRITICAL: Stop any ongoing speech before starting to listen with delay
     if (speechSynthesisSupported && window.speechSynthesis.speaking) {
       console.log("Stopping speech before starting to listen");
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
+      
+      // Add delay to ensure speech is fully stopped before starting recognition
+      setTimeout(() => {
+        startRecognition(language);
+      }, 300);
+    } else {
+      startRecognition(language);
     }
+  }, [recognition, toast, speechSynthesisSupported]);
 
+  const startRecognition = (language: string) => {
     try {
       setTranscript("");
       
@@ -130,7 +139,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
         variant: "destructive",
       });
     }
-  }, [recognition, toast, speechSynthesisSupported]);
+  };
 
   const stopListening = useCallback(() => {
     if (recognition) {
