@@ -76,10 +76,22 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
     try {
       setTranscript("");
-      recognition.lang = language;
+      
+      // Map common language names to codes if needed
+      const languageMap: Record<string, string> = {
+        'english': 'en-IN',
+        'hindi': 'hi-IN',
+        'kannada': 'kn-IN',
+        'tamil': 'ta-IN',
+        'telugu': 'te-IN',
+        'malayalam': 'ml-IN'
+      };
+      
+      const langCode = languageMap[language.toLowerCase()] || language;
+      recognition.lang = langCode;
       recognition.start();
       setIsListening(true);
-      console.log("Started listening with language:", language);
+      console.log("Started listening with language:", langCode);
     } catch (error) {
       console.error("Error starting speech recognition:", error);
       toast({
@@ -128,22 +140,33 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = language;
-    utterance.rate = 0.85; // Slightly faster for natural flow
+    
+    // Map common language names to codes if needed
+    const languageMap: Record<string, string> = {
+      'english': 'en-IN',
+      'hindi': 'hi-IN',
+      'kannada': 'kn-IN',
+      'tamil': 'ta-IN',
+      'telugu': 'te-IN',
+      'malayalam': 'ml-IN'
+    };
+    
+    const langCode = languageMap[language.toLowerCase()] || language;
+    utterance.lang = langCode;
+    utterance.rate = 0.9;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Try to find an Indian English voice
+    // Try to find a voice for the selected language
     const voices = window.speechSynthesis.getVoices();
-    const indianVoice = voices.find(voice => 
-      voice.lang.startsWith('en-IN') || 
-      voice.lang === 'en_IN' ||
-      voice.name.toLowerCase().includes('india')
+    const matchingVoice = voices.find(voice => 
+      voice.lang.startsWith(langCode.split('-')[0]) ||
+      voice.lang.replace('_', '-') === langCode
     );
 
-    if (indianVoice) {
-      utterance.voice = indianVoice;
-      console.log("Using Indian English voice:", indianVoice.name);
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
+      console.log("Using voice:", matchingVoice.name, "for language:", langCode);
     }
 
     utterance.onstart = () => {
