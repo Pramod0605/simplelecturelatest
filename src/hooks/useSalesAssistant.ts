@@ -48,7 +48,9 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
       // Add welcome message
       setMessages([{
         role: "assistant",
-        content: `Hello ${name}! 👋 Welcome to SimpleLecture! I'm here to help you find the perfect course for your exam preparation. Feel free to ask me anything about our courses, pricing, or features!`
+        content: `Hi ${name}! 👋 I'm Priya, your education counselor at SimpleLecture.
+
+I'm here to help you find the perfect course for your goals. Just to understand you better - are you a student preparing for exams, or a parent looking for the right course for your child?`
       }]);
 
       return true;
