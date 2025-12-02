@@ -19,6 +19,8 @@ export const useVoiceActivityDetection = ({
   const micStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const detectionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTriggerRef = useRef<number>(0);
+  const micPermissionDeniedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!enabled) {
@@ -36,6 +38,19 @@ export const useVoiceActivityDetection = ({
 
   const startVAD = async () => {
     try {
+      // Skip if microphone permission was previously denied
+      if (micPermissionDeniedRef.current) {
+        console.log("VAD: Microphone permission denied, skipping");
+        return;
+      }
+
+      // Reuse existing stream if available
+      if (micStreamRef.current && micStreamRef.current.active) {
+        console.log("VAD: Reusing existing microphone stream");
+        setupAudioAnalysis(micStreamRef.current);
+        return;
+      }
+
       // Request microphone access with noise cancellation
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -47,6 +62,17 @@ export const useVoiceActivityDetection = ({
       });
 
       micStreamRef.current = stream;
+      setupAudioAnalysis(stream);
+    } catch (error) {
+      // Silent error handling - don't show popup to user
+      console.log("VAD: Microphone access not available:", error);
+      micPermissionDeniedRef.current = true;
+      setIsDetecting(false);
+    }
+  };
+
+  const setupAudioAnalysis = (stream: MediaStream) => {
+    try {
 
       // Create audio context and analyzer
       const audioContext = new AudioContext();
@@ -65,7 +91,7 @@ export const useVoiceActivityDetection = ({
       // Start monitoring audio levels
       monitorAudioLevel();
     } catch (error) {
-      console.error("VAD: Failed to start voice activity detection:", error);
+      console.log("VAD: Failed to setup audio analysis:", error);
       setIsDetecting(false);
     }
   };
@@ -85,10 +111,17 @@ export const useVoiceActivityDetection = ({
 
       // Check if voice detected above threshold
       if (average > threshold) {
+        // Add cooldown to prevent rapid re-triggers
+        const now = Date.now();
+        if (now - lastTriggerRef.current < 1000) {
+          return; // Skip if triggered within last 1 second
+        }
+
         // Start detection timer if not already running
         if (!detectionTimerRef.current) {
           detectionTimerRef.current = setTimeout(() => {
             console.log("VAD: Voice detected! Average volume:", average);
+            lastTriggerRef.current = Date.now();
             onVoiceDetected();
             detectionTimerRef.current = null;
           }, detectionDuration);
