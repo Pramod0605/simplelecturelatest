@@ -17,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, leadId, language = 'en-IN' } = await req.json();
+    const { messages, leadId } = await req.json();
     
     if (!leadId || !messages || !Array.isArray(messages) || messages.length === 0) {
       throw new Error('leadId and messages array are required');
@@ -96,18 +96,6 @@ serve(async (req) => {
       return `${course.name}: ${course.short_description || course.description || ''} (Subjects: ${subjects}, Price: ₹${course.price_inr || 2000})`;
     }).join('\n') || 'No courses available';
 
-    // Map language codes to language names
-    const languageNames: Record<string, string> = {
-      'en-IN': 'English',
-      'hi-IN': 'Hindi',
-      'kn-IN': 'Kannada',
-      'ta-IN': 'Tamil',
-      'te-IN': 'Telugu',
-      'ml-IN': 'Malayalam'
-    };
-
-    const selectedLanguage = languageNames[language] || 'English';
-
     const systemPrompt = `You are a warm, friendly sales assistant for SimpleLecture, an online learning platform.
 Be enthusiastic and supportive! Use phrases like "I'd love to help you with that!", "That's a great question!", "Wonderful choice!"
 
@@ -120,8 +108,21 @@ Key Points:
 - Students get access to recorded videos, notes, assignments, and tests
 - Courses cover various subjects from school curriculum to competitive exams
 
+LANGUAGE DETECTION & RESPONSE:
+- Detect the language the user is speaking/typing from their message
+- ALWAYS respond in the SAME language as the user
+- Start your response with a language tag in this exact format: [LANG:xx-IN] where xx is:
+  - en for English
+  - hi for Hindi  
+  - kn for Kannada
+  - ta for Tamil
+  - te for Telugu
+  - ml for Malayalam
+- After the tag, write your warm, friendly response in that language using natural expressions
+- If user mixes languages, detect the PRIMARY language and respond in that
+- Use conversational style appropriate for that language and Indian accent
+
 IMPORTANT: Keep responses SHORT (2-3 sentences max), conversational, and NO formatting.
-${language !== 'en-IN' ? `Respond in ${selectedLanguage} if the user speaks in that language.` : ''}
 Focus on helping the student find the right course and guiding them towards enrollment.`;
 
     // Get Lovable AI key
@@ -166,7 +167,7 @@ Focus on helping the student find the right course and guiding them towards enro
       return sum + (msg.content.length / 4);
     }, 0);
 
-    console.log(`Conversation stats - Lead: ${leadId}, Language: ${language}, Messages: ${messages.length}, Est. Tokens: ${Math.round(totalTokens)}`);
+    console.log(`Conversation stats - Lead: ${leadId}, Messages: ${messages.length}, Est. Tokens: ${Math.round(totalTokens)}`);
 
     // Buffer the full response for caching
     const reader = response.body?.getReader();

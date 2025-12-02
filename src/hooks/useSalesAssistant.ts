@@ -14,8 +14,9 @@ interface UseSalesAssistantReturn {
   isLoading: boolean;
   leadId: string | null;
   conversationState: ConversationState;
+  detectedLanguage: string;
   setConversationState: (state: ConversationState) => void;
-  sendMessage: (content: string, language?: string) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
   createLead: (name: string, email: string, mobile: string) => Promise<boolean>;
 }
 
@@ -24,6 +25,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [conversationState, setConversationState] = useState<ConversationState>("idle");
+  const [detectedLanguage, setDetectedLanguage] = useState<string>("en-IN");
   const { toast } = useToast();
 
   const createLead = useCallback(async (name: string, email: string, mobile: string): Promise<boolean> => {
@@ -61,7 +63,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     }
   }, [toast]);
 
-  const sendMessage = useCallback(async (content: string, language: string = 'en-IN') => {
+  const sendMessage = useCallback(async (content: string) => {
     if (!leadId || !content.trim()) {
       console.log("Cannot send message - leadId:", leadId, "content:", content);
       return;
@@ -71,7 +73,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    console.log("Sending message to AI:", { leadId, language, messageCount: messages.length + 1 });
+    console.log("Sending message to AI:", { leadId, messageCount: messages.length + 1 });
 
     try {
       const AI_SALES_ASSISTANT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-sales-assistant`;
@@ -91,7 +93,6 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           leadId,
-          language,
         }),
       });
 
@@ -139,6 +140,17 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantContent += content;
+              
+              // Parse language tag from response if present
+              const langTagMatch = assistantContent.match(/^\[LANG:(\w{2}-IN)\]\s*/);
+              if (langTagMatch) {
+                const detectedLang = langTagMatch[1];
+                setDetectedLanguage(detectedLang);
+                console.log("Detected language:", detectedLang);
+                // Remove the tag from the displayed content
+                assistantContent = assistantContent.replace(/^\[LANG:\w{2}-IN\]\s*/, '');
+              }
+              
               setMessages(prev => {
                 const newMessages = [...prev];
                 newMessages[newMessages.length - 1] = {
@@ -181,6 +193,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     isLoading,
     leadId,
     conversationState,
+    detectedLanguage,
     setConversationState,
     sendMessage,
     createLead,

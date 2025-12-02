@@ -14,13 +14,13 @@ export const SalesAssistantWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
-  const [selectedLanguage, setSelectedLanguage] = useState('en-IN');
   
   const { 
     messages, 
     isLoading, 
     leadId, 
     conversationState,
+    detectedLanguage,
     setConversationState,
     sendMessage, 
     createLead 
@@ -36,15 +36,6 @@ export const SalesAssistantWidget = () => {
     clearTranscript,
     isSupported 
   } = useWebSpeech();
-
-  const languages = [
-    { code: 'en-IN', label: 'English', nativeLabel: 'English' },
-    { code: 'hi-IN', label: 'Hindi', nativeLabel: 'हिंदी' },
-    { code: 'kn-IN', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ' },
-    { code: 'ta-IN', label: 'Tamil', nativeLabel: 'தமிழ்' },
-    { code: 'te-IN', label: 'Telugu', nativeLabel: 'తెలుగు' },
-    { code: 'ml-IN', label: 'Malayalam', nativeLabel: 'മലയാളം' },
-  ];
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
     const success = await createLead(name, email, mobile);
@@ -63,7 +54,7 @@ export const SalesAssistantWidget = () => {
     if (conversationState !== "listening" && conversationState !== "processing") {
       console.log("Starting listening after interrupt");
       setConversationState("listening");
-      startListening(selectedLanguage);
+      startListening(detectedLanguage);
     }
   };
 
@@ -123,21 +114,6 @@ export const SalesAssistantWidget = () => {
               </Tabs>
             ) : (
               <>
-                <div className="p-3 border-b bg-muted/50">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Language</label>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
-                  >
-                    {languages.map(lang => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.nativeLabel} / {lang.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
                 <div className="flex-1 overflow-hidden">
                   <ChatInterface
                     messages={messages}
@@ -154,7 +130,7 @@ export const SalesAssistantWidget = () => {
                     stopSpeaking={stopSpeaking}
                     clearTranscript={clearTranscript}
                     isSupported={isSupported}
-                    selectedLanguage={selectedLanguage}
+                    detectedLanguage={detectedLanguage}
                   />
                 </div>
                 {isSupported && (
@@ -186,7 +162,7 @@ export const SalesAssistantWidget = () => {
           onToggleAutoSpeak={() => setAutoSpeak(!autoSpeak)}
           onInterrupt={handleInterrupt}
           onClose={handleCloseVoiceMode}
-          selectedLanguage={selectedLanguage}
+          detectedLanguage={detectedLanguage}
         />
       )}
     </>

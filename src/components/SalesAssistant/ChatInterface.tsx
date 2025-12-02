@@ -26,7 +26,7 @@ interface ChatInterfaceProps {
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
-  selectedLanguage: string;
+  detectedLanguage: string;
 }
 
 export const ChatInterface = ({ 
@@ -44,7 +44,7 @@ export const ChatInterface = ({
   stopSpeaking,
   clearTranscript,
   isSupported,
-  selectedLanguage,
+  detectedLanguage,
 }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -86,9 +86,9 @@ export const ChatInterface = ({
       lastMessage.content !== lastMessageRef.current
     ) {
       lastMessageRef.current = lastMessage.content;
-      speak(lastMessage.content, selectedLanguage);
+      speak(lastMessage.content, detectedLanguage);
     }
-  }, [messages, autoSpeak, speak, selectedLanguage]);
+  }, [messages, autoSpeak, speak, detectedLanguage]);
 
   // Handle voice input with silence detection (prevent duplicates)
   useEffect(() => {
@@ -131,7 +131,7 @@ export const ChatInterface = ({
   const handleSend = () => {
     if (input.trim() && !isLoading) {
       console.log("Sending message:", input.trim());
-      onSendMessage(input.trim(), selectedLanguage);
+      onSendMessage(input.trim());
       setInput("");
     }
   };
@@ -150,7 +150,7 @@ export const ChatInterface = ({
     } else {
       console.log("Starting voice input");
       sentTranscriptRef.current = ""; // Reset for new recording
-      startListening(selectedLanguage);
+      startListening(detectedLanguage);
     }
   };
 
@@ -161,7 +161,7 @@ export const ChatInterface = ({
     }
     if (!isListening && !isLoading) {
       sentTranscriptRef.current = "";
-      startListening(selectedLanguage);
+      startListening(detectedLanguage);
     }
   };
 
