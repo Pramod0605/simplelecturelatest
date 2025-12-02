@@ -50,6 +50,24 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   useEffect(() => {
     if (!isSupported) return;
 
+    // Request microphone with noise cancellation
+    const requestMicrophoneAccess = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to request microphone with noise cancellation:", error);
+      }
+    };
+    
+    requestMicrophoneAccess();
+
     const recog = new SpeechRecognition();
     recog.continuous = true;
     recog.interimResults = true;
@@ -179,6 +197,12 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
+    // Make speech more natural with pauses and rhythm
+    cleanText = cleanText
+      .replace(/\.\s+/g, '... ') // Add longer pause after periods
+      .replace(/,\s+/g, ', ') // Add shorter pause after commas
+      .replace(/([.!?])\s*([A-Z])/g, '$1... $2'); // Add pause between sentences
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
     
     // Map common language names to codes if needed
@@ -193,7 +217,10 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
-    utterance.rate = 0.85; // Slower for clarity
+    
+    // Add slight variation to rate for more natural sound (0.82-0.88)
+    const rateVariation = 0.82 + (Math.random() * 0.06);
+    utterance.rate = rateVariation;
     utterance.pitch = 1.1; // Slightly higher for younger sound
     utterance.volume = 1.0;
 
