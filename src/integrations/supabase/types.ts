@@ -2261,6 +2261,33 @@ export type Database = {
           },
         ]
       }
+      sales_faq_cache: {
+        Row: {
+          answer_text: string
+          created_at: string | null
+          id: string
+          question_text: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string | null
+          id?: string
+          question_text: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string | null
+          id?: string
+          question_text?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       sales_leads: {
         Row: {
           conversation_history: Json | null
