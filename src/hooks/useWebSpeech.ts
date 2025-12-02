@@ -7,7 +7,7 @@ interface UseWebSpeechReturn {
   transcript: string;
   startListening: (language?: string) => void;
   stopListening: () => void;
-  speak: (text: string, language?: string, onComplete?: () => void) => void;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
@@ -132,7 +132,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [recognition]);
 
-  const speak = useCallback((text: string, language = 'en-IN', onComplete?: () => void) => {
+  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
     if (!speechSynthesisSupported) {
       toast({
         title: "Not Supported",
@@ -176,48 +176,101 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
+    utterance.rate = 0.85; // Slower for clarity
+    utterance.pitch = 1.1; // Slightly higher for younger sound
     utterance.volume = 1.0;
 
-    // Smart voice selection with fallback chain
-    const primaryLang = langCode.split('-')[0];
+    // Preferred voice names for better quality
+    const PREFERRED_FEMALE_VOICES = ['Aditi', 'Heera', 'Raveena', 'Priya', 'Female', 'Google', 'woman'];
+    const PREFERRED_MALE_VOICES = ['Hemant', 'Ravi', 'Ajit', 'Male', 'Google', 'man'];
+
+    // Find the best matching voice for the language and gender
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
+    const primaryLang = langCode.split('-')[0];
     
-    // Step 1: Try exact locale match (e.g., kn-IN)
-    matchingVoice = voices.find(voice => 
-      voice.lang.replace('_', '-') === langCode
-    ) || null;
+    // Step 1: Try exact locale match with gender preference
+    if (gender) {
+      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
+      matchingVoice = voices.find(voice => {
+        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+        const voiceName = voice.name.toLowerCase();
+        return voiceLang === langCode.toLowerCase() && 
+               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
+      }) || null;
+    }
     
-    // Step 2: Try Indian variant of same language
+    // Step 2: Try exact locale match without gender
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
-        voice.lang.startsWith(primaryLang) && voice.lang.includes('IN')
+        voice.lang.replace('_', '-').toLowerCase() === langCode.toLowerCase()
       ) || null;
     }
     
-    // Step 3: Try any voice of same language
+    // Step 3: Try Indian variant of same language with gender preference
+    if (!matchingVoice && gender) {
+      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
+      matchingVoice = voices.find(voice => {
+        const voiceLang = voice.lang.toLowerCase();
+        const voiceName = voice.name.toLowerCase();
+        return voiceLang.startsWith(primaryLang) && voiceLang.includes('in') &&
+               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
+      }) || null;
+    }
+    
+    // Step 4: Try Indian variant of same language
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
-        voice.lang.startsWith(primaryLang)
+        voice.lang.toLowerCase().startsWith(primaryLang) && voice.lang.toLowerCase().includes('in')
+      ) || null;
+    }
+    
+    // Step 5: Try any voice of same language with gender
+    if (!matchingVoice && gender) {
+      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
+      matchingVoice = voices.find(voice => {
+        const voiceLang = voice.lang.toLowerCase();
+        const voiceName = voice.name.toLowerCase();
+        return voiceLang.startsWith(primaryLang) &&
+               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
+      }) || null;
+      if (matchingVoice) isFallback = true;
+    }
+    
+    // Step 6: Try any voice of same language
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => 
+        voice.lang.toLowerCase().startsWith(primaryLang)
       ) || null;
       if (matchingVoice) isFallback = true;
     }
     
-    // Step 4: Fallback to Hindi (most common Indian language voice)
+    // Step 7: Fallback to Hindi with gender
+    if (!matchingVoice && gender) {
+      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
+      matchingVoice = voices.find(voice => {
+        const voiceLang = voice.lang.toLowerCase();
+        const voiceName = voice.name.toLowerCase();
+        return voiceLang.startsWith('hi') && voiceLang.includes('in') &&
+               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
+      }) || null;
+      if (matchingVoice) isFallback = true;
+    }
+    
+    // Step 8: Fallback to Hindi (most common Indian language voice)
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
-        voice.lang.startsWith('hi') && voice.lang.includes('IN')
+        voice.lang.toLowerCase().startsWith('hi') && voice.lang.toLowerCase().includes('in')
       ) || null;
       if (matchingVoice) isFallback = true;
     }
     
-    // Step 5: Fallback to Indian English
+    // Step 9: Fallback to Indian English
     if (!matchingVoice) {
-      matchingVoice = voices.find(voice => 
-        voice.lang === 'en-IN' || voice.lang === 'en_IN'
-      ) || null;
+      matchingVoice = voices.find(voice => {
+        const voiceLang = voice.lang.toLowerCase();
+        return voiceLang === 'en-in' || voiceLang === 'en_in';
+      }) || null;
       if (matchingVoice) isFallback = true;
     }
 

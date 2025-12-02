@@ -7,19 +7,28 @@ interface CounselorAvatars {
   male: string | null;
 }
 
-const STORAGE_KEY = "counselor_avatars";
+const CACHE_VERSION = 2; // Increment to invalidate old cache
+const STORAGE_KEY = `counselor_avatars_v${CACHE_VERSION}`;
 const CACHE_EXPIRY_DAYS = 30;
 
 const PROMPTS = {
-  female: `Professional Indian female educational counselor in her 30s, warm genuine smile, 
-wearing elegant maroon saree with gold border, pearl jewelry, expressive kind eyes, 
-professional headshot, soft studio lighting, confident yet approachable expression, 
-high quality realistic portrait, bokeh background in soft purple/blue gradient`,
+  female: `PHOTOREALISTIC photograph of a professional Indian woman in her late 20s, 
+warm genuine smile showing teeth, wearing elegant burgundy saree with gold embroidery, 
+small pearl earrings, clear smooth skin, natural makeup, expressive brown eyes with warmth, 
+professional corporate headshot style, DSLR camera Canon 85mm f/1.4 portrait lens, 
+natural soft lighting from window, shallow depth of field, 
+REAL PERSON NOT ILLUSTRATION NOT CARTOON NOT CGI, 
+modern office background blurred bokeh, confident approachable expression, 
+ultra high resolution 4K photograph`,
   
-  male: `Professional Indian male educational counselor in his 30s, warm genuine smile, 
-wearing crisp blue formal shirt, confident and approachable expression, 
-professional headshot, soft studio lighting, kind expressive eyes, 
-high quality realistic portrait, bokeh background in soft blue gradient`,
+  male: `PHOTOREALISTIC photograph of a professional Indian man in his late 20s, 
+warm genuine smile, wearing crisp light blue formal shirt with collar, 
+clean shaven face, well-groomed short black hair, friendly brown eyes, 
+professional corporate headshot style, DSLR camera Canon 85mm f/1.4 portrait lens,
+natural soft lighting from window, shallow depth of field, 
+REAL PERSON NOT ILLUSTRATION NOT CARTOON NOT CGI, 
+modern office background blurred bokeh, confident approachable expression, 
+ultra high resolution 4K photograph`,
 };
 
 export const useGenerateCounselorAvatars = () => {
@@ -75,8 +84,8 @@ export const useGenerateCounselorAvatars = () => {
       if (maleResponse.error) throw new Error("Failed to generate male avatar");
 
       const newAvatars: CounselorAvatars = {
-        female: femaleResponse.data?.image || null,
-        male: maleResponse.data?.image || null,
+        female: femaleResponse.data?.imageUrl || null,
+        male: maleResponse.data?.imageUrl || null,
       };
 
       // Cache the avatars

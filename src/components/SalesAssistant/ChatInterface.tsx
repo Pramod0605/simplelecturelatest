@@ -40,7 +40,8 @@ interface ChatInterfaceProps {
   transcript: string;
   startListening: (language?: string) => void;
   stopListening: () => void;
-  speak: (text: string, language?: string, onComplete?: () => void) => void;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
+  counselorGender: "female" | "male";
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
@@ -63,6 +64,7 @@ export const ChatInterface = ({
   clearTranscript,
   isSupported,
   detectedLanguage,
+  counselorGender,
 }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -106,7 +108,7 @@ export const ChatInterface = ({
       lastMessageRef.current = lastMessage.content;
       
       // Speak and then automatically start listening for continuous conversation
-      speak(lastMessage.content, detectedLanguage, () => {
+      speak(lastMessage.content, detectedLanguage, counselorGender, () => {
         // After AI finishes speaking, automatically start listening again
         console.log("AI finished speaking, starting listening with language:", detectedLanguage);
         sentTranscriptRef.current = "";

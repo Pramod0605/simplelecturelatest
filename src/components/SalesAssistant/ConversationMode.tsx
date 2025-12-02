@@ -42,6 +42,8 @@ interface ConversationModeProps {
   onInterrupt: () => void;
   onClose: () => void;
   detectedLanguage: string;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
+  startListening: (language?: string) => void;
 }
 
 export const ConversationMode = ({
@@ -55,6 +57,8 @@ export const ConversationMode = ({
   onInterrupt,
   onClose,
   detectedLanguage,
+  speak,
+  startListening,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("female");

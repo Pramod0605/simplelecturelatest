@@ -132,6 +132,7 @@ export const SalesAssistantWidget = () => {
                     clearTranscript={clearTranscript}
                     isSupported={isSupported}
                     detectedLanguage={detectedLanguage}
+                    counselorGender="male"
                   />
                 </div>
                 {isSupported && (
@@ -168,6 +169,8 @@ export const SalesAssistantWidget = () => {
           onInterrupt={handleInterrupt}
           onClose={handleCloseVoiceMode}
           detectedLanguage={detectedLanguage}
+          speak={speak}
+          startListening={startListening}
         />
       )}
     </>
