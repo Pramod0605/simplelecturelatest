@@ -106,12 +106,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
   const startListening = useCallback((language = 'en-IN') => {
     if (!recognition) {
-      console.error("Speech recognition not available");
-      toast({
-        title: "Not Supported",
-        description: "Voice input is not supported in your browser. Please use Chrome or Edge.",
-        variant: "destructive",
-      });
+      console.log("Speech recognition not available");
       return;
     }
 
@@ -128,7 +123,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     } else {
       startRecognition(language);
     }
-  }, [recognition, toast, speechSynthesisSupported]);
+  }, [recognition, speechSynthesisSupported]);
 
   const startRecognition = (language: string) => {
     try {
@@ -150,12 +145,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       setIsListening(true);
       console.log("Started listening with language:", langCode);
     } catch (error) {
-      console.error("Error starting speech recognition:", error);
-      toast({
-        title: "Microphone Error",
-        description: "Please allow microphone access and try again.",
-        variant: "destructive",
-      });
+      // Silent error handling - don't show popup to user
+      console.log("Speech recognition error:", error);
     }
   };
 

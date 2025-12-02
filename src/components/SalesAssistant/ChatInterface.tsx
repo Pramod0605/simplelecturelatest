@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
@@ -64,15 +64,42 @@ export const ChatInterface = ({
   const sentTranscriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Define handleInterrupt early so it can be used in debouncedInterrupt
+  const handleInterrupt = useCallback(() => {
+    console.log("Interrupt triggered - stopping speech and switching to listening");
+
+    // Stop any ongoing AI speech and current listening session
+    stopSpeaking();
+    stopListening();
+    clearTranscript();
+    sentTranscriptRef.current = "";
+
+    // Small delay to let mic stabilize after interrupt
+    setTimeout(() => {
+      startListening(detectedLanguage);
+    }, 100);
+  }, [stopSpeaking, stopListening, clearTranscript, startListening, detectedLanguage]);
+
+  // Debounce VAD interrupts to prevent rapid re-triggers
+  const lastInterruptRef = useRef<number>(0);
+  
+  const debouncedInterrupt = useCallback(() => {
+    const now = Date.now();
+    if (now - lastInterruptRef.current < 1000) {
+      return; // Prevent interrupts within 1 second of last interrupt
+    }
+    lastInterruptRef.current = now;
+    
+    console.log("VAD: User started speaking, debounced interrupt triggered");
+    handleInterrupt();
+  }, [handleInterrupt]);
+
   // Voice Activity Detection - auto-interrupt when user speaks during AI speech
   const { isDetecting } = useVoiceActivityDetection({
     enabled: isSpeaking, // Only monitor when AI is speaking
-    onVoiceDetected: () => {
-      console.log("VAD: User started speaking, auto-interrupting AI");
-      handleInterrupt();
-    },
-    threshold: 40, // Adjust sensitivity (30-50 is good range)
-    detectionDuration: 300, // Wait 300ms before triggering
+    onVoiceDetected: debouncedInterrupt,
+    threshold: 55, // Increased from 40 to reduce false positives
+    detectionDuration: 500, // Increased from 300ms for more confident detection
   });
 
   console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking, "VAD detecting:", isDetecting);
@@ -118,7 +145,7 @@ export const ChatInterface = ({
     }
   }, [messages, autoSpeak, speak, detectedLanguage, startListening]);
 
-  // Handle voice input with silence detection (prevent duplicates)
+  // Handle voice input with silence detection (prevent duplicates and noise)
   useEffect(() => {
     if (!transcript || !isListening) {
       // Clear timer if not listening or no transcript
@@ -132,12 +159,24 @@ export const ChatInterface = ({
     console.log("Voice transcript received:", transcript);
     setInput(transcript);
 
+    const trimmed = transcript.trim();
+    
+    // Prevent auto-send for:
+    // 1. Very short transcripts (< 5 characters)
+    // 2. Common noise words
+    const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm'];
+    const isSingleNoiseWord = noiseWords.some(word => trimmed.toLowerCase() === word);
+    
+    if (trimmed.length < 5 || isSingleNoiseWord) {
+      return; // Don't auto-send noise
+    }
+
     // Clear existing silence timer
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
     }
 
-    // Set new timer - auto-send after 2 seconds of silence
+    // Set new timer - auto-send after 3 seconds of silence (increased from 2s)
     silenceTimerRef.current = setTimeout(() => {
       if (transcript.trim() && transcript !== sentTranscriptRef.current) {
         console.log("Silence detected, auto-sending:", transcript);
@@ -147,7 +186,7 @@ export const ChatInterface = ({
         setInput("");
         clearTranscript();
       }
-    }, 2000);
+    }, 3000);
 
     return () => {
       if (silenceTimerRef.current) {
@@ -180,19 +219,6 @@ export const ChatInterface = ({
       sentTranscriptRef.current = ""; // Reset for new recording
       startListening(detectedLanguage);
     }
-  };
-
-  const handleInterrupt = () => {
-    console.log("Interrupt triggered - stopping speech and switching to listening");
-
-    // Stop any ongoing AI speech and current listening session
-    stopSpeaking();
-    stopListening();
-    clearTranscript();
-    sentTranscriptRef.current = "";
-
-    // Immediately start listening in the current detected language
-    startListening(detectedLanguage);
   };
 
   return (
