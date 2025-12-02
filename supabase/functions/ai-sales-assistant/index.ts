@@ -19,6 +19,37 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get the latest user message for FAQ cache lookup
+    const latestUserMessage = messages.filter((m: any) => m.role === 'user').pop()?.content;
+    
+    // Quick FAQ cache check for common questions (only if short conversation)
+    if (latestUserMessage && messages.length <= 4) {
+      const { data: cachedAnswer } = await supabase
+        .from('sales_faq_cache')
+        .select('answer_text, id, usage_count')
+        .ilike('question_text', `%${latestUserMessage.slice(0, 100)}%`)
+        .limit(1)
+        .single();
+
+      if (cachedAnswer) {
+        console.log(`FAQ cache hit for lead ${leadId}`);
+        
+        // Increment usage count asynchronously (don't wait)
+        supabase
+          .from('sales_faq_cache')
+          .update({ usage_count: cachedAnswer.usage_count + 1 })
+          .eq('id', cachedAnswer.id)
+          .then();
+
+        // Return cached response as stream format
+        const streamResponse = `data: {"id":"cached-${Date.now()}","provider":"Cache","model":"faq-cache","object":"chat.completion.chunk","created":${Math.floor(Date.now()/1000)},"choices":[{"index":0,"delta":{"role":"assistant","content":"${cachedAnswer.answer_text}"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n`;
+        
+        return new Response(streamResponse, {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
+    }
+
     // Fetch all active courses with categories and subjects (RAG context)
     const { data: courses, error: coursesError } = await supabase
       .from('courses')
@@ -138,6 +169,35 @@ Style:
           last_interaction_at: new Date().toISOString(),
         })
         .eq('id', leadId);
+
+      // Cache frequently asked questions for faster responses
+      // Only cache if it's a short conversation (likely first-time questions)
+      if (messages.length <= 4 && latestUserMessage && messages[messages.length - 1]?.role === 'assistant') {
+        const assistantResponse = messages[messages.length - 1].content;
+        
+        // Check if this question-answer pair should be cached
+        if (assistantResponse && latestUserMessage.length < 200) {
+          // Insert or update cache (upsert based on similar question)
+          const { data: existingCache } = await supabase
+            .from('sales_faq_cache')
+            .select('id')
+            .ilike('question_text', `%${latestUserMessage.slice(0, 50)}%`)
+            .limit(1)
+            .single();
+
+          if (!existingCache) {
+            // Insert new cache entry
+            await supabase
+              .from('sales_faq_cache')
+              .insert({
+                question_text: latestUserMessage,
+                answer_text: assistantResponse,
+                usage_count: 1
+              });
+            console.log(`Cached new FAQ for lead ${leadId}`);
+          }
+        }
+      }
     }
 
     // Stream response back to client
