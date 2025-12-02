@@ -72,18 +72,20 @@ export const ConversationMode = ({
   useEffect(() => {
     if (!hasAutoStarted && messages.length === 0) {
       setHasAutoStarted(true);
-      const greeting = detectedLanguage === 'hi-IN' 
-        ? "नमस्ते! मैं SimpleLecture की शिक्षा सलाहकार हूं। मैं आपकी मदद के लिए यहाँ हूँ।"
-        : "Hello! I'm your education counselor at SimpleLecture. How can I help you today?";
+      // Always start with English greeting since default is en-IN
+      const greeting = "Hello! I'm your education counselor at SimpleLecture. How can I help you today?";
       
-      speak(greeting, detectedLanguage, counselorGender, () => {
-        // After greeting, start listening
+      console.log("Auto-starting conversation with English greeting, language:", detectedLanguage);
+      
+      speak(greeting, "en-IN", "male", () => {
+        // After greeting, start listening in English
         setTimeout(() => {
-          startListening(detectedLanguage);
+          console.log("Starting listening in English after greeting");
+          startListening("en-IN");
         }, 500);
       });
     }
-  }, [hasAutoStarted, messages.length, speak, startListening, detectedLanguage, counselorGender]);
+  }, [hasAutoStarted, messages.length, speak, startListening]);
 
   // Handle manual counselor/language switch
   const handleCounselorSwitch = (gender: "female" | "male") => {
