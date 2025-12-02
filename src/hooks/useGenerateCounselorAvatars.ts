@@ -7,7 +7,7 @@ interface CounselorAvatars {
   male: string | null;
 }
 
-const CACHE_VERSION = 2; // Increment to invalidate old cache
+const CACHE_VERSION = 3; // Increment to invalidate old cache
 const STORAGE_KEY = `counselor_avatars_v${CACHE_VERSION}`;
 const CACHE_EXPIRY_DAYS = 30;
 

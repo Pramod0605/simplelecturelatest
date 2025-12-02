@@ -9,21 +9,10 @@ import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 
-// Language display map
+// Language display map - Limited to Hindi and English only (best voice quality)
 const languageNames: Record<string, { name: string; flag: string }> = {
   'en-IN': { name: 'English', flag: '🇮🇳' },
   'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
-  'kn-IN': { name: 'ಕನ್ನಡ', flag: '🇮🇳' },
-  'ta-IN': { name: 'தமிழ்', flag: '🇮🇳' },
-  'te-IN': { name: 'తెలుగు', flag: '🇮🇳' },
-  'ml-IN': { name: 'മലയാളം', flag: '🇮🇳' },
-  'mr-IN': { name: 'मराठी', flag: '🇮🇳' },
-  'bn-IN': { name: 'বাংলা', flag: '🇮🇳' },
-  'gu-IN': { name: 'ગુજરાతી', flag: '🇮🇳' },
-  'pa-IN': { name: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
-  'or-IN': { name: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
-  'as-IN': { name: 'অসমীয়া', flag: '🇮🇳' },
-  'ur-IN': { name: 'اردو', flag: '🇮🇳' },
 };
 
 interface Message {
@@ -62,6 +51,8 @@ export const ConversationMode = ({
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
+  const [hasAutoStarted, setHasAutoStarted] = useState(false);
+  const lastInteractionRef = useRef<number>(Date.now());
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
 
   // Auto-scroll to bottom
@@ -70,6 +61,49 @@ export const ConversationMode = ({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto-start conversation with greeting
+  useEffect(() => {
+    if (!hasAutoStarted && messages.length === 0) {
+      setHasAutoStarted(true);
+      const greeting = detectedLanguage === 'hi-IN' 
+        ? "नमस्ते! मैं SimpleLecture की शिक्षा सलाहकार हूं। मैं आपके सवालों में आपकी मदद करने के लिए यहाँ हूँ। आप किस कोर्स में रुचि रखते हैं?"
+        : "Hello! I'm your education counselor at SimpleLecture. I'm here to help answer your questions. Which course are you interested in?";
+      
+      speak(greeting, detectedLanguage, counselorGender, () => {
+        // After greeting, start listening
+        setTimeout(() => {
+          startListening(detectedLanguage);
+        }, 500);
+      });
+    }
+  }, [hasAutoStarted, messages.length, speak, startListening, detectedLanguage, counselorGender]);
+
+  // Track user interactions
+  useEffect(() => {
+    if (messages.length > 0 || isListening || conversationState === 'speaking') {
+      lastInteractionRef.current = Date.now();
+    }
+  }, [messages, isListening, conversationState]);
+
+  // 5-minute inactivity reminder
+  useEffect(() => {
+    const checkInactivity = setInterval(() => {
+      const timeSinceLastInteraction = Date.now() - lastInteractionRef.current;
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (timeSinceLastInteraction >= fiveMinutes && conversationState === "idle" && messages.length > 0) {
+        const reminder = detectedLanguage === 'hi-IN'
+          ? "मैं अभी भी आपकी मदद के लिए यहाँ हूँ। जब भी आप तैयार हों, मुझसे कुछ भी पूछ सकते हैं।"
+          : "I'm still here to assist you. Feel free to ask me anything whenever you're ready.";
+        
+        speak(reminder, detectedLanguage, counselorGender);
+        lastInteractionRef.current = Date.now(); // Reset timer
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkInactivity);
+  }, [conversationState, messages.length, speak, detectedLanguage, counselorGender]);
 
   return (
     <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl">
