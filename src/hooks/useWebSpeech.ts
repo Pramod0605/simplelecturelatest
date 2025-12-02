@@ -7,7 +7,7 @@ interface UseWebSpeechReturn {
   transcript: string;
   startListening: (language?: string) => void;
   stopListening: () => void;
-  speak: (text: string, language?: string) => void;
+  speak: (text: string, language?: string, onComplete?: () => void) => void;
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
@@ -49,11 +49,14 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     recog.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
-      toast({
-        title: "Voice Input Error",
-        description: "Could not process voice input. Please try again.",
-        variant: "destructive",
-      });
+      // Don't show toast for network errors - they're often just timeouts in continuous mode
+      if (event.error !== 'network' && event.error !== 'aborted') {
+        toast({
+          title: "Voice Input Error",
+          description: "Could not process voice input. Please try again.",
+          variant: "destructive",
+        });
+      }
     };
 
     recog.onend = () => {
@@ -109,7 +112,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [recognition]);
 
-  const speak = useCallback((text: string, language = 'en-IN') => {
+  const speak = useCallback((text: string, language = 'en-IN', onComplete?: () => void) => {
     if (!speechSynthesisSupported) {
       toast({
         title: "Not Supported",
@@ -196,6 +199,9 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     utterance.onend = () => {
       console.log("Speech ended");
       setIsSpeaking(false);
+      if (onComplete) {
+        onComplete();
+      }
     };
     
     utterance.onerror = (event) => {

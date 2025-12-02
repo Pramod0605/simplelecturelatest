@@ -14,7 +14,7 @@ interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
   conversationState: ConversationState;
-  onSendMessage: (content: string, language?: string) => void;
+  onSendMessage: (content: string) => void;
   onStateChange: (state: ConversationState) => void;
   // Speech props from parent
   isListening: boolean;
@@ -22,7 +22,7 @@ interface ChatInterfaceProps {
   transcript: string;
   startListening: (language?: string) => void;
   stopListening: () => void;
-  speak: (text: string, language?: string) => void;
+  speak: (text: string, language?: string, onComplete?: () => void) => void;
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
@@ -76,7 +76,7 @@ export const ChatInterface = ({
     }
   }, [isListening, isSpeaking, isLoading, onStateChange]);
 
-  // Auto-speak new assistant messages
+  // Auto-speak new assistant messages and start continuous listening
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (
@@ -86,9 +86,16 @@ export const ChatInterface = ({
       lastMessage.content !== lastMessageRef.current
     ) {
       lastMessageRef.current = lastMessage.content;
-      speak(lastMessage.content, detectedLanguage);
+      
+      // Speak and then automatically start listening for continuous conversation
+      speak(lastMessage.content, detectedLanguage, () => {
+        // After AI finishes speaking, automatically start listening again
+        console.log("AI finished speaking, starting listening with language:", detectedLanguage);
+        sentTranscriptRef.current = "";
+        startListening(detectedLanguage);
+      });
     }
-  }, [messages, autoSpeak, speak, detectedLanguage]);
+  }, [messages, autoSpeak, speak, detectedLanguage, startListening]);
 
   // Handle voice input with silence detection (prevent duplicates)
   useEffect(() => {
