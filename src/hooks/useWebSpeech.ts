@@ -17,6 +17,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceFallbackShown, setVoiceFallbackShown] = useState(false);
   const { toast } = useToast();
 
   // Check if Web Speech API is supported
@@ -26,6 +28,24 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   // Speech Recognition
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const [recognition, setRecognition] = useState<any>(null);
+
+  // Load voices with voiceschanged event
+  useEffect(() => {
+    if (!speechSynthesisSupported) return;
+
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      setVoices(availableVoices);
+      console.log("Loaded voices:", availableVoices.length, "voices");
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, [speechSynthesisSupported]);
 
   useEffect(() => {
     if (!isSupported) return;
@@ -160,35 +180,70 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    // Priority-based voice selection for Indian accent
-    const voices = window.speechSynthesis.getVoices();
+    // Smart voice selection with fallback chain
     const primaryLang = langCode.split('-')[0];
+    let matchingVoice: SpeechSynthesisVoice | null = null;
+    let isFallback = false;
     
     // Step 1: Try exact locale match (e.g., kn-IN)
-    let matchingVoice = voices.find(voice => 
+    matchingVoice = voices.find(voice => 
       voice.lang.replace('_', '-') === langCode
-    );
+    ) || null;
     
-    // Step 2: If no exact match, try Indian variants first
+    // Step 2: Try Indian variant of same language
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.startsWith(primaryLang) && voice.lang.includes('IN')
-      );
+      ) || null;
     }
     
-    // Step 3: Fall back to any voice with the same primary language
+    // Step 3: Try any voice of same language
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.startsWith(primaryLang)
-      );
+      ) || null;
+      if (matchingVoice) isFallback = true;
+    }
+    
+    // Step 4: Fallback to Hindi (most common Indian language voice)
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => 
+        voice.lang.startsWith('hi') && voice.lang.includes('IN')
+      ) || null;
+      if (matchingVoice) isFallback = true;
+    }
+    
+    // Step 5: Fallback to Indian English
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => 
+        voice.lang === 'en-IN' || voice.lang === 'en_IN'
+      ) || null;
+      if (matchingVoice) isFallback = true;
     }
 
     if (matchingVoice) {
       utterance.voice = matchingVoice;
-      console.log("Using voice:", matchingVoice.name, matchingVoice.lang, "for language:", langCode);
+      console.log(`Using voice: ${matchingVoice.name} (${matchingVoice.lang}) for ${langCode}${isFallback ? ' [FALLBACK]' : ''}`);
+      
+      // Show fallback notification once
+      if (isFallback && !voiceFallbackShown) {
+        setVoiceFallbackShown(true);
+        toast({
+          title: "Voice Fallback",
+          description: `Native ${langCode} voice unavailable. Using ${matchingVoice.lang} voice.`,
+          duration: 3000,
+        });
+      }
     } else {
-      console.log("No matching voice found for:", langCode, "Available voices:", 
-        voices.filter(v => v.lang.startsWith(primaryLang)).map(v => `${v.name} (${v.lang})`));
+      console.warn("No voice available for:", langCode, "Using default voice");
+      if (!voiceFallbackShown) {
+        setVoiceFallbackShown(true);
+        toast({
+          title: "Voice Unavailable",
+          description: "Using default browser voice.",
+          duration: 3000,
+        });
+      }
     }
 
     utterance.onstart = () => {
@@ -223,7 +278,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       console.error("Error calling speechSynthesis.speak:", error);
       setIsSpeaking(false);
     }
-  }, [speechSynthesisSupported, toast]);
+  }, [speechSynthesisSupported, voices, voiceFallbackShown, toast]);
 
   const stopSpeaking = useCallback(() => {
     if (speechSynthesisSupported) {

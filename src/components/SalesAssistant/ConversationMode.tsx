@@ -2,9 +2,27 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { X, Volume2, VolumeX } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationState } from "@/hooks/useSalesAssistant";
+
+// Language display map
+const languageNames: Record<string, { name: string; flag: string }> = {
+  'en-IN': { name: 'English', flag: '🇮🇳' },
+  'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
+  'kn-IN': { name: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  'ta-IN': { name: 'தமிழ்', flag: '🇮🇳' },
+  'te-IN': { name: 'తెలుగు', flag: '🇮🇳' },
+  'ml-IN': { name: 'മലയാളം', flag: '🇮🇳' },
+  'mr-IN': { name: 'मराठी', flag: '🇮🇳' },
+  'bn-IN': { name: 'বাংলা', flag: '🇮🇳' },
+  'gu-IN': { name: 'ગુજરાతી', flag: '🇮🇳' },
+  'pa-IN': { name: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  'or-IN': { name: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
+  'as-IN': { name: 'অসমীয়া', flag: '🇮🇳' },
+  'ur-IN': { name: 'اردو', flag: '🇮🇳' },
+};
 
 interface Message {
   role: "user" | "assistant";
@@ -32,6 +50,7 @@ export const ConversationMode = ({
   onToggleAutoSpeak,
   onInterrupt,
   onClose,
+  detectedLanguage,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -46,9 +65,16 @@ export const ConversationMode = ({
     <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl">
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-lg">Voice Conversation</h3>
-          <p className="text-xs opacity-90">SimpleLecture AI Assistant</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h3 className="font-semibold text-lg">Voice Conversation</h3>
+            <p className="text-xs opacity-90">SimpleLecture AI Assistant</p>
+          </div>
+          {detectedLanguage && (
+            <Badge variant="secondary" className="text-xs bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+              {languageNames[detectedLanguage]?.flag} {languageNames[detectedLanguage]?.name || detectedLanguage}
+            </Badge>
+          )}
         </div>
         <div className="flex gap-2">
           <Button
