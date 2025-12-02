@@ -79,7 +79,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       }
       combinedTranscript = combinedTranscript.trim();
       if (combinedTranscript) {
-        console.log("Speech recognition transcript:", combinedTranscript);
+        console.log("📝 Speech recognition transcript (lang: " + recog.lang + "):", combinedTranscript);
         setTranscript(combinedTranscript);
       }
     };
@@ -137,7 +137,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       recognition.lang = langCode;
       recognition.start();
       setIsListening(true);
-      console.log("Started listening with language:", langCode);
+      console.log("🎤 Started speech recognition with language:", langCode);
     } catch (error) {
       // Silent error handling - don't show popup to user
       console.log("Speech recognition error:", error);
