@@ -121,10 +121,17 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       .replace(/\n+/g, '. ') // Convert newlines to pauses
       .trim();
 
+    // Don't speak if text is empty after cleaning
+    if (!cleanText) {
+      console.log("No text to speak after cleaning");
+      return;
+    }
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = language;
-    utterance.rate = 0.8; // Slower for better clarity
+    utterance.rate = 0.85; // Slightly faster for natural flow
     utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
     // Try to find an Indian English voice
     const voices = window.speechSynthesis.getVoices();
@@ -136,20 +143,38 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
     if (indianVoice) {
       utterance.voice = indianVoice;
+      console.log("Using Indian English voice:", indianVoice.name);
     }
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => {
+    utterance.onstart = () => {
+      console.log("Speech started");
+      setIsSpeaking(true);
+    };
+    
+    utterance.onend = () => {
+      console.log("Speech ended");
       setIsSpeaking(false);
-      toast({
-        title: "Speech Error",
-        description: "Could not play audio. Please check your settings.",
-        variant: "destructive",
-      });
+    };
+    
+    utterance.onerror = (event) => {
+      console.error("Speech error:", event);
+      setIsSpeaking(false);
+      // Don't show toast for 'interrupted' or 'canceled' errors
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        toast({
+          title: "Speech Error",
+          description: "Could not play audio. Please try again.",
+          variant: "destructive",
+        });
+      }
     };
 
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error("Error calling speechSynthesis.speak:", error);
+      setIsSpeaking(false);
+    }
   }, [speechSynthesisSupported, toast]);
 
   const stopSpeaking = useCallback(() => {
