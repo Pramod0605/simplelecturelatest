@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { X, Volume2, VolumeX } from "lucide-react";
+import { X, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
+import { useToast } from "@/hooks/use-toast";
 
 // Language display map - Limited to Hindi and English only (best voice quality)
 const languageNames: Record<string, { name: string; flag: string }> = {
@@ -33,6 +34,7 @@ interface ConversationModeProps {
   detectedLanguage: string;
   speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
   startListening: (language?: string) => void;
+  onLanguageChange?: (language: string, gender: "female" | "male") => void;
 }
 
 export const ConversationMode = ({
@@ -48,12 +50,16 @@ export const ConversationMode = ({
   detectedLanguage,
   speak,
   startListening,
+  onLanguageChange,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(detectedLanguage || "en-IN");
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
+  const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
   const lastInteractionRef = useRef<number>(Date.now());
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
+  const { toast } = useToast();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -79,14 +85,34 @@ export const ConversationMode = ({
     }
   }, [hasAutoStarted, messages.length, speak, startListening, detectedLanguage, counselorGender]);
 
-  // Auto-switch avatar based on detected language
-  useEffect(() => {
-    if (detectedLanguage === "hi-IN") {
-      setCounselorGender("female"); // Priya for Hindi
-    } else {
-      setCounselorGender("male"); // Rahul for English
+  // Handle manual counselor/language switch
+  const handleCounselorSwitch = (gender: "female" | "male") => {
+    if (gender === counselorGender) return; // Already selected
+    
+    setIsSwitchingCounselor(true);
+    const newLanguage = gender === "female" ? "hi-IN" : "en-IN";
+    
+    // Update states
+    setCounselorGender(gender);
+    setSelectedLanguage(newLanguage);
+    
+    // Notify parent to update voice settings
+    if (onLanguageChange) {
+      onLanguageChange(newLanguage, gender);
     }
-  }, [detectedLanguage]);
+    
+    // Show toast
+    toast({
+      title: gender === "female" ? "Switched to Priya (Hindi)" : "Switched to Rahul (English)",
+      description: `Voice and language updated to ${newLanguage === "hi-IN" ? "Hindi" : "English"}`,
+      duration: 2000,
+    });
+    
+    // Simulate loading for avatar
+    setTimeout(() => {
+      setIsSwitchingCounselor(false);
+    }, 500);
+  };
 
   // Track user interactions
   useEffect(() => {
@@ -130,23 +156,31 @@ export const ConversationMode = ({
           )}
         </div>
         <div className="flex gap-2">
-          {/* Gender Toggle */}
+          {/* Gender/Language Toggle */}
           <div className="flex gap-1 mr-2">
             <Button
               variant={counselorGender === "male" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setCounselorGender("male")}
+              onClick={() => handleCounselorSwitch("male")}
+              disabled={isSwitchingCounselor}
               className="text-primary-foreground hover:bg-primary-foreground/20"
             >
-              👨 Rahul
+              {isSwitchingCounselor && counselorGender === "male" ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              👨 Rahul (EN)
             </Button>
             <Button
               variant={counselorGender === "female" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setCounselorGender("female")}
+              onClick={() => handleCounselorSwitch("female")}
+              disabled={isSwitchingCounselor}
               className="text-primary-foreground hover:bg-primary-foreground/20"
             >
-              👩 Priya
+              {isSwitchingCounselor && counselorGender === "female" ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              👩 Priya (HI)
             </Button>
           </div>
           <Button

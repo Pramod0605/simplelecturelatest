@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle, X, TestTube, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,8 @@ export const SalesAssistantWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [currentLanguage, setCurrentLanguage] = useState<string>("en-IN");
+  const [currentGender, setCurrentGender] = useState<"female" | "male">("male");
   
   const { 
     messages, 
@@ -37,6 +39,20 @@ export const SalesAssistantWidget = () => {
     clearTranscript,
     isSupported 
   } = useWebSpeech();
+
+  // Sync language and gender when detected language changes
+  useEffect(() => {
+    if (detectedLanguage) {
+      setCurrentLanguage(detectedLanguage);
+      setCurrentGender(detectedLanguage === "hi-IN" ? "female" : "male");
+    }
+  }, [detectedLanguage]);
+
+  const handleLanguageChange = (language: string, gender: "female" | "male") => {
+    console.log("Language changed to:", language, "Gender:", gender);
+    setCurrentLanguage(language);
+    setCurrentGender(gender);
+  };
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
     const success = await createLead(name, email, mobile);
@@ -153,8 +169,8 @@ export const SalesAssistantWidget = () => {
                     stopSpeaking={stopSpeaking}
                     clearTranscript={clearTranscript}
                     isSupported={isSupported}
-                    detectedLanguage={detectedLanguage}
-                    counselorGender="male"
+                    detectedLanguage={currentLanguage}
+                    counselorGender={currentGender}
                   />
                 </div>
                 {isSupported && (
@@ -190,9 +206,10 @@ export const SalesAssistantWidget = () => {
           onToggleAutoSpeak={() => setAutoSpeak(!autoSpeak)}
           onInterrupt={handleInterrupt}
           onClose={handleCloseVoiceMode}
-          detectedLanguage={detectedLanguage}
+          detectedLanguage={currentLanguage}
           speak={speak}
           startListening={startListening}
+          onLanguageChange={handleLanguageChange}
         />
       )}
     </>

@@ -171,14 +171,19 @@ export const ChatInterface = ({
   };
 
   const handleInterrupt = () => {
-    console.log("Interrupt triggered");
-    if (isSpeaking) {
-      stopSpeaking();
-    }
-    if (!isListening && !isLoading) {
-      sentTranscriptRef.current = "";
-      startListening(detectedLanguage);
-    }
+    console.log("Interrupt triggered - stopping speech first");
+    
+    // ALWAYS stop speaking first if AI is talking
+    stopSpeaking();
+    
+    // Wait briefly for speech to fully stop, then start listening
+    setTimeout(() => {
+      if (!isLoading) {
+        console.log("Starting listening after interrupt delay");
+        sentTranscriptRef.current = "";
+        startListening(detectedLanguage);
+      }
+    }, 400);
   };
 
   return (
