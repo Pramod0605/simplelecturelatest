@@ -3,7 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { ConversationState } from "@/hooks/useSalesAssistant";
+
+// Language display map
+const languageNames: Record<string, { name: string; flag: string }> = {
+  'en-IN': { name: 'English', flag: '🇮🇳' },
+  'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
+  'kn-IN': { name: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  'ta-IN': { name: 'தமிழ்', flag: '🇮🇳' },
+  'te-IN': { name: 'తెలుగు', flag: '🇮🇳' },
+  'ml-IN': { name: 'മലയാളം', flag: '🇮🇳' },
+  'mr-IN': { name: 'मराठी', flag: '🇮🇳' },
+  'bn-IN': { name: 'বাংলা', flag: '🇮🇳' },
+  'gu-IN': { name: 'ગુજરાતી', flag: '🇮🇳' },
+  'pa-IN': { name: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  'or-IN': { name: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
+  'as-IN': { name: 'অসমীয়া', flag: '🇮🇳' },
+  'ur-IN': { name: 'اردو', flag: '🇮🇳' },
+};
 
 interface Message {
   role: "user" | "assistant";
@@ -251,15 +269,22 @@ export const ChatInterface = ({
       <div className="border-t p-4 space-y-2">
         {isSupported && (
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>
-              {conversationState === "listening" 
-                ? "🎤 Listening..." 
-                : conversationState === "speaking"
-                ? "🔊 Speaking..."
-                : conversationState === "processing"
-                ? "⏳ Processing..."
-                : "Tap mic to speak"}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {detectedLanguage && (
+                <Badge variant="secondary" className="text-xs">
+                  {languageNames[detectedLanguage]?.flag} {languageNames[detectedLanguage]?.name || detectedLanguage}
+                </Badge>
+              )}
+              <span>
+                {conversationState === "listening" 
+                  ? "🎤 Listening..." 
+                  : conversationState === "speaking"
+                  ? "🔊 Speaking..."
+                  : conversationState === "processing"
+                  ? "⏳ Processing..."
+                  : "Tap mic to speak"}
+              </span>
+            </div>
             <Button
               variant="ghost"
               size="sm"
