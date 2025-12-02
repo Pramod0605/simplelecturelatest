@@ -97,6 +97,13 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
+    // CRITICAL: Stop any ongoing speech before starting to listen
+    if (speechSynthesisSupported && window.speechSynthesis.speaking) {
+      console.log("Stopping speech before starting to listen");
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+
     try {
       setTranscript("");
       
@@ -123,7 +130,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
         variant: "destructive",
       });
     }
-  }, [recognition, toast]);
+  }, [recognition, toast, speechSynthesisSupported]);
 
   const stopListening = useCallback(() => {
     if (recognition) {

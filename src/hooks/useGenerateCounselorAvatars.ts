@@ -71,20 +71,34 @@ export const useGenerateCounselorAvatars = () => {
     setIsGenerating(true);
     setError(null);
 
+    console.log("🎨 Starting avatar generation...");
+
     try {
       // Generate female avatar
+      console.log("Generating female avatar (Priya)...");
       const femaleResponse = await supabase.functions.invoke("ai-generate-image", {
         body: { prompt: PROMPTS.female },
       });
 
-      if (femaleResponse.error) throw new Error("Failed to generate female avatar");
+      if (femaleResponse.error) {
+        console.error("Female avatar generation error:", femaleResponse.error);
+        throw new Error("Failed to generate female avatar");
+      }
+
+      console.log("✅ Female avatar generated:", femaleResponse.data?.imageUrl?.substring(0, 50));
 
       // Generate male avatar
+      console.log("Generating male avatar (Rahul)...");
       const maleResponse = await supabase.functions.invoke("ai-generate-image", {
         body: { prompt: PROMPTS.male },
       });
 
-      if (maleResponse.error) throw new Error("Failed to generate male avatar");
+      if (maleResponse.error) {
+        console.error("Male avatar generation error:", maleResponse.error);
+        throw new Error("Failed to generate male avatar");
+      }
+
+      console.log("✅ Male avatar generated:", maleResponse.data?.imageUrl?.substring(0, 50));
 
       const newAvatars: CounselorAvatars = {
         female: femaleResponse.data?.imageUrl || null,
@@ -100,12 +114,13 @@ export const useGenerateCounselorAvatars = () => {
         })
       );
 
+      console.log("✅ Avatars cached successfully");
       setAvatars(newAvatars);
       toast.success("Counselor avatars loaded successfully");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to generate avatars";
       setError(errorMessage);
-      console.error("Error generating avatars:", err);
+      console.error("❌ Avatar generation error:", err);
       toast.error("Using default avatars");
     } finally {
       setIsGenerating(false);

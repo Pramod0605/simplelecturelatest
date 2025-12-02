@@ -7,13 +7,15 @@ interface VoiceStatusIndicatorProps {
   gender: "female" | "male";
   avatarUrl?: string;
   onTap?: () => void;
+  isGenerating?: boolean;
 }
 
 export const VoiceStatusIndicator = ({ 
   state, 
   gender, 
   avatarUrl, 
-  onTap 
+  onTap,
+  isGenerating 
 }: VoiceStatusIndicatorProps) => {
   const getStateConfig = () => {
     switch (state) {
@@ -38,6 +40,7 @@ export const VoiceStatusIndicator = ({
         conversationState={state}
         avatarUrl={avatarUrl}
         onTap={onTap}
+        isGenerating={isGenerating}
       />
 
       {/* Audio Waveform */}
