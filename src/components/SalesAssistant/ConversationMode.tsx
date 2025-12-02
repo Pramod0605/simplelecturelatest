@@ -62,13 +62,13 @@ export const ConversationMode = ({
     }
   }, [messages]);
 
-  // Auto-start conversation with greeting
+  // Auto-start conversation with greeting (don't wait for avatars)
   useEffect(() => {
     if (!hasAutoStarted && messages.length === 0) {
       setHasAutoStarted(true);
       const greeting = detectedLanguage === 'hi-IN' 
-        ? "नमस्ते! मैं SimpleLecture की शिक्षा सलाहकार हूं। मैं आपके सवालों में आपकी मदद करने के लिए यहाँ हूँ। आप किस कोर्स में रुचि रखते हैं?"
-        : "Hello! I'm your education counselor at SimpleLecture. I'm here to help answer your questions. Which course are you interested in?";
+        ? "नमस्ते! मैं SimpleLecture की शिक्षा सलाहकार हूं। मैं आपकी मदद के लिए यहाँ हूँ।"
+        : "Hello! I'm your education counselor at SimpleLecture. How can I help you today?";
       
       speak(greeting, detectedLanguage, counselorGender, () => {
         // After greeting, start listening
@@ -189,6 +189,7 @@ export const ConversationMode = ({
             state={conversationState} 
             gender={counselorGender}
             avatarUrl={counselorGender === "female" ? avatars.female : avatars.male}
+            isGenerating={isGenerating}
             onTap={onInterrupt} 
           />
         </div>

@@ -6,13 +6,15 @@ interface CounselorAvatarProps {
   conversationState: ConversationState;
   avatarUrl?: string;
   onTap?: () => void;
+  isGenerating?: boolean;
 }
 
 export const CounselorAvatar = ({ 
   gender, 
   conversationState, 
   avatarUrl,
-  onTap 
+  onTap,
+  isGenerating 
 }: CounselorAvatarProps) => {
   const getAvatarClass = () => {
     switch (conversationState) {
@@ -28,6 +30,9 @@ export const CounselorAvatar = ({
   };
 
   const counselorName = gender === "male" ? "Rahul" : "Priya";
+
+  // Log avatar status for debugging
+  console.log("CounselorAvatar:", { gender, counselorName, hasAvatar: !!avatarUrl, avatarUrl: avatarUrl?.substring(0, 50), isGenerating });
 
   return (
     <div
@@ -57,11 +62,20 @@ export const CounselorAvatar = ({
         <div
           className={`w-40 h-40 rounded-full overflow-hidden border-4 border-border shadow-2xl transition-all duration-300 ${getAvatarClass()}`}
         >
-          {avatarUrl ? (
+          {isGenerating ? (
+            <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex flex-col items-center justify-center">
+              <Loader2 className="h-12 w-12 text-primary-foreground animate-spin mb-2" />
+              <p className="text-xs text-primary-foreground">Loading...</p>
+            </div>
+          ) : avatarUrl ? (
             <img
               src={avatarUrl}
               alt={`${counselorName} - Educational Counselor`}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error("Avatar image failed to load:", avatarUrl);
+                e.currentTarget.style.display = 'none';
+              }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
