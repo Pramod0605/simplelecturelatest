@@ -1,5 +1,6 @@
 import { ConversationState } from "@/hooks/useSalesAssistant";
 import { Loader2 } from "lucide-react";
+import { AnimatedMouth } from "./AnimatedMouth";
 
 interface CounselorAvatarProps {
   gender: "female" | "male";
@@ -36,6 +37,24 @@ export const CounselorAvatar = ({
     >
       {/* Avatar Container */}
       <div className="relative">
+        {/* Speaking indicator ring */}
+        {conversationState === "speaking" && (
+          <div className="absolute -inset-2">
+            <div 
+              className="absolute inset-0 rounded-full border-4 border-primary/50"
+              style={{
+                animation: 'speak-ripple 1.5s ease-out infinite'
+              }}
+            />
+            <div 
+              className="absolute inset-0 rounded-full border-2 border-primary"
+              style={{
+                animation: 'speak-ripple 1.5s ease-out infinite 0.75s'
+              }}
+            />
+          </div>
+        )}
+
         <div
           className={`w-40 h-40 rounded-full overflow-hidden border-4 border-border shadow-2xl transition-all duration-300 ${getAvatarClass()}`}
         >
@@ -53,6 +72,9 @@ export const CounselorAvatar = ({
             </div>
           )}
         </div>
+
+        {/* Animated mouth overlay when speaking */}
+        <AnimatedMouth isActive={conversationState === "speaking"} />
 
         {/* Processing overlay */}
         {conversationState === "processing" && (
