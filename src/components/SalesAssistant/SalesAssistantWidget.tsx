@@ -55,14 +55,15 @@ export const SalesAssistantWidget = () => {
   };
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
-    const success = await createLead(name, email, mobile);
+    const success = await createLead(name, email, mobile, currentGender);
     return success;
   };
 
   const handleQuickChat = async () => {
-    // Create anonymous lead for quick chat
-    const anonymousName = `Guest-${Date.now()}`;
-    const success = await createLead(anonymousName, "", "");
+    // Create anonymous lead for quick chat with friendly greeting
+    const shortId = Date.now().toString(36).slice(-4);
+    const anonymousName = `Anonymous-${shortId}`;
+    const success = await createLead(anonymousName, "", "", currentGender);
     if (success) {
       setIsVoiceMode(true);
     }

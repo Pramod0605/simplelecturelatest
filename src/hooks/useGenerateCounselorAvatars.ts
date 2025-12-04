@@ -7,9 +7,15 @@ interface CounselorAvatars {
   male: string | null;
 }
 
-const CACHE_VERSION = 6; // Increment to force new attractive avatars
+const CACHE_VERSION = 7; // Increment to force new attractive avatars
 const STORAGE_KEY = `counselor_avatars_v${CACHE_VERSION}`;
 const CACHE_EXPIRY_DAYS = 30;
+
+// Fallback professional placeholder images (shown while generating)
+const FALLBACK_AVATARS: CounselorAvatars = {
+  female: null, // Will use emoji placeholder
+  male: null,   // Will use emoji placeholder
+};
 
 const PROMPTS = {
   // Hindi - Beautiful, cute, professional Indian female
