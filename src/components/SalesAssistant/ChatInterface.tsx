@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { ConversationState } from "@/hooks/useSalesAssistant";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
 
-// Language display map - Limited to Hindi and English only (best voice quality)
 const languageNames: Record<string, { name: string; flag: string }> = {
   'en-IN': { name: 'English', flag: '🇮🇳' },
   'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
@@ -24,7 +23,6 @@ interface ChatInterfaceProps {
   conversationState: ConversationState;
   onSendMessage: (content: string) => void;
   onStateChange: (state: ConversationState) => void;
-  // Speech props from parent
   isListening: boolean;
   isSpeaking: boolean;
   transcript: string;
@@ -59,50 +57,54 @@ export const ChatInterface = ({
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [showVoiceHelp, setShowVoiceHelp] = useState(true);
+  const [vadLevel, setVadLevel] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>("");
   const sentTranscriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Define handleInterrupt early so it can be used in debouncedInterrupt
+  // Immediate interrupt handler - cancel speech synthesis immediately
   const handleInterrupt = useCallback(() => {
-    console.log("Interrupt triggered - stopping speech and switching to listening");
+    console.log("🛑 Interrupt triggered - immediately stopping speech");
 
-    // Stop any ongoing AI speech and current listening session
+    // CRITICAL: Cancel speech synthesis immediately
+    window.speechSynthesis.cancel();
+    
+    // Then call our stoppers
     stopSpeaking();
     stopListening();
     clearTranscript();
     sentTranscriptRef.current = "";
 
-    // Small delay to let mic stabilize after interrupt
+    // Delay before starting listening to prevent recognition errors
     setTimeout(() => {
+      console.log("Starting listening after interrupt");
       startListening(detectedLanguage);
-    }, 100);
+    }, 400);
   }, [stopSpeaking, stopListening, clearTranscript, startListening, detectedLanguage]);
 
-  // Debounce VAD interrupts to prevent rapid re-triggers
+  // Debounce VAD interrupts - reduced cooldown for faster response
   const lastInterruptRef = useRef<number>(0);
   
   const debouncedInterrupt = useCallback(() => {
     const now = Date.now();
-    if (now - lastInterruptRef.current < 1000) {
-      return; // Prevent interrupts within 1 second of last interrupt
+    if (now - lastInterruptRef.current < 300) {
+      return; // Reduced from 1000ms to 300ms
     }
     lastInterruptRef.current = now;
     
-    console.log("VAD: User started speaking, debounced interrupt triggered");
+    console.log("🎤 VAD: User started speaking, triggering interrupt");
     handleInterrupt();
   }, [handleInterrupt]);
 
-  // Voice Activity Detection - auto-interrupt when user speaks during AI speech
-  const { isDetecting } = useVoiceActivityDetection({
-    enabled: isSpeaking, // Only monitor when AI is speaking
+  // Voice Activity Detection with audio level feedback
+  const { isDetecting, currentLevel } = useVoiceActivityDetection({
+    enabled: isSpeaking,
     onVoiceDetected: debouncedInterrupt,
-    threshold: 55, // Increased from 40 to reduce false positives
-    detectionDuration: 500, // Increased from 300ms for more confident detection
+    onAudioLevel: setVadLevel,
+    threshold: 45,
+    detectionDuration: 200,
   });
-
-  console.log("ChatInterface - Voice support:", isSupported, "Listening:", isListening, "Speaking:", isSpeaking, "VAD detecting:", isDetecting);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -135,20 +137,17 @@ export const ChatInterface = ({
     ) {
       lastMessageRef.current = lastMessage.content;
       
-      // Speak and then automatically start listening for continuous conversation
       speak(lastMessage.content, detectedLanguage, counselorGender, () => {
-        // After AI finishes speaking, automatically start listening again
-        console.log("AI finished speaking, starting listening with language:", detectedLanguage);
+        console.log("AI finished speaking, starting listening");
         sentTranscriptRef.current = "";
         startListening(detectedLanguage);
       });
     }
-  }, [messages, autoSpeak, speak, detectedLanguage, startListening]);
+  }, [messages, autoSpeak, speak, detectedLanguage, startListening, counselorGender]);
 
-  // Handle voice input with silence detection (prevent duplicates and noise)
+  // Smart silence detection based on utterance length
   useEffect(() => {
     if (!transcript || !isListening) {
-      // Clear timer if not listening or no transcript
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
@@ -156,37 +155,51 @@ export const ChatInterface = ({
       return;
     }
 
-    console.log("Voice transcript received:", transcript);
     setInput(transcript);
 
     const trimmed = transcript.trim();
     
-    // Prevent auto-send for:
-    // 1. Very short transcripts (< 5 characters)
-    // 2. Common noise words
+    // Prevent auto-send for noise
     const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm'];
     const isSingleNoiseWord = noiseWords.some(word => trimmed.toLowerCase() === word);
     
     if (trimmed.length < 5 || isSingleNoiseWord) {
-      return; // Don't auto-send noise
+      return;
     }
 
-    // Clear existing silence timer
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
     }
 
-    // Set new timer - auto-send after 3 seconds of silence (increased from 2s)
+    // Smart silence detection based on utterance length and sentence endings
+    const wordCount = trimmed.split(/\s+/).length;
+    const endsWithPunctuation = /[.?!]$/.test(trimmed);
+    
+    let silenceTimeout: number;
+    if (endsWithPunctuation) {
+      // Sentence complete - shorter wait
+      silenceTimeout = 1500;
+    } else if (wordCount < 10) {
+      // Short utterance - longer wait
+      silenceTimeout = 3000;
+    } else if (wordCount < 30) {
+      // Medium utterance
+      silenceTimeout = 2500;
+    } else {
+      // Long utterance - shorter wait
+      silenceTimeout = 2000;
+    }
+
     silenceTimerRef.current = setTimeout(() => {
       if (transcript.trim() && transcript !== sentTranscriptRef.current) {
-        console.log("Silence detected, auto-sending:", transcript);
+        console.log(`Silence detected (${silenceTimeout}ms), auto-sending:`, transcript);
         sentTranscriptRef.current = transcript;
         stopListening();
         onSendMessage(transcript.trim());
         setInput("");
         clearTranscript();
       }
-    }, 3000);
+    }, silenceTimeout);
 
     return () => {
       if (silenceTimerRef.current) {
@@ -197,7 +210,6 @@ export const ChatInterface = ({
 
   const handleSend = () => {
     if (input.trim() && !isLoading) {
-      console.log("Sending message:", input.trim());
       onSendMessage(input.trim());
       setInput("");
     }
@@ -212,11 +224,9 @@ export const ChatInterface = ({
 
   const toggleVoiceInput = () => {
     if (isListening) {
-      console.log("Stopping voice input");
       stopListening();
     } else {
-      console.log("Starting voice input");
-      sentTranscriptRef.current = ""; // Reset for new recording
+      sentTranscriptRef.current = "";
       startListening(detectedLanguage);
     }
   };
@@ -290,7 +300,20 @@ export const ChatInterface = ({
             <Volume2 className="h-16 w-16 text-primary mx-auto animate-pulse" />
             <div>
               <p className="text-lg font-semibold">AI is speaking...</p>
-              <p className="text-sm text-muted-foreground mt-2">Tap anywhere to interrupt</p>
+              <p className="text-sm text-muted-foreground mt-2">Tap anywhere or just speak to interrupt</p>
+              {/* VAD Indicator */}
+              {isDetecting && (
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs text-green-600">Listening for your voice...</span>
+                  <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-500 transition-all duration-100"
+                      style={{ width: `${Math.min(100, (vadLevel / 60) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
