@@ -7,7 +7,7 @@ interface CounselorAvatars {
   male: string | null;
 }
 
-const CACHE_VERSION = 7; // Increment to force new attractive avatars
+const CACHE_VERSION = 8; // Increment to force new realistic avatars
 const STORAGE_KEY = `counselor_avatars_v${CACHE_VERSION}`;
 const CACHE_EXPIRY_DAYS = 30;
 
@@ -18,34 +18,11 @@ const FALLBACK_AVATARS: CounselorAvatars = {
 };
 
 const PROMPTS = {
-  // Hindi - Beautiful, cute, professional Indian female
-  female: `PHOTOREALISTIC professional photograph of a beautiful young Indian woman, 
-age 24-26, cute and charming appearance with beautiful radiant smile showing warmth, 
-large expressive dark brown eyes with natural kajal, glowing fair-medium wheatish skin tone, 
-professional yet approachable look, wearing elegant pastel pink silk kurta with delicate gold embroidery, 
-small sparkling diamond nose pin on left nostril, traditional gold jhumka earrings with pearls, 
-silky lustrous black hair styled in soft waves falling on shoulders, natural dewy makeup with rosy cheeks, 
-warm studio lighting with soft fill, professional corporate office background with soft bokeh,
-confident intelligent friendly expression like a news anchor, high cheekbones, perfect eyebrows,
-shot with professional DSLR Canon EOS R5 with 85mm f/1.2 L lens creating creamy bokeh,
-GORGEOUS ATTRACTIVE AND PROFESSIONAL Indian beauty, Bollywood actress quality looks,
-REAL HUMAN PHOTOGRAPH NOT AI ART NOT ILLUSTRATION NOT CARTOON NOT 3D RENDER NOT CGI,
-ultra high resolution 8K quality, magazine cover portrait style, shot in natural daylight`,
+  // Hindi - Realistic professional Indian female counselor
+  female: `A real photograph of a young Indian woman education counselor, age 25, friendly professional smile, wearing light pink traditional kurta, small nose stud, gold earrings, black wavy hair, office background, natural lighting, portrait photo taken with professional camera, realistic human face, genuine warm expression, corporate headshot style`,
   
-  // English - Handsome, attractive, smart Indian male
-  male: `PHOTOREALISTIC professional photograph of an attractive young Indian man,
-age 26-28, charismatic and charming appearance with confident warm genuine smile showing dimples,
-expressive friendly dark brown eyes with thick eyebrows, warm medium brown skin tone,
-styled modern short haircut with neat side part, clean shaven face with strong defined jawline,
-wearing premium navy blue blazer over crisp white formal shirt, no tie for approachable look,
-silver wristwatch visible, confident pleasant approachable expression,
-warm studio lighting with soft natural window light from side, 
-professional corporate office background with plants softly blurred,
-shot with professional DSLR Canon EOS R5 with 85mm f/1.2 L lens creating beautiful bokeh,
-VERY HANDSOME AND APPEALING, Bollywood actor quality looks like Sidharth Malhotra or Vicky Kaushal,
-sharp features, clear glowing skin, athletic build visible through blazer,
-REAL HUMAN PHOTOGRAPH NOT AI ART NOT ILLUSTRATION NOT CARTOON NOT 3D RENDER NOT CGI,
-ultra high resolution 8K quality, GQ magazine cover portrait style, shot in natural daylight`,
+  // English - Realistic professional Indian male counselor  
+  male: `A real photograph of a young Indian man education counselor, age 27, confident friendly smile, wearing navy blue blazer over white shirt, clean shaven, short styled black hair, office background, natural lighting, portrait photo taken with professional camera, realistic human face, professional approachable expression, corporate headshot style`,
 };
 
 export const useGenerateCounselorAvatars = () => {

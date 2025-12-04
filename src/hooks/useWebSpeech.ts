@@ -120,28 +120,41 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   }, [recognition, speechSynthesisSupported]);
 
   const startRecognition = (language: string) => {
+    if (!recognition) return;
+    
+    // CRITICAL: Stop any existing recognition first to avoid "already started" error
     try {
-      setTranscript("");
-      
-      // Map common language names to codes if needed
-      const languageMap: Record<string, string> = {
-        'english': 'en-IN',
-        'hindi': 'hi-IN',
-        'kannada': 'kn-IN',
-        'tamil': 'ta-IN',
-        'telugu': 'te-IN',
-        'malayalam': 'ml-IN'
-      };
-      
-      const langCode = languageMap[language.toLowerCase()] || language;
-      recognition.lang = langCode;
-      recognition.start();
-      setIsListening(true);
-      console.log("🎤 Started speech recognition with language:", langCode);
-    } catch (error) {
-      // Silent error handling - don't show popup to user
-      console.log("Speech recognition error:", error);
+      recognition.abort();
+    } catch {
+      // Ignore errors when aborting
     }
+    
+    // Small delay after abort to ensure clean state
+    setTimeout(() => {
+      try {
+        setTranscript("");
+        
+        // Map common language names to codes if needed
+        const languageMap: Record<string, string> = {
+          'english': 'en-IN',
+          'hindi': 'hi-IN',
+          'kannada': 'kn-IN',
+          'tamil': 'ta-IN',
+          'telugu': 'te-IN',
+          'malayalam': 'ml-IN'
+        };
+        
+        const langCode = languageMap[language.toLowerCase()] || language;
+        recognition.lang = langCode;
+        recognition.start();
+        setIsListening(true);
+        console.log("🎤 Started speech recognition with language:", langCode);
+      } catch (error) {
+        // Silent error handling - don't show popup to user
+        console.log("Speech recognition error:", error);
+        setIsListening(false);
+      }
+    }, 100);
   };
 
   const stopListening = useCallback(() => {
