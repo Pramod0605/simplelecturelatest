@@ -186,21 +186,30 @@ I'm here to help you find the perfect course for your goals. Just to understand 
             if (content) {
               assistantContent += content;
               
-              // Parse language tag from response if present
-              const langTagMatch = assistantContent.match(/^\[LANG:(\w{2}-IN)\]\s*/);
+              // ALWAYS strip language tags from content (handles partial tag arrivals)
+              // Remove complete tags
+              let displayContent = assistantContent.replace(/\[LANG:\w{2}-IN\]\s*/g, '');
+              // Remove incomplete tag patterns that might be at the end
+              displayContent = displayContent.replace(/\[LANG:\w{0,5}$/g, '');
+              displayContent = displayContent.replace(/\[LANG$/g, '');
+              displayContent = displayContent.replace(/\[LAN$/g, '');
+              displayContent = displayContent.replace(/\[LA$/g, '');
+              displayContent = displayContent.replace(/\[L$/g, '');
+              displayContent = displayContent.replace(/\[$/g, '');
+              
+              // Parse language tag from response if present (for detection only)
+              const langTagMatch = assistantContent.match(/\[LANG:(\w{2}-IN)\]/);
               if (langTagMatch) {
                 const detectedLang = langTagMatch[1];
                 setDetectedLanguage(detectedLang);
                 console.log("Detected language:", detectedLang);
-                // Remove the tag from the displayed content
-                assistantContent = assistantContent.replace(/^\[LANG:\w{2}-IN\]\s*/, '');
               }
               
               setMessages(prev => {
                 const newMessages = [...prev];
                 newMessages[newMessages.length - 1] = {
                   role: "assistant",
-                  content: assistantContent
+                  content: displayContent.trim()
                 };
                 return newMessages;
               });
