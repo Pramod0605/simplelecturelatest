@@ -203,12 +203,14 @@ export const SalesAssistantWidget = () => {
           autoSpeak={autoSpeak}
           transcript={transcript}
           isListening={isListening}
+          isSpeaking={isSpeaking}
           onToggleAutoSpeak={() => setAutoSpeak(!autoSpeak)}
           onInterrupt={handleInterrupt}
           onClose={handleCloseVoiceMode}
           detectedLanguage={currentLanguage}
           speak={speak}
           startListening={startListening}
+          stopSpeaking={stopSpeaking}
           onLanguageChange={handleLanguageChange}
         />
       )}

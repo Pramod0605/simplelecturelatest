@@ -9,10 +9,10 @@ import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
+import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
 
-// Language display map - Limited to Hindi and English only (best voice quality)
 const languageNames: Record<string, { name: string; flag: string }> = {
-  'en-IN': { name: 'English', flag: '🇮🇳' },
+  'en-IN': { name: 'English', flag: '🇬🇧' },
   'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
 };
 
@@ -28,12 +28,14 @@ interface ConversationModeProps {
   autoSpeak: boolean;
   transcript: string;
   isListening: boolean;
+  isSpeaking: boolean;
   onToggleAutoSpeak: () => void;
   onInterrupt: () => void;
   onClose: () => void;
   detectedLanguage: string;
   speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
   startListening: (language?: string) => void;
+  stopSpeaking: () => void;
   onLanguageChange?: (language: string, gender: "female" | "male") => void;
 }
 
@@ -44,22 +46,41 @@ export const ConversationMode = ({
   autoSpeak,
   transcript,
   isListening,
+  isSpeaking,
   onToggleAutoSpeak,
   onInterrupt,
   onClose,
   detectedLanguage,
   speak,
   startListening,
+  stopSpeaking,
   onLanguageChange,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(detectedLanguage || "en-IN");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en-IN");
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
+  const [vadLevel, setVadLevel] = useState(0);
   const lastInteractionRef = useRef<number>(Date.now());
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
   const { toast } = useToast();
+
+  // VAD for ConversationMode
+  const { isDetecting } = useVoiceActivityDetection({
+    enabled: isSpeaking,
+    onVoiceDetected: () => {
+      console.log("VAD in ConversationMode: Voice detected, interrupting");
+      window.speechSynthesis.cancel();
+      stopSpeaking();
+      setTimeout(() => {
+        startListening(selectedLanguage);
+      }, 400);
+    },
+    onAudioLevel: setVadLevel,
+    threshold: 45,
+    detectionDuration: 200,
+  });
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -68,17 +89,15 @@ export const ConversationMode = ({
     }
   }, [messages]);
 
-  // Auto-start conversation with greeting (don't wait for avatars)
+  // Auto-start conversation with greeting
   useEffect(() => {
     if (!hasAutoStarted && messages.length === 0) {
       setHasAutoStarted(true);
-      // Always start with English greeting since default is en-IN
       const greeting = "Hello! I'm your education counselor at SimpleLecture. How can I help you today?";
       
-      console.log("Auto-starting conversation with English greeting, language:", detectedLanguage);
+      console.log("Auto-starting conversation with English greeting");
       
       speak(greeting, "en-IN", "male", () => {
-        // After greeting, start listening in English
         setTimeout(() => {
           console.log("Starting listening in English after greeting");
           startListening("en-IN");
@@ -87,30 +106,25 @@ export const ConversationMode = ({
     }
   }, [hasAutoStarted, messages.length, speak, startListening]);
 
-  // Handle manual counselor/language switch
-  const handleCounselorSwitch = (gender: "female" | "male") => {
-    if (gender === counselorGender) return; // Already selected
+  // Handle language button click
+  const handleLanguageSelect = (language: string, gender: "female" | "male") => {
+    if (language === selectedLanguage) return;
     
     setIsSwitchingCounselor(true);
-    const newLanguage = gender === "female" ? "hi-IN" : "en-IN";
     
-    // Update states
     setCounselorGender(gender);
-    setSelectedLanguage(newLanguage);
+    setSelectedLanguage(language);
     
-    // Notify parent to update voice settings
     if (onLanguageChange) {
-      onLanguageChange(newLanguage, gender);
+      onLanguageChange(language, gender);
     }
     
-    // Show toast
     toast({
       title: gender === "female" ? "Switched to Priya (Hindi)" : "Switched to Rahul (English)",
-      description: `Voice and language updated to ${newLanguage === "hi-IN" ? "Hindi" : "English"}`,
+      description: `Voice and language updated to ${language === "hi-IN" ? "Hindi" : "English"}`,
       duration: 2000,
     });
     
-    // Simulate loading for avatar
     setTimeout(() => {
       setIsSwitchingCounselor(false);
     }, 500);
@@ -130,17 +144,22 @@ export const ConversationMode = ({
       const fiveMinutes = 5 * 60 * 1000;
       
       if (timeSinceLastInteraction >= fiveMinutes && conversationState === "idle" && messages.length > 0) {
-        const reminder = detectedLanguage === 'hi-IN'
+        const reminder = selectedLanguage === 'hi-IN'
           ? "मैं अभी भी आपकी मदद के लिए यहाँ हूँ। जब भी आप तैयार हों, मुझसे कुछ भी पूछ सकते हैं।"
           : "I'm still here to assist you. Feel free to ask me anything whenever you're ready.";
         
-        speak(reminder, detectedLanguage, counselorGender);
-        lastInteractionRef.current = Date.now(); // Reset timer
+        speak(reminder, selectedLanguage, counselorGender);
+        lastInteractionRef.current = Date.now();
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => clearInterval(checkInactivity);
-  }, [conversationState, messages.length, speak, detectedLanguage, counselorGender]);
+  }, [conversationState, messages.length, speak, selectedLanguage, counselorGender]);
+
+  const handleInterruptClick = () => {
+    window.speechSynthesis.cancel();
+    onInterrupt();
+  };
 
   return (
     <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl">
@@ -151,28 +170,47 @@ export const ConversationMode = ({
             <h3 className="font-semibold text-lg">Voice Conversation</h3>
             <p className="text-xs opacity-90">SimpleLecture AI Assistant</p>
           </div>
-          {detectedLanguage && (
-            <Badge variant="secondary" className="text-xs bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
-              {languageNames[detectedLanguage]?.flag} {languageNames[detectedLanguage]?.name || detectedLanguage}
-            </Badge>
-          )}
+          <Badge variant="secondary" className="text-xs bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+            {languageNames[selectedLanguage]?.flag} {languageNames[selectedLanguage]?.name}
+          </Badge>
         </div>
         <div className="flex gap-2">
-          {/* Clear Language Toggle */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleCounselorSwitch(counselorGender === "male" ? "female" : "male")}
-            disabled={isSwitchingCounselor}
-            className="text-primary-foreground bg-primary-foreground/20 hover:bg-primary-foreground/30 font-semibold border-2 border-primary-foreground/40"
-          >
-            {isSwitchingCounselor ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            {counselorGender === "male" ? "🇬🇧 English" : "🇮🇳 हिंदी"}
-            <span className="mx-2">⟷</span>
-            {counselorGender === "male" ? "🇮🇳 हिंदी" : "🇬🇧 English"}
-          </Button>
+          {/* Two Separate Language Buttons */}
+          <div className="flex gap-1 bg-primary-foreground/10 rounded-lg p-1">
+            <Button
+              variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => handleLanguageSelect("en-IN", "male")}
+              disabled={isSwitchingCounselor}
+              className={`text-xs font-semibold ${
+                selectedLanguage === "en-IN" 
+                  ? "bg-primary-foreground text-primary" 
+                  : "text-primary-foreground hover:bg-primary-foreground/20"
+              }`}
+            >
+              {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : null}
+              🇬🇧 English (Rahul)
+            </Button>
+            <Button
+              variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => handleLanguageSelect("hi-IN", "female")}
+              disabled={isSwitchingCounselor}
+              className={`text-xs font-semibold ${
+                selectedLanguage === "hi-IN" 
+                  ? "bg-primary-foreground text-primary" 
+                  : "text-primary-foreground hover:bg-primary-foreground/20"
+              }`}
+            >
+              {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : null}
+              🇮🇳 हिंदी (Priya)
+            </Button>
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -213,8 +251,10 @@ export const ConversationMode = ({
             state={conversationState} 
             gender={counselorGender}
             avatarUrl={counselorGender === "female" ? avatars.female : avatars.male}
-            isGenerating={isGenerating}
-            onTap={onInterrupt} 
+            isGenerating={isGenerating || isSwitchingCounselor}
+            onTap={handleInterruptClick}
+            isVADActive={isDetecting}
+            vadLevel={vadLevel}
           />
         </div>
 
@@ -263,7 +303,7 @@ export const ConversationMode = ({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {conversationState === "speaking"
-              ? "🎯 Tap the indicator to interrupt and speak"
+              ? "🎯 Tap the avatar or just speak to interrupt"
               : conversationState === "listening"
               ? "🎤 Speak now... I'm listening"
               : conversationState === "processing"
