@@ -3,18 +3,12 @@ import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { X, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
-
-const languageNames: Record<string, { name: string; flag: string }> = {
-  'en-IN': { name: 'English', flag: '🇬🇧' },
-  'hi-IN': { name: 'हिंदी', flag: '🇮🇳' },
-};
 
 interface Message {
   role: "user" | "assistant";
@@ -66,7 +60,7 @@ export const ConversationMode = ({
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
   const { toast } = useToast();
 
-  // VAD for ConversationMode
+  // VAD for ConversationMode - with better speech frequency filtering
   const { isDetecting } = useVoiceActivityDetection({
     enabled: isSpeaking,
     onVoiceDetected: () => {
@@ -78,8 +72,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 45,
-    detectionDuration: 200,
+    threshold: 55, // Increased to reduce false positives
+    detectionDuration: 400, // Increased for sustained detection
   });
 
   // Auto-scroll to bottom
@@ -164,78 +158,78 @@ export const ConversationMode = ({
   return (
     <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h3 className="font-semibold text-lg">Voice Conversation</h3>
-            <p className="text-xs opacity-90">SimpleLecture AI Assistant</p>
+      <div className="bg-primary text-primary-foreground p-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div>
+              <h3 className="font-semibold text-base">Voice Conversation</h3>
+              <p className="text-xs opacity-90">SimpleLecture AI Assistant</p>
+            </div>
           </div>
-          <Badge variant="secondary" className="text-xs bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
-            {languageNames[selectedLanguage]?.flag} {languageNames[selectedLanguage]?.name}
-          </Badge>
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleAutoSpeak}
+              className="text-primary-foreground hover:bg-primary-foreground/20 text-xs"
+            >
+              {autoSpeak ? (
+                <>
+                  <Volume2 className="h-4 w-4 mr-1" />
+                  Voice ON
+                </>
+              ) : (
+                <>
+                  <VolumeX className="h-4 w-4 mr-1" />
+                  Voice OFF
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          {/* Two Separate Language Buttons */}
-          <div className="flex gap-1 bg-primary-foreground/10 rounded-lg p-1">
-            <Button
-              variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleLanguageSelect("en-IN", "male")}
-              disabled={isSwitchingCounselor}
-              className={`text-xs font-semibold ${
-                selectedLanguage === "en-IN" 
-                  ? "bg-primary-foreground text-primary" 
-                  : "text-primary-foreground hover:bg-primary-foreground/20"
-              }`}
-            >
-              {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : null}
-              🇬🇧 English (Rahul)
-            </Button>
-            <Button
-              variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleLanguageSelect("hi-IN", "female")}
-              disabled={isSwitchingCounselor}
-              className={`text-xs font-semibold ${
-                selectedLanguage === "hi-IN" 
-                  ? "bg-primary-foreground text-primary" 
-                  : "text-primary-foreground hover:bg-primary-foreground/20"
-              }`}
-            >
-              {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : null}
-              🇮🇳 हिंदी (Priya)
-            </Button>
-          </div>
-
+        
+        {/* Language Selector - Prominent Row */}
+        <div className="flex items-center justify-center gap-2 bg-primary-foreground/10 rounded-lg p-2">
+          <span className="text-xs text-primary-foreground/80 mr-2">Choose Counselor:</span>
           <Button
-            variant="ghost"
+            variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
             size="sm"
-            onClick={onToggleAutoSpeak}
-            className="text-primary-foreground hover:bg-primary-foreground/20"
+            onClick={() => handleLanguageSelect("en-IN", "male")}
+            disabled={isSwitchingCounselor}
+            className={`text-sm font-semibold px-4 ${
+              selectedLanguage === "en-IN" 
+                ? "bg-primary-foreground text-primary shadow-md" 
+                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+            }`}
           >
-            {autoSpeak ? (
-              <>
-                <Volume2 className="h-4 w-4 mr-2" />
-                Voice ON
-              </>
-            ) : (
-              <>
-                <VolumeX className="h-4 w-4 mr-2" />
-                Voice OFF
-              </>
-            )}
+            {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            🇬🇧 English (Rahul)
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-primary-foreground hover:bg-primary-foreground/20"
+            variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => handleLanguageSelect("hi-IN", "female")}
+            disabled={isSwitchingCounselor}
+            className={`text-sm font-semibold px-4 ${
+              selectedLanguage === "hi-IN" 
+                ? "bg-primary-foreground text-primary shadow-md" 
+                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+            }`}
           >
-            <X className="h-5 w-5" />
+            {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            🇮🇳 हिंदी (Priya)
           </Button>
         </div>
       </div>

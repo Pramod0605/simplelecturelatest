@@ -97,13 +97,13 @@ export const ChatInterface = ({
     handleInterrupt();
   }, [handleInterrupt]);
 
-  // Voice Activity Detection with audio level feedback
+  // Voice Activity Detection with audio level feedback - better speech filtering
   const { isDetecting, currentLevel } = useVoiceActivityDetection({
     enabled: isSpeaking,
     onVoiceDetected: debouncedInterrupt,
     onAudioLevel: setVadLevel,
-    threshold: 45,
-    detectionDuration: 200,
+    threshold: 55, // Increased to reduce false positives
+    detectionDuration: 400, // Increased for sustained detection
   });
 
   // Auto-scroll to bottom

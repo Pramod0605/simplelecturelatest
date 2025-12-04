@@ -20,7 +20,7 @@ interface UseSalesAssistantReturn {
   detectedLanguage: string;
   setConversationState: (state: ConversationState) => void;
   sendMessage: (content: string) => Promise<void>;
-  createLead: (name: string, email: string, mobile: string) => Promise<boolean>;
+  createLead: (name: string, email: string, mobile: string, gender?: "female" | "male") => Promise<boolean>;
 }
 
 export const useSalesAssistant = (): UseSalesAssistantReturn => {
@@ -55,7 +55,12 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     return "closing";
   }, []);
 
-  const createLead = useCallback(async (name: string, email: string, mobile: string): Promise<boolean> => {
+  const createLead = useCallback(async (
+    name: string, 
+    email: string, 
+    mobile: string,
+    gender: "female" | "male" = "male"
+  ): Promise<boolean> => {
     try {
       const { data, error } = await supabase
         .from('sales_leads')
@@ -72,12 +77,23 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
 
       setLeadId(data.id);
       
-      // Add welcome message
+      // Determine if this is an anonymous user
+      const isAnonymous = name.startsWith("Anonymous") || name.startsWith("Guest");
+      const displayName = isAnonymous ? "there" : name;
+      
+      // Generate welcome message based on gender (Rahul for male/English, Priya for female/Hindi)
+      const counselorName = gender === "female" ? "Priya" : "Rahul";
+      const welcomeMessage = gender === "female"
+        ? `नमस्ते ${displayName}! 👋 मैं प्रिया हूं, SimpleLecture में आपकी शिक्षा सलाहकार।
+
+मैं आपके लक्ष्यों के लिए सही कोर्स खोजने में मदद करने के लिए यहाँ हूं। आपको बेहतर समझने के लिए - क्या आप परीक्षाओं की तैयारी कर रहे छात्र हैं, या अपने बच्चे के लिए सही कोर्स ढूंढ रहे माता-पिता?`
+        : `Hi ${displayName}! 👋 I'm ${counselorName}, your education counselor at SimpleLecture.
+
+I'm here to help you find the perfect course for your goals. Just to understand you better - are you a student preparing for exams, or a parent looking for the right course for your child?`;
+      
       setMessages([{
         role: "assistant",
-        content: `Hi ${name}! 👋 I'm Priya, your education counselor at SimpleLecture.
-
-I'm here to help you find the perfect course for your goals. Just to understand you better - are you a student preparing for exams, or a parent looking for the right course for your child?`
+        content: welcomeMessage
       }]);
 
       return true;
