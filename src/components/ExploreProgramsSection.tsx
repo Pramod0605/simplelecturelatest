@@ -1,49 +1,64 @@
-import { useState } from "react";
-import { useAdminCategories } from "@/hooks/useAdminCategories";
-import { useCoursesByCategory } from "@/hooks/useCoursesByCategory";
+import { useState, useMemo } from "react";
+import { useCategoriesHierarchy } from "@/hooks/useCategoriesHierarchy";
+import { useCoursesByHierarchy } from "@/hooks/useCoursesByHierarchy";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Users, Clock } from "lucide-react";
 
 export const ExploreProgramsSection = () => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
+  const [selectedParentId, setSelectedParentId] = useState<string | undefined>(undefined);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string | undefined>(undefined);
+  const [selectedSubSubCategoryId, setSelectedSubSubCategoryId] = useState<string | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const coursesPerPage = 9;
   
-  const { data: categories, isLoading: categoriesLoading } = useAdminCategories();
-  const { data: allCourses, isLoading: coursesLoading } = useCoursesByCategory(selectedCategoryId);
+  const { data: categoriesHierarchy, isLoading: categoriesLoading } = useCategoriesHierarchy();
+  const { data: courses, isLoading: coursesLoading } = useCoursesByHierarchy(
+    selectedParentId,
+    selectedSubCategoryId,
+    selectedSubSubCategoryId
+  );
 
-  // Get parent categories (level 1)
-  const parentCategories = categories?.filter(cat => cat.level === 1 && cat.is_active) || [];
-  
-  // Get subcategories for selected parent category
-  const subcategories = selectedCategoryId 
-    ? categories?.filter(cat => cat.parent_id === selectedCategoryId && cat.is_active) || []
-    : [];
+  // Get subcategories (level 2) for selected parent
+  const subCategories = useMemo(() => {
+    if (!selectedParentId || !categoriesHierarchy) return [];
+    const parent = categoriesHierarchy.find(cat => cat.id === selectedParentId);
+    return parent?.subcategories || [];
+  }, [selectedParentId, categoriesHierarchy]);
 
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("all");
-
-  // Filter courses by subcategory if one is selected
-  const filteredCourses = selectedSubcategory === "all" 
-    ? allCourses 
-    : allCourses?.filter(course => {
-        // This would need proper subcategory filtering logic
-        return true;
-      });
+  // Get sub-subcategories (level 3) for selected sub-category
+  const subSubCategories = useMemo(() => {
+    if (!selectedSubCategoryId || !subCategories.length) return [];
+    const subCat = subCategories.find(cat => cat.id === selectedSubCategoryId);
+    return subCat?.subcategories || [];
+  }, [selectedSubCategoryId, subCategories]);
 
   // Pagination logic
-  const totalCourses = filteredCourses?.length || 0;
+  const totalCourses = courses?.length || 0;
   const totalPages = Math.ceil(totalCourses / coursesPerPage);
   const startIndex = (currentPage - 1) * coursesPerPage;
   const endIndex = startIndex + coursesPerPage;
-  const courses = filteredCourses?.slice(startIndex, endIndex) || [];
+  const paginatedCourses = courses?.slice(startIndex, endIndex) || [];
 
-  const handleCategoryChange = (categoryId: string | undefined) => {
-    setSelectedCategoryId(categoryId);
-    setSelectedSubcategory("all");
+  const handleParentChange = (categoryId: string | undefined) => {
+    setSelectedParentId(categoryId);
+    setSelectedSubCategoryId(undefined);
+    setSelectedSubSubCategoryId(undefined);
+    setCurrentPage(1);
+  };
+
+  const handleSubCategoryChange = (categoryId: string | undefined) => {
+    setSelectedSubCategoryId(categoryId);
+    setSelectedSubSubCategoryId(undefined);
+    setCurrentPage(1);
+  };
+
+  const handleSubSubCategoryChange = (categoryId: string | undefined) => {
+    setSelectedSubSubCategoryId(categoryId);
     setCurrentPage(1);
   };
 
@@ -67,15 +82,15 @@ export const ExploreProgramsSection = () => {
         <h2 className="text-4xl font-bold mb-8">Explore Our Top Programs</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Categories */}
+          {/* Left Sidebar - Parent Categories (Level 1) */}
           <Card className="h-fit">
             <CardContent className="p-4">
               <div className="space-y-2">
-                {/* Most Popular as first item */}
+                {/* Most Popular */}
                 <button
-                  onClick={() => handleCategoryChange(undefined)}
+                  onClick={() => handleParentChange(undefined)}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    !selectedCategoryId 
+                    !selectedParentId 
                       ? "bg-primary text-primary-foreground font-semibold" 
                       : "hover:bg-muted"
                   }`}
@@ -83,25 +98,90 @@ export const ExploreProgramsSection = () => {
                   Most Popular
                 </button>
 
-                {parentCategories.map((category) => (
+                {categoriesHierarchy?.map((category) => (
                   <button
                     key={category.id}
-                    onClick={() => handleCategoryChange(category.id)}
+                    onClick={() => handleParentChange(category.id)}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                      selectedCategoryId === category.id 
-                        ? "bg-muted font-semibold" 
-                        : "hover:bg-muted/50"
+                      selectedParentId === category.id 
+                        ? "bg-primary text-primary-foreground font-semibold" 
+                        : "hover:bg-muted"
                     }`}
                   >
-                    {category.name}
+                    <span className="flex items-center gap-2">
+                      {category.icon && <span>{category.icon}</span>}
+                      {category.name}
+                    </span>
                   </button>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Right Content - Courses */}
-          <div className="lg:col-span-3">
+          {/* Right Content - Filters + Courses */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Sub-category Filter (Level 2) - Shows when parent is selected */}
+            {selectedParentId && subCategories.length > 0 && (
+              <Card>
+                <CardContent className="p-3">
+                  <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex gap-2 pb-2">
+                      <Badge
+                        variant={!selectedSubCategoryId ? "default" : "outline"}
+                        className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90 transition-colors"
+                        onClick={() => handleSubCategoryChange(undefined)}
+                      >
+                        All
+                      </Badge>
+                      {subCategories.map((subCat) => (
+                        <Badge
+                          key={subCat.id}
+                          variant={selectedSubCategoryId === subCat.id ? "default" : "outline"}
+                          className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90 transition-colors whitespace-nowrap"
+                          onClick={() => handleSubCategoryChange(subCat.id)}
+                        >
+                          {subCat.icon && <span className="mr-1">{subCat.icon}</span>}
+                          {subCat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sub-sub-category Filter (Level 3) - Shows when sub-category is selected */}
+            {selectedSubCategoryId && subSubCategories.length > 0 && (
+              <Card>
+                <CardContent className="p-3">
+                  <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex gap-2 pb-2">
+                      <Badge
+                        variant={!selectedSubSubCategoryId ? "secondary" : "outline"}
+                        className="cursor-pointer px-3 py-1.5 text-xs hover:bg-secondary/90 transition-colors"
+                        onClick={() => handleSubSubCategoryChange(undefined)}
+                      >
+                        All {subCategories.find(c => c.id === selectedSubCategoryId)?.name}
+                      </Badge>
+                      {subSubCategories.map((subSubCat) => (
+                        <Badge
+                          key={subSubCat.id}
+                          variant={selectedSubSubCategoryId === subSubCat.id ? "secondary" : "outline"}
+                          className="cursor-pointer px-3 py-1.5 text-xs hover:bg-secondary/90 transition-colors whitespace-nowrap"
+                          onClick={() => handleSubSubCategoryChange(subSubCat.id)}
+                        >
+                          {subSubCat.icon && <span className="mr-1">{subSubCat.icon}</span>}
+                          {subSubCat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Course Cards Grid */}
             {coursesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -116,62 +196,69 @@ export const ExploreProgramsSection = () => {
                   </Card>
                 ))}
               </div>
-            ) : courses && courses.length > 0 ? (
+            ) : paginatedCourses && paginatedCourses.length > 0 ? (
               <>
+                {/* Course count indicator */}
+                <div className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1}-{Math.min(endIndex, totalCourses)} of {totalCourses} courses
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {courses.map((course) => (
+                  {paginatedCourses.map((course) => (
                     <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
-                        {course.thumbnail_url && (
-                          <img
-                            src={course.thumbnail_url}
-                            alt={course.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                        )}
-                        {course.price_inr === 0 && (
-                          <Badge className="absolute top-3 right-3 bg-green-500">Free</Badge>
-                        )}
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{course.name}</h3>
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                          {course.short_description || course.detailed_description}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                          {course.duration_months && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {course.duration_months} months
-                            </div>
+                      <Link to={`/programs/${course.slug}`} className="block">
+                        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
+                          {course.thumbnail_url && (
+                            <img
+                              src={course.thumbnail_url}
+                              alt={course.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
                           )}
-                          {course.student_count > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {course.student_count} students
-                            </div>
+                          {course.price_inr === 0 && (
+                            <Badge className="absolute top-3 right-3 bg-green-500">Free</Badge>
                           )}
                         </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            {course.price_inr > 0 ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg font-bold">₹{course.price_inr}</span>
-                                {course.original_price_inr && course.original_price_inr > course.price_inr && (
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    ₹{course.original_price_inr}
-                                  </span>
-                                )}
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                            {course.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                            {course.short_description || course.detailed_description}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+                            {course.duration_months && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {course.duration_months} months
                               </div>
-                            ) : (
-                              <span className="text-lg font-bold text-green-600">Free</span>
+                            )}
+                            {course.student_count > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {course.student_count.toLocaleString()} students
+                              </div>
                             )}
                           </div>
-                          <Button asChild size="sm">
-                            <Link to={`/programs/${course.slug}`}>View</Link>
-                          </Button>
-                        </div>
-                      </CardContent>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              {course.price_inr > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold">₹{course.price_inr.toLocaleString()}</span>
+                                  {course.original_price_inr && course.original_price_inr > course.price_inr && (
+                                    <span className="text-xs text-muted-foreground line-through">
+                                      ₹{course.original_price_inr.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-lg font-bold text-green-600">Free</span>
+                              )}
+                            </div>
+                            <Button size="sm" variant="outline">View Details</Button>
+                          </div>
+                        </CardContent>
+                      </Link>
                     </Card>
                   ))}
                 </div>
@@ -189,16 +276,27 @@ export const ExploreProgramsSection = () => {
                     </Button>
                     
                     <div className="flex items-center gap-1">
-                      {[...Array(totalPages)].map((_, i) => (
-                        <Button
-                          key={i}
-                          variant={currentPage === i + 1 ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(i + 1)}
-                        >
-                          {i + 1}
-                        </Button>
-                      ))}
+                      {[...Array(Math.min(totalPages, 5))].map((_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5) {
+                          if (currentPage > 3) {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          if (pageNum > totalPages) {
+                            pageNum = totalPages - 4 + i;
+                          }
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
                     </div>
 
                     <Button
