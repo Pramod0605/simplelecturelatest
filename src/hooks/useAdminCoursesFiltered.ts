@@ -15,7 +15,7 @@ export const useAdminCoursesFiltered = (filters: CourseFilters) => {
         .from("courses")
         .select(`
           *,
-          course_categories!inner(category_id)
+          course_categories(category_id)
         `)
         .order("created_at", { ascending: false });
 
