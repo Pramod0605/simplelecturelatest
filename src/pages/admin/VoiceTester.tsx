@@ -5,42 +5,52 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { Play, Square, Volume2, Mic, CheckCircle, XCircle, AlertCircle, Info } from "lucide-react";
+import { Play, Square, Volume2, CheckCircle, XCircle, Info, Save, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useVoiceSettings, useUpdateVoiceSettings, DEFAULT_VOICE_SETTINGS, RECOMMENDED_VOICES } from "@/hooks/useVoiceSettings";
 
 interface VoiceInfo {
   voice: SpeechSynthesisVoice;
   quality: "neural" | "standard" | "basic";
   isIndian: boolean;
   isFemale: boolean;
+  language: "english" | "hindi" | "other";
 }
 
-// Persona configurations
-const PERSONAS = {
-  priya: { name: "Priya", pitch: 1.15, rate: 0.80, description: "Warm & Caring - Gentle and empathetic" },
-  ananya: { name: "Ananya", pitch: 1.05, rate: 0.85, description: "Professional - Business-like and confident" },
-  kavya: { name: "Kavya", pitch: 1.20, rate: 0.82, description: "Friendly & Young - Energetic and relatable" },
-};
+// Known Indian voice names for filtering
+const INDIAN_VOICE_IDENTIFIERS = [
+  'google हिन्दी', 'heera', 'hemant', 'ravi', 'neerja', 'aditi', 
+  'prabhat', 'hindi', 'india', '-in'
+];
 
 const SAMPLE_TEXTS = {
-  english: `Hello! I'm your education counselor at SimpleLecture. Dr. Nagpal's mission is to bring quality education to every student in India. Our courses are completely FREE, with just a ₹2,000 registration fee. That's the cost of one meal - for an entire year of expert coaching!`,
+  english: `Hello! I'm your education counselor at SimpleLecture. Dr. Nagpal's mission is to bring quality education to every student in India. Our courses are completely FREE, with just a ₹2,000 registration fee.`,
   hindi: `नमस्ते! मैं सिंपललेक्चर में आपकी शिक्षा सलाहकार हूं। डॉ. नागपाल का मिशन है हर छात्र को गुणवत्तापूर्ण शिक्षा प्रदान करना। हमारे कोर्स पूरी तरह मुफ्त हैं, बस ₹2,000 रजिस्ट्रेशन फीस है।`,
-  question: `Are you preparing for JEE or NEET? I'd love to understand your goals and recommend the perfect course for you!`,
-  emotional: `I understand how challenging it can be. Many students feel overwhelmed, but remember - every topper started exactly where you are today. Your determination to seek help shows you're already on the path to success!`,
 };
 
 export default function VoiceTester() {
-  const [voices, setVoices] = useState<VoiceInfo[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("");
-  const [selectedPersona, setSelectedPersona] = useState<keyof typeof PERSONAS>("priya");
+  const [allVoices, setAllVoices] = useState<VoiceInfo[]>([]);
+  const [indianVoices, setIndianVoices] = useState<VoiceInfo[]>([]);
+  const [englishVoices, setEnglishVoices] = useState<VoiceInfo[]>([]);
+  const [hindiVoices, setHindiVoices] = useState<VoiceInfo[]>([]);
+  
+  // Settings state
+  const [selectedEnglishVoice, setSelectedEnglishVoice] = useState("");
+  const [selectedHindiVoice, setSelectedHindiVoice] = useState("");
+  const [englishRate, setEnglishRate] = useState([DEFAULT_VOICE_SETTINGS.englishRate]);
+  const [englishPitch, setEnglishPitch] = useState([DEFAULT_VOICE_SETTINGS.englishPitch]);
+  const [hindiRate, setHindiRate] = useState([DEFAULT_VOICE_SETTINGS.hindiRate]);
+  const [hindiPitch, setHindiPitch] = useState([DEFAULT_VOICE_SETTINGS.hindiPitch]);
+  
   const [testText, setTestText] = useState(SAMPLE_TEXTS.english);
-  const [rate, setRate] = useState([0.80]);
-  const [pitch, setPitch] = useState([1.15]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [browserInfo, setBrowserInfo] = useState({ name: "", supportsRecognition: false, supportsSynthesis: false });
+  
   const { toast } = useToast();
+  const { data: savedSettings, isLoading: loadingSettings } = useVoiceSettings();
+  const updateSettings = useUpdateVoiceSettings();
 
-  // Detect browser and capabilities
+  // Detect browser
   useEffect(() => {
     const ua = navigator.userAgent;
     let browserName = "Unknown";
@@ -49,7 +59,6 @@ export default function VoiceTester() {
     else if (ua.includes("Chrome/")) browserName = "Google Chrome";
     else if (ua.includes("Safari/") && !ua.includes("Chrome")) browserName = "Safari";
     else if (ua.includes("Firefox/")) browserName = "Firefox";
-    else if (ua.includes("Opera/") || ua.includes("OPR/")) browserName = "Opera";
     
     const supportsRecognition = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
     const supportsSynthesis = 'speechSynthesis' in window;
@@ -57,7 +66,7 @@ export default function VoiceTester() {
     setBrowserInfo({ name: browserName, supportsRecognition, supportsSynthesis });
   }, []);
 
-  // Load voices
+  // Load voices - filter to Indian only
   useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
@@ -75,31 +84,54 @@ export default function VoiceTester() {
         }
         
         // Check if Indian voice
-        const isIndian = lang.includes("-in") || name.includes("india") || 
-                        ['aditi', 'heera', 'hemant', 'ravi', 'neerja', 'prabhat'].some(n => name.includes(n));
+        const isIndian = lang.includes("-in") || lang === "hi" ||
+                        INDIAN_VOICE_IDENTIFIERS.some(id => name.includes(id) || lang.includes(id));
+        
+        // Determine language type
+        let language: "english" | "hindi" | "other" = "other";
+        if (lang.startsWith("en") && isIndian) {
+          language = "english";
+        } else if (lang.startsWith("hi") || name.includes("hindi") || name.includes("हिन्दी")) {
+          language = "hindi";
+        } else if (lang.startsWith("en")) {
+          // Include Google English voices as they work well
+          if (name.includes("google")) {
+            language = "english";
+          }
+        }
         
         // Check if female voice
-        const femaleNames = ['aditi', 'heera', 'neerja', 'priya', 'female', 'woman', 'zira', 'samantha', 'siri', 'raveena'];
-        const isFemale = femaleNames.some(n => name.includes(n)) || name.includes('female');
+        const femaleNames = ['aditi', 'heera', 'neerja', 'priya', 'female', 'woman', 'zira', 'samantha', 'raveena'];
+        const isFemale = femaleNames.some(n => name.includes(n));
         
-        return { voice, quality, isIndian, isFemale };
+        return { voice, quality, isIndian, isFemale, language };
       });
       
-      // Sort: Neural > Standard > Basic, Indian first, Female first
-      voiceInfos.sort((a, b) => {
+      setAllVoices(voiceInfos);
+      
+      // Filter to Indian accent voices only
+      const indian = voiceInfos.filter(v => 
+        v.isIndian || v.language === "hindi" || 
+        (v.language === "english" && v.voice.name.toLowerCase().includes("google"))
+      );
+      
+      // Sort: Neural > Standard > Basic, Female first
+      indian.sort((a, b) => {
         const qualityOrder = { neural: 0, standard: 1, basic: 2 };
-        if (a.isIndian !== b.isIndian) return a.isIndian ? -1 : 1;
         if (a.isFemale !== b.isFemale) return a.isFemale ? -1 : 1;
         return qualityOrder[a.quality] - qualityOrder[b.quality];
       });
       
-      setVoices(voiceInfos);
+      setIndianVoices(indian);
       
-      // Auto-select best Indian female voice
-      const bestVoice = voiceInfos.find(v => v.isIndian && v.isFemale) || voiceInfos[0];
-      if (bestVoice) {
-        setSelectedVoice(bestVoice.voice.name);
-      }
+      // Separate English and Hindi voices
+      const english = indian.filter(v => v.language === "english" || 
+        (v.voice.lang.toLowerCase().startsWith("en") && !v.voice.lang.toLowerCase().includes("gb")));
+      const hindi = indian.filter(v => v.language === "hindi" || 
+        v.voice.lang.toLowerCase().startsWith("hi"));
+      
+      setEnglishVoices(english);
+      setHindiVoices(hindi);
     };
 
     loadVoices();
@@ -110,14 +142,60 @@ export default function VoiceTester() {
     };
   }, []);
 
-  // Update rate/pitch when persona changes
+  // Load saved settings
   useEffect(() => {
-    const persona = PERSONAS[selectedPersona];
-    setRate([persona.rate]);
-    setPitch([persona.pitch]);
-  }, [selectedPersona]);
+    if (savedSettings && !loadingSettings) {
+      setSelectedEnglishVoice(savedSettings.englishVoiceName);
+      setSelectedHindiVoice(savedSettings.hindiVoiceName);
+      setEnglishRate([savedSettings.englishRate]);
+      setEnglishPitch([savedSettings.englishPitch]);
+      setHindiRate([savedSettings.hindiRate]);
+      setHindiPitch([savedSettings.hindiPitch]);
+    }
+  }, [savedSettings, loadingSettings]);
 
-  const playVoice = () => {
+  // Auto-select best voices when voices load
+  useEffect(() => {
+    if (englishVoices.length > 0 && !selectedEnglishVoice) {
+      // Try to find recommended voice first
+      const recommended = englishVoices.find(v => 
+        RECOMMENDED_VOICES.english.some(r => v.voice.name.includes(r.split(" ")[0]))
+      );
+      setSelectedEnglishVoice(recommended?.voice.name || englishVoices[0]?.voice.name || "");
+    }
+    
+    if (hindiVoices.length > 0 && !selectedHindiVoice) {
+      const googleHindi = hindiVoices.find(v => v.voice.name.toLowerCase().includes("google"));
+      setSelectedHindiVoice(googleHindi?.voice.name || hindiVoices[0]?.voice.name || "");
+    }
+  }, [englishVoices, hindiVoices, selectedEnglishVoice, selectedHindiVoice]);
+
+  const playVoice = (language: "english" | "hindi") => {
+    window.speechSynthesis.cancel();
+    
+    const text = language === "hindi" ? SAMPLE_TEXTS.hindi : SAMPLE_TEXTS.english;
+    const voiceName = language === "hindi" ? selectedHindiVoice : selectedEnglishVoice;
+    const rate = language === "hindi" ? hindiRate[0] : englishRate[0];
+    const pitch = language === "hindi" ? hindiPitch[0] : englishPitch[0];
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    
+    const voices = language === "hindi" ? hindiVoices : englishVoices;
+    const voiceInfo = voices.find(v => v.voice.name === voiceName);
+    if (voiceInfo) {
+      utterance.voice = voiceInfo.voice;
+    }
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const playCustomText = () => {
     if (!testText.trim()) {
       toast({ title: "No text", description: "Please enter some text to speak", variant: "destructive" });
       return;
@@ -125,11 +203,18 @@ export default function VoiceTester() {
 
     window.speechSynthesis.cancel();
     
-    const utterance = new SpeechSynthesisUtterance(testText);
-    utterance.rate = rate[0];
-    utterance.pitch = pitch[0];
+    // Detect if Hindi text
+    const isHindi = /[\u0900-\u097F]/.test(testText);
+    const voiceName = isHindi ? selectedHindiVoice : selectedEnglishVoice;
+    const rate = isHindi ? hindiRate[0] : englishRate[0];
+    const pitch = isHindi ? hindiPitch[0] : englishPitch[0];
     
-    const voiceInfo = voices.find(v => v.voice.name === selectedVoice);
+    const utterance = new SpeechSynthesisUtterance(testText);
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    
+    const voices = isHindi ? hindiVoices : englishVoices;
+    const voiceInfo = voices.find(v => v.voice.name === voiceName);
     if (voiceInfo) {
       utterance.voice = voiceInfo.voice;
     }
@@ -146,200 +231,240 @@ export default function VoiceTester() {
     setIsSpeaking(false);
   };
 
-  const selectedVoiceInfo = voices.find(v => v.voice.name === selectedVoice);
+  const saveSettings = () => {
+    updateSettings.mutate({
+      englishVoiceName: selectedEnglishVoice,
+      hindiVoiceName: selectedHindiVoice,
+      englishRate: englishRate[0],
+      englishPitch: englishPitch[0],
+      hindiRate: hindiRate[0],
+      hindiPitch: hindiPitch[0],
+    });
+  };
+
+  const hasChanges = savedSettings && (
+    savedSettings.englishVoiceName !== selectedEnglishVoice ||
+    savedSettings.hindiVoiceName !== selectedHindiVoice ||
+    savedSettings.englishRate !== englishRate[0] ||
+    savedSettings.englishPitch !== englishPitch[0] ||
+    savedSettings.hindiRate !== hindiRate[0] ||
+    savedSettings.hindiPitch !== hindiPitch[0]
+  );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Voice Tester</h1>
-        <p className="text-muted-foreground">Test and compare available voices for the AI Sales Assistant</p>
+        <h1 className="text-2xl font-bold">🎙️ Voice Settings</h1>
+        <p className="text-muted-foreground">Configure Indian accent voices for the AI Sales Assistant</p>
       </div>
 
-      {/* Browser Compatibility Card */}
+      {/* Browser Compatibility */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
-            Browser Compatibility
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Info className="h-4 w-4" />
+            Browser: {browserInfo.name}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Browser:</span>
-              <Badge variant="outline">{browserInfo.name}</Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Speech Recognition:</span>
+              <span className="text-sm">Speech Recognition:</span>
               {browserInfo.supportsRecognition ? (
-                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Supported</Badge>
+                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Yes</Badge>
               ) : (
-                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Not Supported</Badge>
+                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> No</Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-medium">Text-to-Speech:</span>
+              <span className="text-sm">Text-to-Speech:</span>
               {browserInfo.supportsSynthesis ? (
-                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Supported</Badge>
+                <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Yes</Badge>
               ) : (
-                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Not Supported</Badge>
+                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> No</Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-medium">Available Voices:</span>
-              <Badge variant="secondary">{voices.length}</Badge>
+              <span className="text-sm">Indian Voices:</span>
+              <Badge variant="secondary">{indianVoices.length}</Badge>
             </div>
           </div>
-          
-          <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
-            <p className="font-medium mb-2">Browser Voice Quality Notes:</p>
-            <ul className="space-y-1 text-muted-foreground">
-              <li>• <strong>Microsoft Edge:</strong> Best quality - has Neural voices (Microsoft Neerja Online, etc.)</li>
-              <li>• <strong>Google Chrome:</strong> Good quality - has Google voices</li>
-              <li>• <strong>Safari:</strong> Good on macOS/iOS - Siri voices available</li>
-              <li>• <strong>Firefox:</strong> Basic Windows SAPI voices only</li>
-              <li>• <strong>Internet Explorer:</strong> Not supported</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Persona Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Counselor Personas</CardTitle>
-          <CardDescription>Each persona has a unique voice style and personality</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(PERSONAS).map(([key, persona]) => (
-              <Card 
-                key={key}
-                className={`cursor-pointer transition-all ${selectedPersona === key ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
-                onClick={() => setSelectedPersona(key as keyof typeof PERSONAS)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-2xl">
-                      👩
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{persona.name}</h3>
-                      <p className="text-xs text-muted-foreground">{persona.description}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex gap-2 text-xs">
-                    <Badge variant="outline">Rate: {persona.rate}</Badge>
-                    <Badge variant="outline">Pitch: {persona.pitch}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Voice Selection */}
-      <Card>
+      {/* Voice Settings Card - Main Configuration */}
+      <Card className="border-primary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            Voice Selection
+            <Settings className="h-5 w-5" />
+            🇮🇳 Indian Voice Settings
+            {hasChanges && <Badge variant="outline" className="ml-2">Unsaved Changes</Badge>}
           </CardTitle>
           <CardDescription>
-            {voices.filter(v => v.isIndian).length} Indian voices available, {voices.filter(v => v.isFemale).length} female voices
+            These settings will be applied to the AI Sales Assistant for all users
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Select Voice</label>
-              <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a voice" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {voices.map((v) => (
-                    <SelectItem key={v.voice.name} value={v.voice.name}>
-                      <div className="flex items-center gap-2">
-                        <span>{v.voice.name}</span>
-                        <Badge variant="outline" className="text-xs">{v.voice.lang}</Badge>
-                        {v.quality === "neural" && <Badge className="bg-purple-500 text-xs">Neural</Badge>}
-                        {v.isIndian && <Badge className="bg-orange-500 text-xs">🇮🇳</Badge>}
-                        {v.isFemale && <Badge className="bg-pink-500 text-xs">♀</Badge>}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <CardContent className="space-y-6">
+          {/* English Voice Settings */}
+          <div className="p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">🇬🇧</span>
+              <h3 className="font-semibold">English Voice (Indian Accent)</h3>
             </div>
             
-            {selectedVoiceInfo && (
-              <div className="p-3 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Selected Voice Info</h4>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Name:</strong> {selectedVoiceInfo.voice.name}</p>
-                  <p><strong>Language:</strong> {selectedVoiceInfo.voice.lang}</p>
-                  <p><strong>Quality:</strong> {selectedVoiceInfo.quality}</p>
-                  <p><strong>Local:</strong> {selectedVoiceInfo.voice.localService ? "Yes" : "No (Cloud)"}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Select Voice</label>
+                <Select value={selectedEnglishVoice} onValueChange={setSelectedEnglishVoice}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select English voice" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {englishVoices.map((v) => (
+                      <SelectItem key={v.voice.name} value={v.voice.name}>
+                        <div className="flex items-center gap-2">
+                          <span>{v.voice.name}</span>
+                          {v.quality === "neural" && <Badge className="bg-purple-500 text-xs">Neural</Badge>}
+                          {v.quality === "standard" && <Badge variant="secondary" className="text-xs">Standard</Badge>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {englishVoices.length === 0 && (
+                      <SelectItem value="none" disabled>No English voices found</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recommended: Microsoft Neerja (Neural) or Google US English
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Rate: {englishRate[0].toFixed(2)}</label>
+                  <Slider value={englishRate} onValueChange={setEnglishRate} min={0.5} max={1.5} step={0.05} />
                 </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Pitch: {englishPitch[0].toFixed(2)}</label>
+                  <Slider value={englishPitch} onValueChange={setEnglishPitch} min={0.5} max={1.5} step={0.05} />
+                </div>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={() => playVoice("english")} 
+              variant="outline" 
+              className="mt-4"
+              disabled={isSpeaking || !selectedEnglishVoice}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Test English Voice
+            </Button>
+          </div>
+
+          {/* Hindi Voice Settings */}
+          <div className="p-4 border rounded-lg bg-orange-50/50 dark:bg-orange-950/20">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-lg">🇮🇳</span>
+              <h3 className="font-semibold">Hindi Voice (हिन्दी)</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Select Voice</label>
+                <Select value={selectedHindiVoice} onValueChange={setSelectedHindiVoice}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Hindi voice" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hindiVoices.map((v) => (
+                      <SelectItem key={v.voice.name} value={v.voice.name}>
+                        <div className="flex items-center gap-2">
+                          <span>{v.voice.name}</span>
+                          {v.quality === "neural" && <Badge className="bg-purple-500 text-xs">Neural</Badge>}
+                          {v.quality === "standard" && <Badge variant="secondary" className="text-xs">Standard</Badge>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {hindiVoices.length === 0 && (
+                      <SelectItem value="none" disabled>No Hindi voices found</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recommended: Google हिन्दी (best natural pronunciation)
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Rate: {hindiRate[0].toFixed(2)}</label>
+                  <Slider value={hindiRate} onValueChange={setHindiRate} min={0.5} max={1.5} step={0.05} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Pitch: {hindiPitch[0].toFixed(2)}</label>
+                  <Slider value={hindiPitch} onValueChange={setHindiPitch} min={0.5} max={1.5} step={0.05} />
+                </div>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={() => playVoice("hindi")} 
+              variant="outline" 
+              className="mt-4"
+              disabled={isSpeaking || !selectedHindiVoice}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Test Hindi Voice
+            </Button>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex items-center gap-4 pt-4 border-t">
+            <Button 
+              onClick={saveSettings} 
+              disabled={updateSettings.isPending || !hasChanges}
+              className="min-w-[200px]"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {updateSettings.isPending ? "Saving..." : "Save Voice Settings"}
+            </Button>
+            {savedSettings && !hasChanges && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Settings saved and active
               </div>
             )}
           </div>
 
-          {/* Rate and Pitch Sliders */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Speech Rate: {rate[0].toFixed(2)}
-              </label>
-              <Slider 
-                value={rate} 
-                onValueChange={setRate} 
-                min={0.5} 
-                max={2.0} 
-                step={0.05}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground mt-1">0.5 = Very Slow, 1.0 = Normal, 2.0 = Very Fast</p>
+          {/* Current Saved Settings Display */}
+          {savedSettings && (
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <p className="font-medium mb-2">Currently Active Settings:</p>
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                <p>🇬🇧 English: {savedSettings.englishVoiceName || "Default"}</p>
+                <p>Rate: {savedSettings.englishRate} | Pitch: {savedSettings.englishPitch}</p>
+                <p>🇮🇳 Hindi: {savedSettings.hindiVoiceName || "Default"}</p>
+                <p>Rate: {savedSettings.hindiRate} | Pitch: {savedSettings.hindiPitch}</p>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Voice Pitch: {pitch[0].toFixed(2)}
-              </label>
-              <Slider 
-                value={pitch} 
-                onValueChange={setPitch} 
-                min={0.5} 
-                max={2.0} 
-                step={0.05}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Lower = Deeper voice, Higher = Higher voice</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Test Content */}
+      {/* Test Custom Text */}
       <Card>
         <CardHeader>
-          <CardTitle>Test Content</CardTitle>
-          <CardDescription>Enter text to test or choose a sample</CardDescription>
+          <CardTitle>Test Custom Text</CardTitle>
+          <CardDescription>Enter any text to test with current voice settings</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setTestText(SAMPLE_TEXTS.english)}>
-              English Welcome
+              English Sample
             </Button>
             <Button variant="outline" size="sm" onClick={() => setTestText(SAMPLE_TEXTS.hindi)}>
-              Hindi Welcome
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setTestText(SAMPLE_TEXTS.question)}>
-              Question
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setTestText(SAMPLE_TEXTS.emotional)}>
-              Emotional
+              Hindi Sample
             </Button>
           </div>
           
@@ -347,30 +472,30 @@ export default function VoiceTester() {
             value={testText}
             onChange={(e) => setTestText(e.target.value)}
             placeholder="Enter text to speak..."
-            rows={4}
+            rows={3}
           />
           
           <div className="flex gap-2">
             {isSpeaking ? (
-              <Button onClick={stopVoice} variant="destructive" className="w-full">
+              <Button onClick={stopVoice} variant="destructive">
                 <Square className="h-4 w-4 mr-2" />
                 Stop
               </Button>
             ) : (
-              <Button onClick={playVoice} className="w-full">
+              <Button onClick={playCustomText}>
                 <Play className="h-4 w-4 mr-2" />
-                Play Voice ({PERSONAS[selectedPersona].name})
+                Play (Auto-detect language)
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Voice List */}
+      {/* Available Indian Voices List */}
       <Card>
         <CardHeader>
-          <CardTitle>All Available Voices ({voices.length})</CardTitle>
-          <CardDescription>Complete list of voices available in your browser</CardDescription>
+          <CardTitle>🇮🇳 Available Indian Voices ({indianVoices.length})</CardTitle>
+          <CardDescription>Only showing voices with Indian accent support</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -381,20 +506,23 @@ export default function VoiceTester() {
                   <th className="text-left p-2">Language</th>
                   <th className="text-left p-2">Quality</th>
                   <th className="text-left p-2">Type</th>
-                  <th className="text-left p-2">Actions</th>
+                  <th className="text-left p-2">Test</th>
                 </tr>
               </thead>
               <tbody>
-                {voices.map((v) => (
+                {indianVoices.map((v) => (
                   <tr key={v.voice.name} className="border-b hover:bg-muted/50">
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         {v.voice.name}
-                        {v.isIndian && <span>🇮🇳</span>}
                         {v.isFemale && <span>♀</span>}
                       </div>
                     </td>
-                    <td className="p-2">{v.voice.lang}</td>
+                    <td className="p-2">
+                      <Badge variant="outline">
+                        {v.language === "hindi" ? "🇮🇳 Hindi" : "🇬🇧 English"}
+                      </Badge>
+                    </td>
                     <td className="p-2">
                       <Badge variant={v.quality === "neural" ? "default" : v.quality === "standard" ? "secondary" : "outline"}>
                         {v.quality}
@@ -406,8 +534,13 @@ export default function VoiceTester() {
                         size="sm" 
                         variant="ghost"
                         onClick={() => {
-                          setSelectedVoice(v.voice.name);
-                          playVoice();
+                          window.speechSynthesis.cancel();
+                          const utterance = new SpeechSynthesisUtterance(
+                            v.language === "hindi" ? "नमस्ते, मैं आपकी सहायता कर सकती हूं" : "Hello, I'm here to help you"
+                          );
+                          utterance.voice = v.voice;
+                          utterance.rate = 0.85;
+                          window.speechSynthesis.speak(utterance);
                         }}
                       >
                         <Play className="h-3 w-3" />
