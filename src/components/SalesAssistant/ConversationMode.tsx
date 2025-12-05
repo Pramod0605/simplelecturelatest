@@ -190,7 +190,10 @@ export const ConversationMode = ({
   };
 
   return (
-    <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl">
+    <Card className="fixed inset-4 z-50 flex flex-col bg-background shadow-2xl" onClick={() => {
+      // Ensure user interaction is tracked for audio permissions
+      console.log("📱 ConversationMode clicked - ensuring audio permissions");
+    }}>
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-3 flex flex-col gap-2">
         <div className="flex items-center justify-between">

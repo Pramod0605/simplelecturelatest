@@ -64,6 +64,10 @@ export const SalesAssistantWidget = () => {
     // Create anonymous lead for quick chat with friendly greeting
     const shortId = Date.now().toString(36).slice(-4);
     const anonymousName = `Anonymous-${shortId}`;
+    
+    // This button click counts as user interaction for audio permissions
+    console.log("🎤 Quick chat started - user interaction registered");
+    
     const success = await createLead(anonymousName, "", "", currentGender);
     if (success) {
       setIsVoiceMode(true);

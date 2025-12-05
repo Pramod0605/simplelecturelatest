@@ -58,10 +58,26 @@ export const ChatInterface = ({
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [showVoiceHelp, setShowVoiceHelp] = useState(true);
   const [vadLevel, setVadLevel] = useState(0);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string>("");
   const sentTranscriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track first interaction to enable audio
+  const handleFirstInteraction = useCallback(() => {
+    if (!hasInteracted) {
+      console.log("🖱️ First interaction detected in ChatInterface");
+      setHasInteracted(true);
+      
+      // If there's a pending message to speak, speak it now
+      const lastMessage = messages[messages.length - 1];
+      if (autoSpeak && lastMessage?.role === "assistant" && lastMessage.content) {
+        console.log("🔊 Speaking pending message after interaction");
+        speak(lastMessage.content, detectedLanguage, counselorGender);
+      }
+    }
+  }, [hasInteracted, messages, autoSpeak, speak, detectedLanguage, counselorGender]);
 
   // Immediate interrupt handler - cancel speech synthesis immediately
   const handleInterrupt = useCallback(() => {
@@ -233,7 +249,7 @@ export const ChatInterface = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" onClick={handleFirstInteraction}>
       {/* Voice Help Banner */}
       {showVoiceHelp && (
         <div className="bg-muted border-b p-2 text-xs">
@@ -241,7 +257,7 @@ export const ChatInterface = ({
             <div className="flex-1">
               {isSupported ? (
                 <span className="text-foreground">
-                  🎤 Voice enabled! Use Chrome/Edge for best results. Click mic to speak.
+                  🎤 Voice enabled! Click anywhere first, then use the mic button to speak.
                 </span>
               ) : (
                 <span className="text-destructive">
