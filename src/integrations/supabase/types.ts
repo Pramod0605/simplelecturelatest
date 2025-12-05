@@ -2363,31 +2363,31 @@ export type Database = {
         Row: {
           conversation_history: Json | null
           created_at: string | null
-          email: string
+          email: string | null
           id: string
           last_interaction_at: string | null
           lead_status: string | null
-          mobile: string
+          mobile: string | null
           name: string
         }
         Insert: {
           conversation_history?: Json | null
           created_at?: string | null
-          email: string
+          email?: string | null
           id?: string
           last_interaction_at?: string | null
           lead_status?: string | null
-          mobile: string
+          mobile?: string | null
           name: string
         }
         Update: {
           conversation_history?: Json | null
           created_at?: string | null
-          email?: string
+          email?: string | null
           id?: string
           last_interaction_at?: string | null
           lead_status?: string | null
-          mobile?: string
+          mobile?: string | null
           name?: string
         }
         Relationships: []
