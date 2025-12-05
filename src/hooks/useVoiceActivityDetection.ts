@@ -16,8 +16,8 @@ const HARMONIC_FREQ_HIGH = 3400;
 export const useVoiceActivityDetection = ({
   enabled,
   onVoiceDetected,
-  threshold = 55, // Lower threshold for easier interrupt
-  detectionDuration = 300, // Faster detection for responsive interrupts
+  threshold = 70, // Higher threshold to reduce false positives
+  detectionDuration = 500, // Longer duration for sustained voice detection
   onAudioLevel,
 }: UseVoiceActivityDetectionProps) => {
   const [isDetecting, setIsDetecting] = useState(false);
@@ -283,12 +283,12 @@ export const useVoiceActivityDetection = ({
       }
 
       // Final voice detection: energy threshold + baseline + voice characteristics
-      // Lowered requirements for easier interruption during AI speech
+      // Require stronger evidence to prevent false positives from ambient noise
       if (fundamentalEnergy > threshold && isAboveBaseline && isLikelyVoice) {
         consecutiveVoiceFramesRef.current++;
         
-        // Require only 3 consecutive voice frames for faster interrupt
-        if (consecutiveVoiceFramesRef.current >= 3) {
+        // Require 5 consecutive voice frames to reduce false positives
+        if (consecutiveVoiceFramesRef.current >= 5) {
           const now = Date.now();
           // Cooldown of 500ms between triggers
           if (now - lastTriggerRef.current < 500) {
