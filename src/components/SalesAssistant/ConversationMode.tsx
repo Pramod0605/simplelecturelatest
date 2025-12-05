@@ -90,9 +90,10 @@ export const ConversationMode = ({
   // Mark initial welcome as done ONLY when first speech fully completes
   // This is set in the onComplete callback of the welcome speech
 
-  // VAD for ConversationMode - improved voice-only detection with spectral analysis
+  // VAD DISABLED - causes feedback loop where AI speech is picked up as user voice
+  // Users must tap to interrupt instead
   const { isDetecting } = useVoiceActivityDetection({
-    enabled: vadEnabled,
+    enabled: false, // Disabled to prevent AI speech feedback
     onVoiceDetected: () => {
       console.log("VAD: Human voice detected, interrupting AI speech");
       window.speechSynthesis.cancel();
@@ -102,8 +103,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 55, // Lower threshold for easier interruption
-    detectionDuration: 300, // Faster detection for responsive interrupts
+    threshold: 70,
+    detectionDuration: 500,
   });
 
   // Auto-scroll to bottom
