@@ -424,6 +424,22 @@ export const AdminSidebar = () => {
           <span>Settings</span>
         </NavLink>
 
+        {/* Counselor Avatars */}
+        <NavLink
+          to="/admin/settings/counselor-avatars"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-medium",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )
+          }
+        >
+          <UserCircle className="h-4 w-4" />
+          <span>Counselor Avatars</span>
+        </NavLink>
+
         {/* File Manager */}
         <NavLink
           to="/admin/files"

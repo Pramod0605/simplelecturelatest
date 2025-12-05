@@ -11,6 +11,7 @@ interface UseWebSpeechReturn {
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
+  voicesLoaded: boolean;
 }
 
 export const useWebSpeech = (): UseWebSpeechReturn => {
@@ -18,6 +19,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voiceFallbackShown, setVoiceFallbackShown] = useState(false);
   const { toast } = useToast();
 
@@ -35,17 +37,33 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices);
-      console.log("Loaded voices:", availableVoices.length, "voices");
+      if (availableVoices.length > 0) {
+        setVoices(availableVoices);
+        setVoicesLoaded(true);
+        console.log("✅ Voices loaded:", availableVoices.length, "voices");
+      }
     };
 
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
+    // Retry loading voices every 100ms for up to 3 seconds if not loaded
+    let retryCount = 0;
+    const maxRetries = 30;
+    const retryInterval = setInterval(() => {
+      if (voicesLoaded || retryCount >= maxRetries) {
+        clearInterval(retryInterval);
+        return;
+      }
+      loadVoices();
+      retryCount++;
+    }, 100);
+
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
+      clearInterval(retryInterval);
     };
-  }, [speechSynthesisSupported]);
+  }, [speechSynthesisSupported, voicesLoaded]);
 
   useEffect(() => {
     if (!isSupported) return;
@@ -423,5 +441,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     stopSpeaking,
     clearTranscript,
     isSupported,
+    voicesLoaded,
   };
 };

@@ -37,7 +37,8 @@ export const SalesAssistantWidget = () => {
     speak,
     stopSpeaking,
     clearTranscript,
-    isSupported 
+    isSupported,
+    voicesLoaded
   } = useWebSpeech();
 
   // Sync language and gender when detected language changes
@@ -213,6 +214,7 @@ export const SalesAssistantWidget = () => {
           startListening={startListening}
           stopSpeaking={stopSpeaking}
           onLanguageChange={handleLanguageChange}
+          voicesLoaded={voicesLoaded}
         />
       )}
     </>

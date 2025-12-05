@@ -31,6 +31,7 @@ interface ConversationModeProps {
   startListening: (language?: string) => void;
   stopSpeaking: () => void;
   onLanguageChange?: (language: string, gender: "female" | "male") => void;
+  voicesLoaded?: boolean;
 }
 
 export const ConversationMode = ({
@@ -49,6 +50,7 @@ export const ConversationMode = ({
   startListening,
   stopSpeaking,
   onLanguageChange,
+  voicesLoaded = false,
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
@@ -84,23 +86,26 @@ export const ConversationMode = ({
   }, [messages]);
 
   // Auto-start conversation - speak the FIRST assistant message (proper Dr. Nagpal welcome)
+  // CRITICAL: Wait for voicesLoaded before speaking to avoid "Hi There" bug
   useEffect(() => {
-    if (!hasAutoStarted && messages.length > 0) {
+    if (!hasAutoStarted && messages.length > 0 && voicesLoaded) {
       const firstAssistantMessage = messages.find(m => m.role === "assistant");
       if (firstAssistantMessage) {
         setHasAutoStarted(true);
-        console.log("Speaking welcome message from createLead:", firstAssistantMessage.content.substring(0, 50) + "...");
+        console.log("✅ Voices ready! Speaking welcome message:", firstAssistantMessage.content.substring(0, 50) + "...");
         
-        // Speak immediately without delay
-        speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
-          setTimeout(() => {
-            console.log("Starting listening after welcome message");
-            startListening(selectedLanguage);
-          }, 500);
-        });
+        // Small delay to ensure voices are fully ready
+        setTimeout(() => {
+          speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
+            setTimeout(() => {
+              console.log("Starting listening after welcome message");
+              startListening(selectedLanguage);
+            }, 500);
+          });
+        }, 200);
       }
     }
-  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender]);
+  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
 
   // Handle language button click
   const handleLanguageSelect = (language: string, gender: "female" | "male") => {
