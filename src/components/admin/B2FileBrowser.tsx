@@ -159,7 +159,7 @@ export function B2FileBrowser() {
             </TableHeader>
             <TableBody>
               {/* Folders */}
-              {folders.map((folder) => (
+              {folders.filter((folder) => folder.name).map((folder) => (
                 <TableRow
                   key={folder.name}
                   className="cursor-pointer hover:bg-muted/50"
@@ -168,7 +168,7 @@ export function B2FileBrowser() {
                   <TableCell>
                     <Folder className="h-5 w-5 text-blue-500" />
                   </TableCell>
-                  <TableCell className="font-medium">{folder.name.split('/').filter(Boolean).pop()}</TableCell>
+                  <TableCell className="font-medium">{folder.name?.split('/').filter(Boolean).pop() || 'Unknown'}</TableCell>
                   <TableCell>
                     <Badge variant="outline">Folder</Badge>
                   </TableCell>
@@ -179,17 +179,17 @@ export function B2FileBrowser() {
               ))}
 
               {/* Files */}
-              {files.map((file: any) => (
-                <TableRow key={file.fileId}>
+              {files.filter((file: any) => file.fileName).map((file: any) => (
+                <TableRow key={file.fileId || file.fileName}>
                   <TableCell>
                     <File className="h-5 w-5 text-muted-foreground" />
                   </TableCell>
                   <TableCell className="font-medium">
-                    {file.fileName.split('/').pop()}
+                    {file.fileName?.split('/').pop() || 'Unknown'}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {file.contentType.split('/').pop()?.toUpperCase()}
+                      {file.contentType?.split('/').pop()?.toUpperCase() || 'FILE'}
                     </Badge>
                   </TableCell>
                   <TableCell>{formatFileSize(file.contentLength)}</TableCell>
