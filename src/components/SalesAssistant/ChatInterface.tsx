@@ -163,7 +163,8 @@ export const ChatInterface = ({
     const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm'];
     const isSingleNoiseWord = noiseWords.some(word => trimmed.toLowerCase() === word);
     
-    if (trimmed.length < 5 || isSingleNoiseWord) {
+    // Lower threshold to 3 characters to catch short responses
+    if (trimmed.length < 3 || isSingleNoiseWord) {
       return;
     }
 
@@ -177,17 +178,17 @@ export const ChatInterface = ({
     
     let silenceTimeout: number;
     if (endsWithPunctuation) {
-      // Sentence complete - shorter wait
-      silenceTimeout = 1500;
-    } else if (wordCount < 10) {
-      // Short utterance - longer wait
-      silenceTimeout = 3000;
-    } else if (wordCount < 30) {
+      // Sentence complete - wait a bit longer to allow continuation
+      silenceTimeout = 2000;
+    } else if (wordCount < 5) {
+      // Very short utterance - longest wait (user might be thinking)
+      silenceTimeout = 4000;
+    } else if (wordCount < 15) {
       // Medium utterance
-      silenceTimeout = 2500;
+      silenceTimeout = 3000;
     } else {
       // Long utterance - shorter wait
-      silenceTimeout = 2000;
+      silenceTimeout = 2500;
     }
 
     silenceTimerRef.current = setTimeout(() => {

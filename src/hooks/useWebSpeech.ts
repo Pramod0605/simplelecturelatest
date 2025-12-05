@@ -129,7 +129,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       // Ignore errors when aborting
     }
     
-    // Small delay after abort to ensure clean state
+    // Increased delay after abort to ensure clean state (200ms for stability)
     setTimeout(() => {
       try {
         setTranscript("");
@@ -154,7 +154,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
         console.log("Speech recognition error:", error);
         setIsListening(false);
       }
-    }, 100);
+    }, 200);
   };
 
   const stopListening = useCallback(() => {

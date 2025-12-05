@@ -82,14 +82,18 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
       const displayName = isAnonymous ? "there" : name;
       
       // Generate welcome message based on gender (Rahul for male/English, Priya for female/Hindi)
-      const counselorName = gender === "female" ? "Priya" : "Rahul";
+      // Include Dr. Nagpal's mission and value proposition
       const welcomeMessage = gender === "female"
         ? `नमस्ते ${displayName}! 👋 मैं प्रिया हूं, SimpleLecture में आपकी शिक्षा सलाहकार।
 
-मैं आपके लक्ष्यों के लिए सही कोर्स खोजने में मदद करने के लिए यहाँ हूं। आपको बेहतर समझने के लिए - क्या आप परीक्षाओं की तैयारी कर रहे छात्र हैं, या अपने बच्चे के लिए सही कोर्स ढूंढ रहे माता-पिता?`
-        : `Hi ${displayName}! 👋 I'm ${counselorName}, your education counselor at SimpleLecture.
+यह Dr. Nagpal की एक खास पहल है - उनका मानना है कि हर बच्चे को quality education मिलनी चाहिए, चाहे वो गरीब हो या अमीर। इसलिए हमारे courses बिल्कुल FREE हैं - सिर्फ ₹2,000 registration fees। Coaching में ₹1-2 लाख खर्च क्यों करें जब education आपके घर तक आ सकती है?
 
-I'm here to help you find the perfect course for your goals. Just to understand you better - are you a student preparing for exams, or a parent looking for the right course for your child?`;
+बताइए, आप student हैं या parent? किस exam की तैयारी करनी है?`
+        : `Hi ${displayName}! 👋 I'm Rahul, your education counselor at SimpleLecture.
+
+Welcome to Dr. Nagpal's revolutionary initiative! His vision is simple - quality education shouldn't be a privilege. Even the poorest student deserves the same education as the richest. That's why our courses are completely FREE - you only pay ₹2,000 registration fee. Why spend ₹1-2 Lakhs at coaching centers when education can come to your doorstep?
+
+Tell me, are you a student preparing for exams, or a parent looking for the right course?`;
       
       setMessages([{
         role: "assistant",
@@ -138,6 +142,7 @@ I'm here to help you find the perfect course for your goals. Just to understand 
         body: JSON.stringify({
           messages: [...messages, userMessage],
           leadId,
+          counselorGender: detectedLanguage === 'hi-IN' ? 'female' : 'male',
         }),
       });
 
