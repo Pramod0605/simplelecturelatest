@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Users, Clock, Search, Home, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, Clock, Search, Home, ChevronRight as ChevronRightIcon, CheckCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePaginatedCourses } from "@/hooks/usePaginatedCourses";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useEnrolledCourseIds } from "@/hooks/useEnrolledCoursesWithCategories";
 
 const Programs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,6 +78,9 @@ const Programs = () => {
   });
 
   const { courses = [], totalCount = 0, totalPages = 0 } = paginatedData || {};
+
+  // Get enrolled course IDs to show "Enrolled" badge
+  const { data: enrolledCourseIds } = useEnrolledCourseIds();
 
   // Update URL when filters change
   const updateFilters = useCallback((category?: string, subcategory?: string, page?: number, search?: string) => {
@@ -316,9 +320,14 @@ const Programs = () => {
                             loading="lazy"
                           />
                         )}
-                        {course.price_inr === 0 && (
+                        {enrolledCourseIds?.has(course.id) ? (
+                          <Badge className="absolute top-3 right-3 bg-green-500">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Enrolled
+                          </Badge>
+                        ) : course.price_inr === 0 ? (
                           <Badge className="absolute top-3 right-3 bg-green-500">Free</Badge>
-                        )}
+                        ) : null}
                       </div>
                       <CardContent className="p-4">
                         <h3 className="font-semibold text-lg mb-2 line-clamp-2">{course.name}</h3>
