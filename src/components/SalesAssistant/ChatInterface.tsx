@@ -113,14 +113,13 @@ export const ChatInterface = ({
     handleInterrupt();
   }, [handleInterrupt]);
 
-  // Voice Activity Detection DISABLED - causes feedback loop where AI speech is picked up
-  // Users must tap to interrupt instead
+  // Voice Activity Detection with audio level feedback - better speech filtering
   const { isDetecting, currentLevel } = useVoiceActivityDetection({
-    enabled: false, // Disabled to prevent AI speech being picked up as user voice
+    enabled: isSpeaking,
     onVoiceDetected: debouncedInterrupt,
     onAudioLevel: setVadLevel,
-    threshold: 70,
-    detectionDuration: 500,
+    threshold: 55, // Increased to reduce false positives
+    detectionDuration: 400, // Increased for sustained detection
   });
 
   // Auto-scroll to bottom
@@ -175,16 +174,13 @@ export const ChatInterface = ({
     setInput(transcript);
 
     const trimmed = transcript.trim();
-    const wordCount = trimmed.split(/\s+/).filter(w => w.length > 0).length;
     
-    // Prevent auto-send for noise or single random words (false positives)
-    const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm', 'revolution', 'the', 'a', 'an', 'is'];
+    // Prevent auto-send for noise
+    const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm'];
     const isSingleNoiseWord = noiseWords.some(word => trimmed.toLowerCase() === word);
     
-    // Require minimum 10 characters OR 3 words to prevent false positive auto-typing
-    const isValidTranscript = trimmed.length >= 10 || wordCount >= 3;
-    
-    if (!isValidTranscript || isSingleNoiseWord) {
+    // Lower threshold to 3 characters to catch short responses
+    if (trimmed.length < 3 || isSingleNoiseWord) {
       return;
     }
 
@@ -193,6 +189,7 @@ export const ChatInterface = ({
     }
 
     // Smart silence detection based on utterance length and sentence endings
+    const wordCount = trimmed.split(/\s+/).length;
     const endsWithPunctuation = /[.?!]$/.test(trimmed);
     
     let silenceTimeout: number;

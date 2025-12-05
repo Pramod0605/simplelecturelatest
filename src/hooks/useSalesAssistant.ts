@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CounselorPersona, PERSONA_CONFIGS } from "@/hooks/useWebSpeech";
 
 interface Message {
   role: "user" | "assistant";
@@ -21,7 +20,7 @@ interface UseSalesAssistantReturn {
   detectedLanguage: string;
   setConversationState: (state: ConversationState) => void;
   sendMessage: (content: string) => Promise<void>;
-  createLead: (name: string, email: string, mobile: string, gender?: "female" | "male", persona?: CounselorPersona) => Promise<boolean>;
+  createLead: (name: string, email: string, mobile: string, gender?: "female" | "male") => Promise<boolean>;
 }
 
 export const useSalesAssistant = (): UseSalesAssistantReturn => {
@@ -60,21 +59,15 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     name: string, 
     email: string, 
     mobile: string,
-    gender: "female" | "male" = "female",
-    persona: CounselorPersona = "english"
+    gender: "female" | "male" = "male"
   ): Promise<boolean> => {
     try {
-      // Use placeholder values for anonymous leads (required by NOT NULL constraints)
-      const isAnonymous = !email || !mobile || name.startsWith("Anonymous") || name.startsWith("Guest");
-      const finalEmail = email || `anonymous-${Date.now()}@simplelecture.com`;
-      const finalMobile = mobile || `0000000000`;
-      
       const { data, error } = await supabase
         .from('sales_leads')
         .insert({
           name,
-          email: finalEmail,
-          mobile: finalMobile,
+          email,
+          mobile,
           conversation_history: [],
         })
         .select()
@@ -84,15 +77,19 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
 
       setLeadId(data.id);
       
-      // Use isAnonymous already defined above for display name
+      // Determine if this is an anonymous user
+      const isAnonymous = name.startsWith("Anonymous") || name.startsWith("Guest");
       const displayName = isAnonymous ? "there" : name;
       
-      // Get persona name for personalized greeting
-      const counselorName = PERSONA_CONFIGS[persona].name;
-      
-      // Generate welcome message based on persona (all female counselors)
+      // Generate welcome message based on gender (Rahul for male/English, Priya for female/Hindi)
       // Include Dr. Nagpal's mission and value proposition
-      const welcomeMessage = `Hi ${displayName}! 👋 I'm ${counselorName}, your education counselor at SimpleLecture.
+      const welcomeMessage = gender === "female"
+        ? `नमस्ते ${displayName}! 👋 मैं प्रिया हूं, SimpleLecture में आपकी शिक्षा सलाहकार।
+
+यह Dr. Nagpal की एक खास पहल है - उनका मानना है कि हर बच्चे को quality education मिलनी चाहिए, चाहे वो गरीब हो या अमीर। इसलिए हमारे courses बिल्कुल FREE हैं - सिर्फ ₹2,000 registration fees। Coaching में ₹1-2 लाख खर्च क्यों करें जब education आपके घर तक आ सकती है?
+
+बताइए, आप student हैं या parent? किस exam की तैयारी करनी है?`
+        : `Hi ${displayName}! 👋 I'm Rahul, your education counselor at SimpleLecture.
 
 Welcome to Dr. Nagpal's revolutionary initiative! His vision is simple - quality education shouldn't be a privilege. Even the poorest student deserves the same education as the richest. That's why our courses are completely FREE - you only pay ₹2,000 registration fee. Why spend ₹1-2 Lakhs at coaching centers when education can come to your doorstep?
 

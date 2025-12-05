@@ -8,15 +8,14 @@ import { ChatInterface } from "./ChatInterface";
 import { ConversationMode } from "./ConversationMode";
 import { VoiceTestPanel } from "./VoiceTestPanel";
 import { useSalesAssistant } from "@/hooks/useSalesAssistant";
-import { useWebSpeech, CounselorPersona, PERSONA_CONFIGS } from "@/hooks/useWebSpeech";
+import { useWebSpeech } from "@/hooks/useWebSpeech";
 
 export const SalesAssistantWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState<string>("en-IN");
-  const [currentGender] = useState<"female" | "male">("female"); // Always female for our personas
-  const [currentPersona, setCurrentPersona] = useState<CounselorPersona>("english");
+  const [currentGender, setCurrentGender] = useState<"female" | "male">("male");
   
   const { 
     messages, 
@@ -42,26 +41,22 @@ export const SalesAssistantWidget = () => {
     voicesLoaded
   } = useWebSpeech();
 
-  // Sync language when detected language changes
+  // Sync language and gender when detected language changes
   useEffect(() => {
     if (detectedLanguage) {
       setCurrentLanguage(detectedLanguage);
+      setCurrentGender(detectedLanguage === "hi-IN" ? "female" : "male");
     }
   }, [detectedLanguage]);
 
   const handleLanguageChange = (language: string, gender: "female" | "male") => {
-    console.log("Language changed to:", language);
+    console.log("Language changed to:", language, "Gender:", gender);
     setCurrentLanguage(language);
-  };
-
-  const handlePersonaChange = (persona: CounselorPersona) => {
-    console.log("Persona changed to:", persona);
-    setCurrentPersona(persona);
+    setCurrentGender(gender);
   };
 
   const handleLeadSubmit = async (name: string, email: string, mobile: string) => {
-    // Always use female gender with current persona name
-    const success = await createLead(name, email, mobile, "female", currentPersona);
+    const success = await createLead(name, email, mobile, currentGender);
     return success;
   };
 
@@ -71,9 +66,9 @@ export const SalesAssistantWidget = () => {
     const anonymousName = `Anonymous-${shortId}`;
     
     // This button click counts as user interaction for audio permissions
-    console.log("🎤 Quick chat started - user interaction registered with persona:", currentPersona);
+    console.log("🎤 Quick chat started - user interaction registered");
     
-    const success = await createLead(anonymousName, "", "", "female", currentPersona);
+    const success = await createLead(anonymousName, "", "", currentGender);
     if (success) {
       setIsVoiceMode(true);
     }
@@ -223,9 +218,7 @@ export const SalesAssistantWidget = () => {
           startListening={startListening}
           stopSpeaking={stopSpeaking}
           onLanguageChange={handleLanguageChange}
-          onPersonaChange={handlePersonaChange}
           voicesLoaded={voicesLoaded}
-          currentPersona={currentPersona}
         />
       )}
     </>

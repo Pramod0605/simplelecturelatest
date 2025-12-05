@@ -3,13 +3,12 @@ import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Volume2, VolumeX, Mic } from "lucide-react";
+import { X, Volume2, VolumeX, Loader2, Mic } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
-import { CounselorPersona } from "@/hooks/useWebSpeech";
 
 interface Message {
   role: "user" | "assistant";
@@ -28,13 +27,11 @@ interface ConversationModeProps {
   onInterrupt: () => void;
   onClose: () => void;
   detectedLanguage: string;
-  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void, persona?: CounselorPersona) => void;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
   startListening: (language?: string) => void;
   stopSpeaking: () => void;
   onLanguageChange?: (language: string, gender: "female" | "male") => void;
-  onPersonaChange?: (persona: CounselorPersona) => void;
   voicesLoaded?: boolean;
-  currentPersona?: CounselorPersona;
 }
 
 export const ConversationMode = ({
@@ -53,14 +50,12 @@ export const ConversationMode = ({
   startListening,
   stopSpeaking,
   onLanguageChange,
-  onPersonaChange,
   voicesLoaded = false,
-  currentPersona = "english",
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [counselorGender] = useState<"female" | "male">("female");
+  const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
+  const counselorName = counselorGender === "female" ? "Priya" : "Rahul";
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en-IN");
-  const counselorName = selectedLanguage === "hi-IN" ? "सलाहकार" : "Counselor";
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
   const [vadLevel, setVadLevel] = useState(0);
@@ -90,10 +85,9 @@ export const ConversationMode = ({
   // Mark initial welcome as done ONLY when first speech fully completes
   // This is set in the onComplete callback of the welcome speech
 
-  // VAD DISABLED - causes feedback loop where AI speech is picked up as user voice
-  // Users must tap to interrupt instead
+  // VAD for ConversationMode - improved voice-only detection with spectral analysis
   const { isDetecting } = useVoiceActivityDetection({
-    enabled: false, // Disabled to prevent AI speech feedback
+    enabled: vadEnabled,
     onVoiceDetected: () => {
       console.log("VAD: Human voice detected, interrupting AI speech");
       window.speechSynthesis.cancel();
@@ -103,8 +97,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 70,
-    detectionDuration: 500,
+    threshold: 55, // Lower threshold for easier interruption
+    detectionDuration: 300, // Faster detection for responsive interrupts
   });
 
   // Auto-scroll to bottom
@@ -124,62 +118,45 @@ export const ConversationMode = ({
         setHasAutoStarted(true);
         console.log("✅ Voices ready! Speaking welcome message (VAD DISABLED):", firstAssistantMessage.content.substring(0, 50) + "...");
         
-        // CRITICAL: Cancel any existing speech first to prevent interruption
-        window.speechSynthesis.cancel();
-        
-        // Longer delay to ensure everything is fully ready
+        // Small delay to ensure voices are fully ready
         setTimeout(() => {
-          // Double-check nothing is speaking before starting
-          if (!window.speechSynthesis.speaking) {
-            speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
-              // CRITICAL: Mark welcome as done ONLY after speech fully completes
-              console.log("✅ Welcome speech completed! Enabling VAD for future responses");
-              initialWelcomeDoneRef.current = true;
-              
-              setTimeout(() => {
-                console.log("Starting listening after welcome message");
-                startListening(selectedLanguage);
-              }, 500);
-            });
-          }
-        }, 500); // Increased from 200ms to 500ms for reliability
+          speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
+            // CRITICAL: Mark welcome as done ONLY after speech fully completes
+            console.log("✅ Welcome speech completed! Enabling VAD for future responses");
+            initialWelcomeDoneRef.current = true;
+            
+            setTimeout(() => {
+              console.log("Starting listening after welcome message");
+              startListening(selectedLanguage);
+            }, 500);
+          });
+        }, 200);
       }
     }
   }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
 
-  // Handle language change - stop speech and restart in new language
-  const handleLanguageSelect = (language: string) => {
+  // Handle language button click
+  const handleLanguageSelect = (language: string, gender: "female" | "male") => {
     if (language === selectedLanguage) return;
     
-    // 1. Stop any ongoing speech immediately
-    window.speechSynthesis.cancel();
-    stopSpeaking();
+    setIsSwitchingCounselor(true);
     
-    // 2. Update language state
+    setCounselorGender(gender);
     setSelectedLanguage(language);
     
-    // 3. Notify parent
     if (onLanguageChange) {
-      onLanguageChange(language, "female");
+      onLanguageChange(language, gender);
     }
     
-    // 4. Show toast
     toast({
-      title: language === "hi-IN" ? "हिंदी में बदला" : "Switched to English",
-      description: language === "hi-IN" ? "अब हिंदी में बात करेंगे" : "Now speaking in English",
+      title: gender === "female" ? "Switched to Priya (Hindi)" : "Switched to Rahul (English)",
+      description: `Voice and language updated to ${language === "hi-IN" ? "Hindi" : "English"}`,
       duration: 2000,
     });
     
-    // 5. Speak confirmation in new language after brief delay
     setTimeout(() => {
-      const switchMessage = language === "hi-IN" 
-        ? "मैं अब हिंदी में बात करूंगी। आप क्या जानना चाहते हैं?"
-        : "I will now speak in English. How can I help you?";
-      
-      speak(switchMessage, language, counselorGender, () => {
-        startListening(language);
-      });
-    }, 300);
+      setIsSwitchingCounselor(false);
+    }, 500);
   };
 
   // Track user interactions
@@ -257,38 +234,41 @@ export const ConversationMode = ({
           </div>
         </div>
         
-        {/* Language Selector - English or Hindi */}
+        {/* Language Selector - Prominent Row */}
         <div className="flex items-center justify-center gap-2 bg-primary-foreground/10 rounded-lg p-2">
-          <span className="text-xs text-primary-foreground/80">Language:</span>
-          <div className="flex gap-2">
-            <Button
-              variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleLanguageSelect("en-IN")}
-              className={`text-sm px-4 py-2 h-8 ${
-                selectedLanguage === "en-IN" 
-                  ? "bg-primary-foreground text-primary font-semibold shadow-md" 
-                  : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-              }`}
-            >
-              🇬🇧 English
-            </Button>
-            <Button
-              variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => handleLanguageSelect("hi-IN")}
-              className={`text-sm px-4 py-2 h-8 ${
-                selectedLanguage === "hi-IN" 
-                  ? "bg-primary-foreground text-primary font-semibold shadow-md" 
-                  : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-              }`}
-            >
-              🇮🇳 हिंदी
-            </Button>
-          </div>
-          <span className="text-xs text-primary-foreground/60 ml-2">
-            Voice: Google हिन्दी
-          </span>
+          <span className="text-xs text-primary-foreground/80 mr-2">Choose Counselor:</span>
+          <Button
+            variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => handleLanguageSelect("en-IN", "male")}
+            disabled={isSwitchingCounselor}
+            className={`text-sm font-semibold px-4 ${
+              selectedLanguage === "en-IN" 
+                ? "bg-primary-foreground text-primary shadow-md" 
+                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+            }`}
+          >
+            {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            🇬🇧 English (Rahul)
+          </Button>
+          <Button
+            variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => handleLanguageSelect("hi-IN", "female")}
+            disabled={isSwitchingCounselor}
+            className={`text-sm font-semibold px-4 ${
+              selectedLanguage === "hi-IN" 
+                ? "bg-primary-foreground text-primary shadow-md" 
+                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+            }`}
+          >
+            {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            🇮🇳 हिंदी (Priya)
+          </Button>
         </div>
       </div>
 
@@ -302,8 +282,8 @@ export const ConversationMode = ({
           <VoiceStatusIndicator 
             state={conversationState} 
             gender={counselorGender}
-            avatarUrl={avatars.female}
-            isGenerating={isGenerating}
+            avatarUrl={counselorGender === "female" ? avatars.female : avatars.male}
+            isGenerating={isGenerating || isSwitchingCounselor}
             onTap={handleInterruptClick}
             isVADActive={isDetecting}
             vadLevel={vadLevel}
