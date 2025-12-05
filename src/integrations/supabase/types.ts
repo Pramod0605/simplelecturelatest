@@ -461,6 +461,39 @@ export type Database = {
           },
         ]
       }
+      counselor_avatars: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          gender: string
+          id: string
+          image_url: string
+          is_active: boolean | null
+          language: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          gender: string
+          id?: string
+          image_url: string
+          is_active?: boolean | null
+          language: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          gender?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean | null
+          language?: string
+          name?: string
+        }
+        Relationships: []
+      }
       course_categories: {
         Row: {
           category_id: string
