@@ -339,12 +339,13 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     utterance.volume = 1.0;
 
     // Priority order for voice selection:
-    // 1. Microsoft Neural voices (Edge browser) - highest quality
-    // 2. Google voices - good quality
+    // 1. Google हिन्दी voice - preferred natural Indian voice
+    // 2. Microsoft Neural voices (Edge browser) - high quality
     // 3. Windows SAPI voices (Heera, Ravi, Hemant) - standard quality
     // 4. Apple voices (Samantha, Siri) - good on Mac/iOS
     // 5. Any female English voice
 
+    const GOOGLE_HINDI_VOICE = 'google हिन्दी';
     const NEURAL_VOICES = ['neerja online', 'hemant online', 'natural', 'neural'];
     const GOOGLE_VOICES = ['google'];
     const WINDOWS_FEMALE_VOICES = ['heera', 'aditi'];
@@ -358,26 +359,38 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     // Always prefer female voice for our female counselors
     const targetFemale = true; // Always use female voice for Priya/Ananya/Kavya
 
-    // 1. Try Microsoft Neural voices (best quality, Edge only)
+    // 1. Try Google हिन्दी voice first (preferred natural Indian voice)
     matchingVoice = voices.find(voice => {
       const voiceName = voice.name.toLowerCase();
-      const voiceLang = voice.lang.replace('_', '-').toLowerCase();
-      return NEURAL_VOICES.some(n => voiceName.includes(n)) && 
-             voiceLang.startsWith('en') &&
-             (targetFemale ? voiceName.includes('neerja') || !voiceName.includes('hemant') : true);
+      return voiceName === GOOGLE_HINDI_VOICE || voiceName.includes('google हिन्दी');
     }) || null;
+    
+    if (matchingVoice) {
+      console.log("✅ Found Google हिन्दी voice - using as primary");
+    }
 
-    // 2. Try Google voices
+    // 2. Try other Google voices (English)
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => {
         const voiceName = voice.name.toLowerCase();
         const voiceLang = voice.lang.replace('_', '-').toLowerCase();
         return GOOGLE_VOICES.some(n => voiceName.includes(n)) && 
-               voiceLang.startsWith('en');
+               (voiceLang.startsWith('en') || voiceLang.startsWith('hi'));
       }) || null;
     }
 
-    // 3. Try Indian female voices (Heera, Aditi)
+    // 3. Try Microsoft Neural voices (Edge only)
+    if (!matchingVoice) {
+      matchingVoice = voices.find(voice => {
+        const voiceName = voice.name.toLowerCase();
+        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+        return NEURAL_VOICES.some(n => voiceName.includes(n)) && 
+               voiceLang.startsWith('en') &&
+               (targetFemale ? voiceName.includes('neerja') || !voiceName.includes('hemant') : true);
+      }) || null;
+    }
+
+    // 4. Try Indian female voices (Heera, Aditi)
     if (!matchingVoice && targetFemale) {
       matchingVoice = voices.find(voice => {
         const voiceName = voice.name.toLowerCase();
@@ -385,7 +398,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       }) || null;
     }
 
-    // 4. Try Apple voices
+    // 5. Try Apple voices
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => {
         const voiceName = voice.name.toLowerCase();
@@ -393,7 +406,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       }) || null;
     }
 
-    // 5. Try any female English voice
+    // 6. Try any female English voice
     if (!matchingVoice && targetFemale) {
       matchingVoice = voices.find(voice => {
         const voiceName = voice.name.toLowerCase();
@@ -404,7 +417,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       if (matchingVoice) isFallback = true;
     }
 
-    // 6. Final fallback to any English voice
+    // 7. Final fallback to any English voice
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.toLowerCase().startsWith('en')
