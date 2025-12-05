@@ -22,7 +22,7 @@ export const VoiceStatusIndicator = ({
   isGenerating,
   isVADActive,
   vadLevel = 0,
-  persona = "priya"
+  persona = "english"
 }: VoiceStatusIndicatorProps) => {
   const getStateConfig = () => {
     switch (state) {

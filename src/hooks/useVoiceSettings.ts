@@ -11,9 +11,10 @@ export interface VoiceSettings {
   hindiPitch: number;
 }
 
-// Default Indian voice settings - best quality voices
+// Default Indian voice settings - Use Google Hindi for both languages
+// Google Hindi works best across all browsers and platforms
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
-  englishVoiceName: "Microsoft Neerja Online (Natural) - English (India)",
+  englishVoiceName: "Google हिन्दी",
   hindiVoiceName: "Google हिन्दी",
   englishRate: 0.85,
   englishPitch: 1.10,
@@ -24,8 +25,8 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 // Recommended Indian voices for reference
 export const RECOMMENDED_VOICES = {
   english: [
+    "Google हिन्दी",
     "Microsoft Neerja Online (Natural) - English (India)",
-    "Microsoft Neerja - English (India)",
     "Google US English",
   ],
   hindi: [

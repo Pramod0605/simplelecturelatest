@@ -3,13 +3,13 @@ import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Volume2, VolumeX, Loader2, Mic } from "lucide-react";
+import { X, Volume2, VolumeX, Mic } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
-import { CounselorPersona, PERSONA_CONFIGS } from "@/hooks/useWebSpeech";
+import { CounselorPersona } from "@/hooks/useWebSpeech";
 
 interface Message {
   role: "user" | "assistant";
@@ -55,13 +55,12 @@ export const ConversationMode = ({
   onLanguageChange,
   onPersonaChange,
   voicesLoaded = false,
-  currentPersona = "priya",
+  currentPersona = "english",
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [counselorGender] = useState<"female" | "male">("female"); // Always female for our personas
-  const [selectedPersona, setSelectedPersona] = useState<CounselorPersona>(currentPersona);
-  const counselorName = PERSONA_CONFIGS[selectedPersona].name;
+  const [counselorGender] = useState<"female" | "male">("female");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en-IN");
+  const counselorName = selectedLanguage === "hi-IN" ? "सलाहकार" : "Counselor";
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
   const [vadLevel, setVadLevel] = useState(0);
@@ -145,45 +144,41 @@ export const ConversationMode = ({
         }, 500); // Increased from 200ms to 500ms for reliability
       }
     }
-  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded, selectedPersona]);
+  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
 
-  // Handle persona change
-  const handlePersonaSelect = (persona: CounselorPersona) => {
-    if (persona === selectedPersona) return;
-    
-    setIsSwitchingCounselor(true);
-    setSelectedPersona(persona);
-    
-    if (onPersonaChange) {
-      onPersonaChange(persona);
-    }
-    
-    toast({
-      title: `Switched to ${PERSONA_CONFIGS[persona].name}`,
-      description: PERSONA_CONFIGS[persona].description,
-      duration: 2000,
-    });
-    
-    setTimeout(() => {
-      setIsSwitchingCounselor(false);
-    }, 500);
-  };
-
-  // Handle language change
+  // Handle language change - stop speech and restart in new language
   const handleLanguageSelect = (language: string) => {
     if (language === selectedLanguage) return;
     
+    // 1. Stop any ongoing speech immediately
+    window.speechSynthesis.cancel();
+    stopSpeaking();
+    
+    // 2. Update language state
     setSelectedLanguage(language);
     
+    // 3. Notify parent
     if (onLanguageChange) {
       onLanguageChange(language, "female");
     }
     
+    // 4. Show toast
     toast({
-      title: `Language: ${language === "hi-IN" ? "हिंदी" : "English"}`,
-      description: `Voice language updated`,
+      title: language === "hi-IN" ? "हिंदी में बदला" : "Switched to English",
+      description: language === "hi-IN" ? "अब हिंदी में बात करेंगे" : "Now speaking in English",
       duration: 2000,
     });
+    
+    // 5. Speak confirmation in new language after brief delay
+    setTimeout(() => {
+      const switchMessage = language === "hi-IN" 
+        ? "मैं अब हिंदी में बात करूंगी। आप क्या जानना चाहते हैं?"
+        : "I will now speak in English. How can I help you?";
+      
+      speak(switchMessage, language, counselorGender, () => {
+        startListening(language);
+      });
+    }, 300);
   };
 
   // Track user interactions
@@ -204,13 +199,13 @@ export const ConversationMode = ({
           ? "मैं अभी भी आपकी मदद के लिए यहाँ हूँ। जब भी आप तैयार हों, मुझसे कुछ भी पूछ सकते हैं।"
           : "I'm still here to assist you. Feel free to ask me anything whenever you're ready.";
         
-        speak(reminder, selectedLanguage, counselorGender, undefined, selectedPersona);
+        speak(reminder, selectedLanguage, counselorGender);
         lastInteractionRef.current = Date.now();
       }
     }, 60000);
 
     return () => clearInterval(checkInactivity);
-  }, [conversationState, messages.length, speak, selectedLanguage, counselorGender, selectedPersona]);
+  }, [conversationState, messages.length, speak, selectedLanguage, counselorGender]);
 
   const handleInterruptClick = () => {
     window.speechSynthesis.cancel();
@@ -261,55 +256,38 @@ export const ConversationMode = ({
           </div>
         </div>
         
-        {/* Persona Selector - Choose Female Counselor */}
-        <div className="flex flex-col gap-2 bg-primary-foreground/10 rounded-lg p-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-primary-foreground/80">Choose Counselor:</span>
-            <div className="flex gap-1">
-              <Button
-                variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => handleLanguageSelect("en-IN")}
-                className="text-xs px-2 py-1 h-6"
-              >
-                🇬🇧 EN
-              </Button>
-              <Button
-                variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => handleLanguageSelect("hi-IN")}
-                className="text-xs px-2 py-1 h-6"
-              >
-                🇮🇳 हिंदी
-              </Button>
-            </div>
+        {/* Language Selector - English or Hindi */}
+        <div className="flex items-center justify-center gap-2 bg-primary-foreground/10 rounded-lg p-2">
+          <span className="text-xs text-primary-foreground/80">Language:</span>
+          <div className="flex gap-2">
+            <Button
+              variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => handleLanguageSelect("en-IN")}
+              className={`text-sm px-4 py-2 h-8 ${
+                selectedLanguage === "en-IN" 
+                  ? "bg-primary-foreground text-primary font-semibold shadow-md" 
+                  : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+              }`}
+            >
+              🇬🇧 English
+            </Button>
+            <Button
+              variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => handleLanguageSelect("hi-IN")}
+              className={`text-sm px-4 py-2 h-8 ${
+                selectedLanguage === "hi-IN" 
+                  ? "bg-primary-foreground text-primary font-semibold shadow-md" 
+                  : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+              }`}
+            >
+              🇮🇳 हिंदी
+            </Button>
           </div>
-          <div className="flex items-center justify-center gap-2">
-            {(Object.keys(PERSONA_CONFIGS) as CounselorPersona[]).map((persona) => (
-              <Button
-                key={persona}
-                variant={selectedPersona === persona ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => handlePersonaSelect(persona)}
-                disabled={isSwitchingCounselor}
-                className={`text-sm font-semibold px-3 ${
-                  selectedPersona === persona 
-                    ? "bg-primary-foreground text-primary shadow-md" 
-                    : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-                }`}
-              >
-                {isSwitchingCounselor && selectedPersona !== persona ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <span className="mr-1">👩</span>
-                )}
-                {PERSONA_CONFIGS[persona].name}
-              </Button>
-            ))}
-          </div>
-          <p className="text-xs text-primary-foreground/60 text-center">
-            {PERSONA_CONFIGS[selectedPersona].description}
-          </p>
+          <span className="text-xs text-primary-foreground/60 ml-2">
+            Voice: Google हिन्दी
+          </span>
         </div>
       </div>
 
@@ -324,11 +302,10 @@ export const ConversationMode = ({
             state={conversationState} 
             gender={counselorGender}
             avatarUrl={avatars.female}
-            isGenerating={isGenerating || isSwitchingCounselor}
+            isGenerating={isGenerating}
             onTap={handleInterruptClick}
             isVADActive={isDetecting}
             vadLevel={vadLevel}
-            persona={selectedPersona}
           />
           
           {/* Visual Interrupt Button - appears when AI is speaking */}

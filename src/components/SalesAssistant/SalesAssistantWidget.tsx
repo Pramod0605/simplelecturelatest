@@ -16,7 +16,7 @@ export const SalesAssistantWidget = () => {
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState<string>("en-IN");
   const [currentGender] = useState<"female" | "male">("female"); // Always female for our personas
-  const [currentPersona, setCurrentPersona] = useState<CounselorPersona>("priya");
+  const [currentPersona, setCurrentPersona] = useState<CounselorPersona>("english");
   
   const { 
     messages, 
