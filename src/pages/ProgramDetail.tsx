@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -25,11 +25,13 @@ import {
   TrendingUp,
   Zap,
   Globe,
-  HeadphonesIcon
+  HeadphonesIcon,
+  CheckCircle
 } from "lucide-react";
 
 const ProgramDetail = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["program-detail", slug],
@@ -71,6 +73,28 @@ const ProgramDetail = () => {
     },
     enabled: !!slug,
   });
+
+  // Check if user is enrolled in this course
+  const { data: enrollment } = useQuery({
+    queryKey: ["enrollment-check", course?.id],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !course?.id) return null;
+
+      const { data } = await supabase
+        .from("enrollments")
+        .select("id, course_id")
+        .eq("student_id", user.id)
+        .eq("course_id", course.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      return data;
+    },
+    enabled: !!course?.id,
+  });
+
+  const isEnrolled = !!enrollment;
 
   if (isLoading) {
     return (
@@ -235,12 +259,24 @@ const ProgramDetail = () => {
                     )}
                   </div>
                   
-                  <Button size="sm" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl" asChild>
-                    <Link to={`/enroll/${course.slug}`}>
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Enroll Now
-                    </Link>
-                  </Button>
+                  {isEnrolled ? (
+                    <Button 
+                      size="sm" 
+                      variant="secondary" 
+                      className="px-6 shadow-xl hover:shadow-2xl bg-green-500 hover:bg-green-600 text-white"
+                      onClick={() => navigate(`/learning/${course.id}`)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Continue Learning
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="secondary" className="px-6 shadow-xl hover:shadow-2xl" asChild>
+                      <Link to={`/enroll/${course.slug}`}>
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Enroll Now
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -503,13 +539,28 @@ const ProgramDetail = () => {
                       <div className="text-3xl font-bold text-green-600">Free</div>
                     )}
                   </div>
-                  <Button size="lg" className="w-full text-lg shadow-lg">
-                    <ShoppingCart className="h-5 w-5 mr-2" />
-                    Enroll Now
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    30-day money-back guarantee
-                  </p>
+                  {isEnrolled ? (
+                    <Button 
+                      size="lg" 
+                      className="w-full text-lg shadow-lg bg-green-500 hover:bg-green-600"
+                      onClick={() => navigate(`/learning/${course.id}`)}
+                    >
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      Continue Learning
+                    </Button>
+                  ) : (
+                    <>
+                      <Button size="lg" className="w-full text-lg shadow-lg" asChild>
+                        <Link to={`/enroll/${course.slug}`}>
+                          <ShoppingCart className="h-5 w-5 mr-2" />
+                          Enroll Now
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        30-day money-back guarantee
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -525,10 +576,24 @@ const ProgramDetail = () => {
             <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
               Join thousands of students who have achieved their goals with {course.name}
             </p>
-            <Button size="lg" variant="secondary" className="text-lg px-8 shadow-xl">
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              Get Started Today
-            </Button>
+            {isEnrolled ? (
+              <Button 
+                size="lg" 
+                variant="secondary" 
+                className="text-lg px-8 shadow-xl bg-green-500 hover:bg-green-600 text-white"
+                onClick={() => navigate(`/learning/${course.id}`)}
+              >
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Continue Learning
+              </Button>
+            ) : (
+              <Button size="lg" variant="secondary" className="text-lg px-8 shadow-xl" asChild>
+                <Link to={`/enroll/${course.slug}`}>
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  Get Started Today
+                </Link>
+              </Button>
+            )}
           </div>
         </section>
       </main>
