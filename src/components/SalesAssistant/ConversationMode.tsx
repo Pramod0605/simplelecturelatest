@@ -83,22 +83,24 @@ export const ConversationMode = ({
     }
   }, [messages]);
 
-  // Auto-start conversation with greeting
+  // Auto-start conversation - speak the FIRST assistant message (proper Dr. Nagpal welcome)
   useEffect(() => {
-    if (!hasAutoStarted && messages.length === 0) {
-      setHasAutoStarted(true);
-      const greeting = "Hello! I'm your education counselor at SimpleLecture. How can I help you today?";
-      
-      console.log("Auto-starting conversation with English greeting");
-      
-      speak(greeting, "en-IN", "male", () => {
-        setTimeout(() => {
-          console.log("Starting listening in English after greeting");
-          startListening("en-IN");
-        }, 500);
-      });
+    if (!hasAutoStarted && messages.length > 0) {
+      const firstAssistantMessage = messages.find(m => m.role === "assistant");
+      if (firstAssistantMessage) {
+        setHasAutoStarted(true);
+        console.log("Speaking welcome message from createLead:", firstAssistantMessage.content.substring(0, 50) + "...");
+        
+        // Speak immediately without delay
+        speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
+          setTimeout(() => {
+            console.log("Starting listening after welcome message");
+            startListening(selectedLanguage);
+          }, 500);
+        });
+      }
     }
-  }, [hasAutoStarted, messages.length, speak, startListening]);
+  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender]);
 
   // Handle language button click
   const handleLanguageSelect = (language: string, gender: "female" | "male") => {

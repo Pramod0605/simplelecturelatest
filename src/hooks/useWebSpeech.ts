@@ -104,23 +104,35 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
+    // If already listening, don't restart
+    if (isListening) {
+      console.log("Already listening, skipping restart");
+      return;
+    }
+
     // Always stop any ongoing speech before starting to listen
     if (speechSynthesisSupported && window.speechSynthesis.speaking) {
       console.log("Stopping speech before starting to listen (interrupt)");
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
 
-      // Slight delay so browsers fully stop TTS before mic starts
+      // Increased delay so browsers fully stop TTS before mic starts (500ms)
       setTimeout(() => {
         startRecognition(language);
       }, 500);
     } else {
       startRecognition(language);
     }
-  }, [recognition, speechSynthesisSupported]);
+  }, [recognition, speechSynthesisSupported, isListening]);
 
   const startRecognition = (language: string) => {
     if (!recognition) return;
+    
+    // CRITICAL: Check if already listening to prevent "already started" error
+    if (isListening) {
+      console.log("Recognition already active, skipping start");
+      return;
+    }
     
     // CRITICAL: Stop any existing recognition first to avoid "already started" error
     try {
@@ -129,8 +141,14 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       // Ignore errors when aborting
     }
     
-    // Increased delay after abort to ensure clean state (200ms for stability)
+    // Increased delay after abort to ensure clean state (300ms for stability)
     setTimeout(() => {
+      // Triple-check we're not already listening before starting
+      if (isListening) {
+        console.log("Already listening after delay, skipping start");
+        return;
+      }
+      
       try {
         setTranscript("");
         
@@ -149,17 +167,26 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
         recognition.start();
         setIsListening(true);
         console.log("🎤 Started speech recognition with language:", langCode);
-      } catch (error) {
-        // Silent error handling - don't show popup to user
-        console.log("Speech recognition error:", error);
-        setIsListening(false);
+      } catch (error: any) {
+        // Handle "already started" error gracefully
+        if (error?.message?.includes("already started")) {
+          console.log("Recognition already started, setting isListening to true");
+          setIsListening(true);
+        } else {
+          console.log("Speech recognition error:", error);
+          setIsListening(false);
+        }
       }
-    }, 200);
+    }, 300);
   };
 
   const stopListening = useCallback(() => {
     if (recognition) {
-      recognition.stop();
+      try {
+        recognition.stop();
+      } catch {
+        // Ignore errors when stopping
+      }
       setIsListening(false);
     }
   }, [recognition]);
