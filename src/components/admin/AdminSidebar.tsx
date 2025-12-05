@@ -26,7 +26,8 @@ import {
   CheckSquare,
   TestTube2,
   Folder,
-  Home
+  Home,
+  Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,6 +109,20 @@ export const AdminSidebar = () => {
               }
             >
               Explore by Goal
+            </NavLink>
+            <NavLink
+              to="/admin/settings/featured-courses"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <Star className="h-4 w-4" />
+              Featured Courses
             </NavLink>
           </CollapsibleContent>
         </Collapsible>

@@ -77,6 +77,7 @@ import Documentation from "./pages/admin/Documentation";
 import GenerateSeedImages from "./pages/admin/GenerateSeedImages";
 import FileBrowser from "./pages/admin/FileBrowser";
 import CounselorAvatars from "./pages/admin/CounselorAvatars";
+import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
 
 const App = () => (
   <HelmetProvider>
@@ -161,6 +162,7 @@ const App = () => (
                 <Route path="settings/documentation" element={<Documentation />} />
                 <Route path="settings/generate-images" element={<GenerateSeedImages />} />
                 <Route path="settings/counselor-avatars" element={<CounselorAvatars />} />
+                <Route path="settings/featured-courses" element={<FeaturedCoursesManager />} />
                 <Route path="files" element={<FileBrowser />} />
                 
                 {/* Human Resource Routes */}
