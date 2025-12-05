@@ -61,7 +61,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     email: string, 
     mobile: string,
     gender: "female" | "male" = "female",
-    persona: CounselorPersona = "priya"
+    persona: CounselorPersona = "english"
   ): Promise<boolean> => {
     try {
       // Use placeholder values for anonymous leads (required by NOT NULL constraints)

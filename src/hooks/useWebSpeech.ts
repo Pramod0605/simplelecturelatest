@@ -21,13 +21,12 @@ const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   hindiPitch: 1.15,
 };
 
-// Persona voice configurations for female counselors
-export type CounselorPersona = "priya" | "ananya" | "kavya";
+// Simplified counselor config - language-based only
+export type CounselorPersona = "english" | "hindi";
 
 export const PERSONA_CONFIGS: Record<CounselorPersona, { name: string; pitch: number; rate: number; description: string }> = {
-  priya: { name: "Priya", pitch: 1.15, rate: 0.80, description: "Warm & Caring" },
-  ananya: { name: "Ananya", pitch: 1.05, rate: 0.85, description: "Professional" },
-  kavya: { name: "Kavya", pitch: 1.20, rate: 0.82, description: "Friendly & Young" },
+  english: { name: "Counselor", pitch: 1.10, rate: 0.85, description: "English" },
+  hindi: { name: "सलाहकार", pitch: 1.15, rate: 0.80, description: "हिंदी" },
 };
 
 interface UseWebSpeechReturn {
@@ -315,7 +314,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [recognition]);
 
-  const speakInternal = (text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "priya") => {
+  const speakInternal = (text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "english") => {
     if (!speechSynthesisSupported) {
       console.warn("Speech synthesis not supported");
       onComplete?.();
@@ -367,18 +366,18 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
     
-    // Detect if text is Hindi (contains Devanagari script)
-    const isHindiText = /[\u0900-\u097F]/.test(cleanText);
+    // Use LANGUAGE PARAMETER to determine voice, not text content
+    const isHindiLanguage = langCode.startsWith('hi');
     
-    // Get saved voice settings based on language
-    const targetVoiceName = isHindiText 
+    // Get saved voice settings based on selected language
+    const targetVoiceName = isHindiLanguage 
       ? savedVoiceSettings.hindiVoiceName 
       : savedVoiceSettings.englishVoiceName;
     
-    // Use saved rate/pitch if available, otherwise use persona config
-    const personaConfig = PERSONA_CONFIGS[persona];
-    const savedRate = isHindiText ? savedVoiceSettings.hindiRate : savedVoiceSettings.englishRate;
-    const savedPitch = isHindiText ? savedVoiceSettings.hindiPitch : savedVoiceSettings.englishPitch;
+    // Use saved rate/pitch based on language parameter
+    const personaConfig = PERSONA_CONFIGS[isHindiLanguage ? "hindi" : "english"];
+    const savedRate = isHindiLanguage ? savedVoiceSettings.hindiRate : savedVoiceSettings.englishRate;
+    const savedPitch = isHindiLanguage ? savedVoiceSettings.hindiPitch : savedVoiceSettings.englishPitch;
     
     // Adjust pitch based on sentence type for more natural speech
     const isQuestion = cleanText.includes('?');
@@ -403,7 +402,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       ) || null;
       
       if (matchingVoice) {
-        console.log(`✅ Using saved ${isHindiText ? 'Hindi' : 'English'} voice: ${matchingVoice.name}`);
+        console.log(`✅ Using saved ${isHindiLanguage ? 'Hindi' : 'English'} voice: ${matchingVoice.name}`);
       }
     }
 
@@ -416,8 +415,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       const APPLE_VOICES = ['samantha', 'siri'];
       const GENERIC_FEMALE = ['female', 'woman', 'zira', 'raveena', 'priya'];
 
-      // Try Google हिन्दी for Hindi text
-      if (isHindiText) {
+      // Try Google हिन्दी for Hindi language
+      if (isHindiLanguage) {
         matchingVoice = voices.find(voice => {
           const voiceName = voice.name.toLowerCase();
           return voiceName === GOOGLE_HINDI_VOICE || voiceName.includes('google हिन्दी') || voiceName.includes('hindi');
@@ -543,7 +542,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   };
 
-  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "priya") => {
+  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "english") => {
     console.log("📢 speak() called:", { textLength: text.length, language, gender, persona, voicesLoaded, userInteracted });
     
     if (!speechSynthesisSupported) {

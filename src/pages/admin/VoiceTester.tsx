@@ -292,7 +292,108 @@ export default function VoiceTester() {
         </CardContent>
       </Card>
 
-      {/* Voice Settings Card - Main Configuration */}
+      {/* Voice Limitations Explanation */}
+      <Card className="border-amber-500">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Info className="h-5 w-5 text-amber-500" />
+            Voice Limitations & Browser Compatibility
+          </CardTitle>
+          <CardDescription>
+            Not all voices work on all browsers and devices. Here's what you need to know:
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Google Hindi - Recommended */}
+          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className="bg-green-500">✓ Recommended</Badge>
+              <h4 className="font-semibold">Google हिन्दी</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ✅ <strong>Works on all platforms</strong>: Chrome, Edge, Firefox, Safari, Android, iOS.
+              Best choice for cross-platform compatibility. This is why we use it for both English and Hindi.
+            </p>
+          </div>
+
+          {/* Neural Voices */}
+          <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-900">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className="bg-purple-500">Neural</Badge>
+              <h4 className="font-semibold">Microsoft Neural Voices (Neerja Online, Hemant Online)</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ⚠️ <strong>Only available in Microsoft Edge browser</strong>. 
+              These high-quality voices will NOT work in Chrome, Firefox, Safari, or mobile browsers.
+              Great quality but limited reach.
+            </p>
+          </div>
+
+          {/* Windows SAPI Voices */}
+          <div className="p-3 bg-muted rounded-lg border">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary">Basic</Badge>
+              <h4 className="font-semibold">Windows SAPI Voices (Ravi, Hemant, Heera)</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ⚠️ <strong>Only available on Windows desktop</strong>.
+              Will NOT work on Mac, Linux, iOS, or Android devices.
+            </p>
+          </div>
+
+          {/* Platform Compatibility Matrix */}
+          <div className="mt-4 border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="p-2 text-left font-medium">Voice Type</th>
+                  <th className="p-2 text-center font-medium">Chrome</th>
+                  <th className="p-2 text-center font-medium">Edge</th>
+                  <th className="p-2 text-center font-medium">Safari</th>
+                  <th className="p-2 text-center font-medium">Firefox</th>
+                  <th className="p-2 text-center font-medium">Mobile</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t">
+                  <td className="p-2 font-medium">Google हिन्दी</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                </tr>
+                <tr className="border-t bg-muted/30">
+                  <td className="p-2 font-medium">Microsoft Neural</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                  <td className="p-2 text-center text-green-600">✅</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                </tr>
+                <tr className="border-t">
+                  <td className="p-2 font-medium">Windows SAPI</td>
+                  <td className="p-2 text-center text-amber-500">⚠️</td>
+                  <td className="p-2 text-center text-amber-500">⚠️</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                  <td className="p-2 text-center text-amber-500">⚠️</td>
+                  <td className="p-2 text-center text-red-500">❌</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="text-xs text-muted-foreground p-2 bg-muted border-t">
+              ⚠️ = Windows desktop only | ✅ = Fully supported | ❌ = Not available
+            </p>
+          </div>
+
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+            <p className="text-sm">
+              <strong>💡 Recommendation:</strong> Use <strong>Google हिन्दी</strong> for both English and Hindi 
+              to ensure your AI Sales Assistant works consistently across all user devices and browsers.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
       <Card className="border-primary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -335,7 +436,7 @@ export default function VoiceTester() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Recommended: Microsoft Neerja (Neural) or Google US English
+                  Recommended: Google हिन्दी (works on all browsers/devices)
                 </p>
               </div>
               
