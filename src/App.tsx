@@ -2,13 +2,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
 import { queryClient } from "@/lib/queryClient";
 import { SalesAssistantWidget } from "@/components/SalesAssistant/SalesAssistantWidget";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+
+// Helper component to redirect encoded auth URLs to proper URLs
+const AuthRedirect = ({ tab }: { tab: string }) => <Navigate to={`/auth?tab=${tab}`} replace />;
 import Dashboard from "./pages/Dashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import MobileHome from "./pages/MobileHome";
@@ -90,6 +93,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            {/* Handle encoded URL - redirect /auth%3Ftab=login to /auth?tab=login */}
+            <Route path="/auth%3Ftab=login" element={<AuthRedirect tab="login" />} />
+            <Route path="/auth%3Ftab=signup" element={<AuthRedirect tab="signup" />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/student-dashboard" element={<StudentDashboard />} />
