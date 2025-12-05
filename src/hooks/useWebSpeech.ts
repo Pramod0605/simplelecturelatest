@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UseWebSpeechReturn {
@@ -21,6 +21,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voiceFallbackShown, setVoiceFallbackShown] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(false);
+  const pendingSpeechRef = useRef<{ text: string; language: string; gender?: "female" | "male"; onComplete?: () => void } | null>(null);
   const { toast } = useToast();
 
   // Check if Web Speech API is supported
@@ -31,6 +33,34 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const [recognition, setRecognition] = useState<any>(null);
 
+  // Track user interaction to enable audio
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (!userInteracted) {
+        console.log("✅ User interaction detected - audio enabled");
+        setUserInteracted(true);
+        
+        // Try to "wake up" speech synthesis with a silent utterance
+        if (speechSynthesisSupported) {
+          const silentUtterance = new SpeechSynthesisUtterance("");
+          silentUtterance.volume = 0;
+          window.speechSynthesis.speak(silentUtterance);
+          window.speechSynthesis.cancel();
+        }
+      }
+    };
+
+    document.addEventListener("click", handleInteraction);
+    document.addEventListener("touchstart", handleInteraction);
+    document.addEventListener("keydown", handleInteraction);
+
+    return () => {
+      document.removeEventListener("click", handleInteraction);
+      document.removeEventListener("touchstart", handleInteraction);
+      document.removeEventListener("keydown", handleInteraction);
+    };
+  }, [userInteracted, speechSynthesisSupported]);
+
   // Load voices with voiceschanged event
   useEffect(() => {
     if (!speechSynthesisSupported) return;
@@ -40,19 +70,31 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       if (availableVoices.length > 0) {
         setVoices(availableVoices);
         setVoicesLoaded(true);
-        console.log("✅ Voices loaded:", availableVoices.length, "voices");
+        console.log("✅ Voices loaded:", availableVoices.length, "voices available");
+        
+        // Log available Indian voices
+        const indianVoices = availableVoices.filter(v => 
+          v.lang.toLowerCase().includes('in') || 
+          v.lang.toLowerCase().includes('hi') ||
+          v.name.toLowerCase().includes('india')
+        );
+        console.log("🇮🇳 Indian voices:", indianVoices.map(v => `${v.name} (${v.lang})`));
       }
     };
 
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
-    // Retry loading voices every 100ms for up to 3 seconds if not loaded
+    // Retry loading voices every 100ms for up to 5 seconds if not loaded
     let retryCount = 0;
-    const maxRetries = 30;
+    const maxRetries = 50;
     const retryInterval = setInterval(() => {
       if (voicesLoaded || retryCount >= maxRetries) {
         clearInterval(retryInterval);
+        if (!voicesLoaded && retryCount >= maxRetries) {
+          console.warn("⚠️ Voice loading timeout - using default voice");
+          setVoicesLoaded(true); // Allow speaking with default voice
+        }
         return;
       }
       loadVoices();
@@ -64,6 +106,20 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       clearInterval(retryInterval);
     };
   }, [speechSynthesisSupported, voicesLoaded]);
+
+  // Process pending speech when voices are loaded
+  useEffect(() => {
+    if (voicesLoaded && pendingSpeechRef.current && userInteracted) {
+      console.log("🔊 Processing pending speech request");
+      const { text, language, gender, onComplete } = pendingSpeechRef.current;
+      pendingSpeechRef.current = null;
+      
+      // Small delay to ensure everything is ready
+      setTimeout(() => {
+        speakInternal(text, language, gender, onComplete);
+      }, 100);
+    }
+  }, [voicesLoaded, userInteracted]);
 
   useEffect(() => {
     if (!isSupported) return;
@@ -105,8 +161,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     recog.onerror = (event: any) => {
       console.log("Speech recognition error (silent):", event.error);
       setIsListening(false);
-      // Silent error handling - don't show popups for common errors including permission denied
-      // Common error types: 'network', 'aborted', 'no-speech', 'not-allowed', 'audio-capture'
     };
 
     recog.onend = () => {
@@ -122,7 +176,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
-    // If already listening, don't restart
     if (isListening) {
       console.log("Already listening, skipping restart");
       return;
@@ -134,7 +187,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
 
-      // Increased delay so browsers fully stop TTS before mic starts (500ms)
       setTimeout(() => {
         startRecognition(language);
       }, 500);
@@ -146,22 +198,18 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const startRecognition = (language: string) => {
     if (!recognition) return;
     
-    // CRITICAL: Check if already listening to prevent "already started" error
     if (isListening) {
       console.log("Recognition already active, skipping start");
       return;
     }
     
-    // CRITICAL: Stop any existing recognition first to avoid "already started" error
     try {
       recognition.abort();
     } catch {
       // Ignore errors when aborting
     }
     
-    // Increased delay after abort to ensure clean state (300ms for stability)
     setTimeout(() => {
-      // Triple-check we're not already listening before starting
       if (isListening) {
         console.log("Already listening after delay, skipping start");
         return;
@@ -170,7 +218,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       try {
         setTranscript("");
         
-        // Map common language names to codes if needed
         const languageMap: Record<string, string> = {
           'english': 'en-IN',
           'hindi': 'hi-IN',
@@ -186,7 +233,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
         setIsListening(true);
         console.log("🎤 Started speech recognition with language:", langCode);
       } catch (error: any) {
-        // Handle "already started" error gracefully
         if (error?.message?.includes("already started")) {
           console.log("Recognition already started, setting isListening to true");
           setIsListening(true);
@@ -209,46 +255,44 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [recognition]);
 
-  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
+  const speakInternal = (text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
     if (!speechSynthesisSupported) {
-      toast({
-        title: "Not Supported",
-        description: "Text-to-speech is not supported in your browser.",
-        variant: "destructive",
-      });
+      console.warn("Speech synthesis not supported");
+      onComplete?.();
       return;
     }
 
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    // Clean text: remove language tags, markdown, asterisks, quotes, and special characters
+    // Clean text
     let cleanText = text
-      .replace(/\[LANG:\w{2}-IN\]\s*/g, '') // Remove language tags FIRST
-      .replace(/\*\*/g, '') // Remove bold markdown
-      .replace(/\*/g, '') // Remove asterisks
-      .replace(/["""''`]/g, '') // Remove fancy quotes and backticks
-      .replace(/[_~]/g, '') // Remove other markdown
-      .replace(/#{1,6}\s/g, '') // Remove headers
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to text
-      .replace(/\n+/g, '. ') // Convert newlines to pauses
+      .replace(/\[LANG:\w{2}-IN\]\s*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/["""''`]/g, '')
+      .replace(/[_~]/g, '')
+      .replace(/#{1,6}\s/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\n+/g, '. ')
       .trim();
 
-    // Don't speak if text is empty after cleaning
     if (!cleanText) {
       console.log("No text to speak after cleaning");
+      onComplete?.();
       return;
     }
 
-    // Make speech more natural with pauses and rhythm
+    // Add pauses for natural speech
     cleanText = cleanText
-      .replace(/\.\s+/g, '... ') // Add longer pause after periods
-      .replace(/,\s+/g, ', ') // Add shorter pause after commas
-      .replace(/([.!?])\s*([A-Z])/g, '$1... $2'); // Add pause between sentences
+      .replace(/\.\s+/g, '... ')
+      .replace(/,\s+/g, ', ')
+      .replace(/([.!?])\s*([A-Z])/g, '$1... $2');
+
+    console.log("🔊 Speaking text:", cleanText.substring(0, 100) + "...");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     
-    // Map common language names to codes if needed
     const languageMap: Record<string, string> = {
       'english': 'en-IN',
       'hindi': 'hi-IN',
@@ -261,22 +305,21 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
     
-    // Add slight variation to rate for more natural sound (0.82-0.88)
     const rateVariation = 0.82 + (Math.random() * 0.06);
     utterance.rate = rateVariation;
-    utterance.pitch = 1.1; // Slightly higher for younger sound
+    utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
-    // Preferred voice names for better quality
+    // Preferred voice names
     const PREFERRED_FEMALE_VOICES = ['Aditi', 'Heera', 'Raveena', 'Priya', 'Female', 'Google', 'woman'];
     const PREFERRED_MALE_VOICES = ['Hemant', 'Ravi', 'Ajit', 'Male', 'Google', 'man'];
 
-    // Find the best matching voice for the language and gender
+    // Find matching voice
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
     const primaryLang = langCode.split('-')[0];
     
-    // Step 1: Try exact locale match with gender preference
+    // Voice selection logic (simplified for reliability)
     if (gender) {
       const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
       matchingVoice = voices.find(voice => {
@@ -287,44 +330,12 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       }) || null;
     }
     
-    // Step 2: Try exact locale match without gender
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.replace('_', '-').toLowerCase() === langCode.toLowerCase()
       ) || null;
     }
     
-    // Step 3: Try Indian variant of same language with gender preference
-    if (!matchingVoice && gender) {
-      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
-      matchingVoice = voices.find(voice => {
-        const voiceLang = voice.lang.toLowerCase();
-        const voiceName = voice.name.toLowerCase();
-        return voiceLang.startsWith(primaryLang) && voiceLang.includes('in') &&
-               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
-      }) || null;
-    }
-    
-    // Step 4: Try Indian variant of same language
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => 
-        voice.lang.toLowerCase().startsWith(primaryLang) && voice.lang.toLowerCase().includes('in')
-      ) || null;
-    }
-    
-    // Step 5: Try any voice of same language with gender
-    if (!matchingVoice && gender) {
-      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
-      matchingVoice = voices.find(voice => {
-        const voiceLang = voice.lang.toLowerCase();
-        const voiceName = voice.name.toLowerCase();
-        return voiceLang.startsWith(primaryLang) &&
-               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
-      }) || null;
-      if (matchingVoice) isFallback = true;
-    }
-    
-    // Step 6: Try any voice of same language
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.toLowerCase().startsWith(primaryLang)
@@ -332,93 +343,115 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       if (matchingVoice) isFallback = true;
     }
     
-    // Step 7: Fallback to Hindi with gender
-    if (!matchingVoice && gender) {
-      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
-      matchingVoice = voices.find(voice => {
-        const voiceLang = voice.lang.toLowerCase();
-        const voiceName = voice.name.toLowerCase();
-        return voiceLang.startsWith('hi') && voiceLang.includes('in') &&
-               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
-      }) || null;
-      if (matchingVoice) isFallback = true;
-    }
-    
-    // Step 8: Fallback to Hindi (most common Indian language voice)
+    // Fallback to any English voice
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
-        voice.lang.toLowerCase().startsWith('hi') && voice.lang.toLowerCase().includes('in')
+        voice.lang.toLowerCase().startsWith('en')
       ) || null;
-      if (matchingVoice) isFallback = true;
-    }
-    
-    // Step 9: Fallback to Indian English
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => {
-        const voiceLang = voice.lang.toLowerCase();
-        return voiceLang === 'en-in' || voiceLang === 'en_in';
-      }) || null;
       if (matchingVoice) isFallback = true;
     }
 
     if (matchingVoice) {
       utterance.voice = matchingVoice;
-      console.log(`Using voice: ${matchingVoice.name} (${matchingVoice.lang}) for ${langCode}${isFallback ? ' [FALLBACK]' : ''}`);
-      
-      // Show fallback notification once
-      if (isFallback && !voiceFallbackShown) {
-        setVoiceFallbackShown(true);
-        toast({
-          title: "Voice Fallback",
-          description: `Native ${langCode} voice unavailable. Using ${matchingVoice.lang} voice.`,
-          duration: 3000,
-        });
-      }
+      console.log(`🗣️ Using voice: ${matchingVoice.name} (${matchingVoice.lang})${isFallback ? ' [FALLBACK]' : ''}`);
     } else {
-      console.warn("No voice available for:", langCode, "Using default voice");
-      if (!voiceFallbackShown) {
-        setVoiceFallbackShown(true);
-        toast({
-          title: "Voice Unavailable",
-          description: "Using default browser voice.",
-          duration: 3000,
-        });
-      }
+      console.warn("⚠️ No voice found, using browser default");
     }
 
     utterance.onstart = () => {
-      console.log("Speech started");
+      console.log("▶️ Speech started");
       setIsSpeaking(true);
     };
     
     utterance.onend = () => {
-      console.log("Speech ended");
+      console.log("⏹️ Speech ended");
       setIsSpeaking(false);
-      if (onComplete) {
-        onComplete();
-      }
+      onComplete?.();
     };
     
     utterance.onerror = (event) => {
-      console.error("Speech error:", event);
+      console.error("❌ Speech error:", event.error);
       setIsSpeaking(false);
-      // Don't show toast for 'interrupted' or 'canceled' errors
+      
+      // Only show toast for actual errors, not interruptions
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
         toast({
-          title: "Speech Error",
-          description: "Could not play audio. Please try again.",
+          title: "Voice Error",
+          description: "Could not play audio. Try clicking anywhere first, then speak.",
           variant: "destructive",
         });
       }
+      onComplete?.();
     };
 
     try {
+      // Chrome fix: Resume if paused
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      
       window.speechSynthesis.speak(utterance);
+      console.log("✅ Speech synthesis speak() called");
+      
+      // Chrome bug workaround: speech synthesis can stop after ~15 seconds
+      // Keep it alive with periodic resume calls
+      const keepAliveInterval = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          clearInterval(keepAliveInterval);
+          return;
+        }
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }, 10000);
+      
+      utterance.onend = () => {
+        clearInterval(keepAliveInterval);
+        console.log("⏹️ Speech ended");
+        setIsSpeaking(false);
+        onComplete?.();
+      };
+      
     } catch (error) {
       console.error("Error calling speechSynthesis.speak:", error);
       setIsSpeaking(false);
+      onComplete?.();
     }
-  }, [speechSynthesisSupported, voices, voiceFallbackShown, toast]);
+  };
+
+  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
+    console.log("📢 speak() called:", { textLength: text.length, language, gender, voicesLoaded, userInteracted });
+    
+    if (!speechSynthesisSupported) {
+      toast({
+        title: "Not Supported",
+        description: "Text-to-speech is not supported in your browser.",
+        variant: "destructive",
+      });
+      onComplete?.();
+      return;
+    }
+
+    // If voices not loaded yet, queue the speech
+    if (!voicesLoaded) {
+      console.log("⏳ Voices not loaded yet, queuing speech...");
+      pendingSpeechRef.current = { text, language, gender, onComplete };
+      return;
+    }
+
+    // If no user interaction yet, queue and show helpful message
+    if (!userInteracted) {
+      console.log("⚠️ No user interaction yet, queuing speech...");
+      pendingSpeechRef.current = { text, language, gender, onComplete };
+      toast({
+        title: "Click to Enable Voice",
+        description: "Click anywhere on the page to enable voice responses.",
+        duration: 3000,
+      });
+      return;
+    }
+
+    speakInternal(text, language, gender, onComplete);
+  }, [speechSynthesisSupported, voicesLoaded, userInteracted, voices, voiceFallbackShown, toast]);
 
   const stopSpeaking = useCallback(() => {
     if (speechSynthesisSupported) {
