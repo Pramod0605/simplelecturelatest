@@ -60,39 +60,35 @@ export const ConversationMode = ({
   const [vadLevel, setVadLevel] = useState(0);
   const [vadEnabled, setVadEnabled] = useState(false);
   const lastInteractionRef = useRef<number>(Date.now());
-  const initialSpeechDoneRef = useRef(false);
+  const initialWelcomeDoneRef = useRef(false);
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
   const { toast } = useToast();
 
-  // Grace period for VAD - don't interrupt welcome message
+  // CRITICAL: VAD is COMPLETELY DISABLED during initial welcome speech
+  // Only enable VAD for subsequent AI responses after welcome is done
   useEffect(() => {
-    if (isSpeaking && !initialSpeechDoneRef.current) {
-      // First speech (welcome) - delay VAD by 5 seconds to let welcome play
-      const timer = setTimeout(() => {
-        console.log("✅ VAD grace period ended, enabling VAD");
-        setVadEnabled(true);
-      }, 5000);
-      return () => clearTimeout(timer);
-    } else if (isSpeaking && initialSpeechDoneRef.current) {
-      // Subsequent speech - enable VAD immediately for interruption
+    if (!initialWelcomeDoneRef.current) {
+      // Welcome speech not done yet - keep VAD completely disabled
+      setVadEnabled(false);
+      return;
+    }
+    
+    // After welcome is done, enable VAD only when AI is speaking
+    if (isSpeaking) {
       setVadEnabled(true);
     } else {
       setVadEnabled(false);
     }
   }, [isSpeaking]);
 
-  // Mark initial speech as done when first speech ends
-  useEffect(() => {
-    if (!isSpeaking && hasAutoStarted) {
-      initialSpeechDoneRef.current = true;
-    }
-  }, [isSpeaking, hasAutoStarted]);
+  // Mark initial welcome as done ONLY when first speech fully completes
+  // This is set in the onComplete callback of the welcome speech
 
-  // VAD for ConversationMode - with high threshold + baseline tracking
+  // VAD for ConversationMode - improved voice-only detection with spectral analysis
   const { isDetecting } = useVoiceActivityDetection({
     enabled: vadEnabled,
     onVoiceDetected: () => {
-      console.log("VAD in ConversationMode: Voice detected, interrupting");
+      console.log("VAD: Human voice detected, interrupting AI speech");
       window.speechSynthesis.cancel();
       stopSpeaking();
       setTimeout(() => {
@@ -100,8 +96,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 85, // High threshold to prevent echo false positives
-    detectionDuration: 700, // Longer duration for sustained detection
+    threshold: 90, // Higher threshold + spectral analysis for voice-only detection
+    detectionDuration: 800, // Longer duration for reliable sustained voice detection
   });
 
   // Auto-scroll to bottom
@@ -113,16 +109,21 @@ export const ConversationMode = ({
 
   // Auto-start conversation - speak the FIRST assistant message (proper Dr. Nagpal welcome)
   // CRITICAL: Wait for voicesLoaded before speaking to avoid "Hi There" bug
+  // CRITICAL: VAD is completely disabled until this welcome speech finishes
   useEffect(() => {
     if (!hasAutoStarted && messages.length > 0 && voicesLoaded) {
       const firstAssistantMessage = messages.find(m => m.role === "assistant");
       if (firstAssistantMessage) {
         setHasAutoStarted(true);
-        console.log("✅ Voices ready! Speaking welcome message:", firstAssistantMessage.content.substring(0, 50) + "...");
+        console.log("✅ Voices ready! Speaking welcome message (VAD DISABLED):", firstAssistantMessage.content.substring(0, 50) + "...");
         
         // Small delay to ensure voices are fully ready
         setTimeout(() => {
           speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
+            // CRITICAL: Mark welcome as done ONLY after speech fully completes
+            console.log("✅ Welcome speech completed! Enabling VAD for future responses");
+            initialWelcomeDoneRef.current = true;
+            
             setTimeout(() => {
               console.log("Starting listening after welcome message");
               startListening(selectedLanguage);
