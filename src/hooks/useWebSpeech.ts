@@ -305,8 +305,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
     
-    const rateVariation = 0.82 + (Math.random() * 0.06);
-    utterance.rate = rateVariation;
+    // Fixed 80% speed as requested for clearer speech
+    utterance.rate = 0.80;
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
