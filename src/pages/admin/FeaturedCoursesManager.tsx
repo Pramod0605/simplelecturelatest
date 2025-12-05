@@ -156,9 +156,9 @@ const FeaturedCoursesManager = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Parent Category Filter */}
                   <Select 
-                    value={selectedParentCategory} 
+                    value={selectedParentCategory || "__all__"} 
                     onValueChange={(v) => {
-                      setSelectedParentCategory(v);
+                      setSelectedParentCategory(v === "__all__" ? "" : v);
                       setSelectedSubCategory("");
                       setSelectedCourseId("");
                     }}
@@ -167,7 +167,7 @@ const FeaturedCoursesManager = () => {
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Categories</SelectItem>
+                      <SelectItem value="__all__">All Categories</SelectItem>
                       {parentCategories.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                       ))}
@@ -176,9 +176,9 @@ const FeaturedCoursesManager = () => {
 
                   {/* Sub-Category Filter */}
                   <Select 
-                    value={selectedSubCategory} 
+                    value={selectedSubCategory || "__all__"} 
                     onValueChange={(v) => {
-                      setSelectedSubCategory(v);
+                      setSelectedSubCategory(v === "__all__" ? "" : v);
                       setSelectedCourseId("");
                     }}
                     disabled={!selectedParentCategory}
@@ -187,7 +187,7 @@ const FeaturedCoursesManager = () => {
                       <SelectValue placeholder="Select Sub-Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Sub-Categories</SelectItem>
+                      <SelectItem value="__all__">All Sub-Categories</SelectItem>
                       {subCategories.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                       ))}
