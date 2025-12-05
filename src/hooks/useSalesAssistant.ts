@@ -62,12 +62,17 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
     gender: "female" | "male" = "male"
   ): Promise<boolean> => {
     try {
+      // Use placeholder values for anonymous leads (required by NOT NULL constraints)
+      const isAnonymous = !email || !mobile || name.startsWith("Anonymous") || name.startsWith("Guest");
+      const finalEmail = email || `anonymous-${Date.now()}@simplelecture.com`;
+      const finalMobile = mobile || `0000000000`;
+      
       const { data, error } = await supabase
         .from('sales_leads')
         .insert({
           name,
-          email,
-          mobile,
+          email: finalEmail,
+          mobile: finalMobile,
           conversation_history: [],
         })
         .select()
@@ -77,8 +82,7 @@ export const useSalesAssistant = (): UseSalesAssistantReturn => {
 
       setLeadId(data.id);
       
-      // Determine if this is an anonymous user
-      const isAnonymous = name.startsWith("Anonymous") || name.startsWith("Guest");
+      // Use isAnonymous already defined above for display name
       const displayName = isAnonymous ? "there" : name;
       
       // Generate welcome message based on gender (Rahul for male/English, Priya for female/Hindi)
