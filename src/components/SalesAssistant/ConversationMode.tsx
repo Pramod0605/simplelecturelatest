@@ -54,6 +54,7 @@ export const ConversationMode = ({
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
+  const counselorName = counselorGender === "female" ? "Priya" : "Rahul";
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en-IN");
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
@@ -96,8 +97,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 90, // Higher threshold + spectral analysis for voice-only detection
-    detectionDuration: 800, // Longer duration for reliable sustained voice detection
+    threshold: 55, // Lower threshold for easier interruption
+    detectionDuration: 300, // Faster detection for responsive interrupts
   });
 
   // Auto-scroll to bottom
@@ -322,7 +323,7 @@ export const ConversationMode = ({
                     }`}
                   >
                     <p className="text-xs font-semibold mb-1 opacity-70">
-                      {message.role === "user" ? "You" : "AI Assistant"}
+                      {message.role === "user" ? "You" : counselorName}
                     </p>
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
