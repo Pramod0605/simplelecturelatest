@@ -3,62 +3,33 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, Clock, Users, ChevronRight, GraduationCap } from "lucide-react";
 import { useState } from "react";
-
-interface Course {
-  id: string;
-  title: string;
-  instructor: string;
-  instructorRole: string;
-  rating: number;
-  students: number;
-  duration: string;
-  price: number;
-  originalPrice: number;
-  image: string;
-  isFree?: boolean;
-}
-
-const bestsellerCourses: Course[] = [
-  {
-    id: "1",
-    title: "Complete NEET 2026 Course",
-    instructor: "Dr. Priya Sharma",
-    instructorRole: "Biology Expert",
-    rating: 5.0,
-    students: 28456,
-    duration: "450 Hours",
-    price: 2000,
-    originalPrice: 45000,
-    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&q=80"
-  },
-  {
-    id: "2",
-    title: "JEE Main + Advanced 2026",
-    instructor: "Prof. Rajesh Kumar",
-    instructorRole: "Mathematics Expert",
-    rating: 5.0,
-    students: 31209,
-    duration: "520 Hours",
-    price: 2000,
-    originalPrice: 50000,
-    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&q=80"
-  },
-  {
-    id: "3",
-    title: "II PUC Complete Package (PCMB)",
-    instructor: "Team SimpleLecture",
-    instructorRole: "All Subjects",
-    rating: 5.0,
-    students: 19876,
-    duration: "380 Hours",
-    price: 2000,
-    originalPrice: 35000,
-    image: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&q=80"
-  }
-];
+import { useFeaturedCourses } from "@/hooks/useFeaturedCourses";
+import { useNavigate } from "react-router-dom";
 
 export const BestsellersSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
+  const { data: featuredCourses, isLoading } = useFeaturedCourses('bestsellers');
+
+  // Map database courses to display format
+  const bestsellerCourses = featuredCourses?.map(fc => ({
+    id: fc.courses?.id || fc.course_id,
+    title: fc.courses?.name || "Course",
+    instructor: fc.courses?.instructor_name || "SimpleLecture Team",
+    instructorRole: "Expert",
+    rating: fc.courses?.rating || 5.0,
+    students: fc.courses?.student_count || 0,
+    duration: `${(fc.courses?.duration_months || 6) * 50} Hours`,
+    price: fc.courses?.price_inr || 2000,
+    originalPrice: fc.courses?.original_price_inr || 25000,
+    image: fc.courses?.thumbnail_url || "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400&q=80",
+    slug: fc.courses?.slug || "",
+  })) || [];
+
+  // Don't render if no courses
+  if (isLoading || bestsellerCourses.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-20 relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800">
@@ -86,6 +57,7 @@ export const BestsellersSection = () => {
             <Button 
               size="lg" 
               className="bg-white text-blue-600 hover:bg-white/90 shadow-xl group"
+              onClick={() => navigate('/programs')}
             >
               View More Courses
               <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -106,7 +78,10 @@ export const BestsellersSection = () => {
               >
                 {bestsellerCourses.map((course) => (
                   <div key={course.id} className="w-full flex-shrink-0 px-2">
-                    <Card className="bg-white hover:shadow-2xl transition-all duration-300 group overflow-hidden">
+                    <Card 
+                      className="bg-white hover:shadow-2xl transition-all duration-300 group overflow-hidden cursor-pointer"
+                      onClick={() => navigate(`/programs/${course.slug}`)}
+                    >
                       {/* Course Image */}
                       <div className="relative h-48 overflow-hidden">
                         <img
