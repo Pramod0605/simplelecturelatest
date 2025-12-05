@@ -112,16 +112,28 @@ export const useCoursesByHierarchy = (
         return uniqueCourses;
       }
 
-      // No category selected - return all active courses (Most Popular)
+      // No category selected - return all active courses WITH category mappings (Most Popular)
       const { data, error } = await supabase
         .from("courses")
-        .select("*")
+        .select(`
+          *,
+          course_categories!inner(category_id)
+        `)
         .eq("is_active", true)
         .order("student_count", { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return data;
+      
+      // Remove duplicates (courses may appear multiple times due to multiple categories)
+      const uniqueCourses = data?.reduce((acc, course) => {
+        if (!acc.find(c => c.id === course.id)) {
+          acc.push(course);
+        }
+        return acc;
+      }, [] as typeof data) || [];
+      
+      return uniqueCourses;
     },
   });
 };
