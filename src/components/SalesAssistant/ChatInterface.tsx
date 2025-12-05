@@ -118,8 +118,8 @@ export const ChatInterface = ({
     enabled: isSpeaking,
     onVoiceDetected: debouncedInterrupt,
     onAudioLevel: setVadLevel,
-    threshold: 55, // Increased to reduce false positives
-    detectionDuration: 400, // Increased for sustained detection
+    threshold: 70, // Higher threshold to reduce false positives
+    detectionDuration: 500, // Longer duration for sustained voice detection
   });
 
   // Auto-scroll to bottom
@@ -174,13 +174,16 @@ export const ChatInterface = ({
     setInput(transcript);
 
     const trimmed = transcript.trim();
+    const wordCount = trimmed.split(/\s+/).filter(w => w.length > 0).length;
     
-    // Prevent auto-send for noise
-    const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm'];
+    // Prevent auto-send for noise or single random words (false positives)
+    const noiseWords = ['um', 'uh', 'hmm', 'ah', 'er', 'uh huh', 'mhm', 'revolution', 'the', 'a', 'an', 'is'];
     const isSingleNoiseWord = noiseWords.some(word => trimmed.toLowerCase() === word);
     
-    // Lower threshold to 3 characters to catch short responses
-    if (trimmed.length < 3 || isSingleNoiseWord) {
+    // Require minimum 10 characters OR 3 words to prevent false positive auto-typing
+    const isValidTranscript = trimmed.length >= 10 || wordCount >= 3;
+    
+    if (!isValidTranscript || isSingleNoiseWord) {
       return;
     }
 
@@ -189,7 +192,6 @@ export const ChatInterface = ({
     }
 
     // Smart silence detection based on utterance length and sentence endings
-    const wordCount = trimmed.split(/\s+/).length;
     const endsWithPunctuation = /[.?!]$/.test(trimmed);
     
     let silenceTimeout: number;
