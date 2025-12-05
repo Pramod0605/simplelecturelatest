@@ -15,8 +15,8 @@ const SPEECH_FREQ_HIGH = 255;
 export const useVoiceActivityDetection = ({
   enabled,
   onVoiceDetected,
-  threshold = 55, // Increased from 45 to reduce false positives
-  detectionDuration = 400, // Increased from 200ms for sustained detection
+  threshold = 85, // Increased significantly to reduce false positives from echo
+  detectionDuration = 700, // Increased for sustained detection
   onAudioLevel,
 }: UseVoiceActivityDetectionProps) => {
   const [isDetecting, setIsDetecting] = useState(false);
@@ -29,6 +29,12 @@ export const useVoiceActivityDetection = ({
   const lastTriggerRef = useRef<number>(0);
   const micPermissionDeniedRef = useRef<boolean>(false);
   const consecutiveHighFramesRef = useRef<number>(0);
+  
+  // Baseline tracking for adaptive threshold
+  const baselineLevelRef = useRef<number>(30);
+  const baselineSamplesRef = useRef<number[]>([]);
+  const baselineEstablishedRef = useRef<boolean>(false);
+  const startTimeRef = useRef<number>(0);
 
   const cleanup = useCallback(() => {
     if (animationFrameRef.current) {
@@ -53,6 +59,8 @@ export const useVoiceActivityDetection = ({
 
     analyserRef.current = null;
     consecutiveHighFramesRef.current = 0;
+    baselineSamplesRef.current = [];
+    baselineEstablishedRef.current = false;
     setIsDetecting(false);
     setCurrentLevel(0);
   }, []);
@@ -128,6 +136,9 @@ export const useVoiceActivityDetection = ({
 
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
+      startTimeRef.current = Date.now();
+      baselineEstablishedRef.current = false;
+      baselineSamplesRef.current = [];
 
       setIsDetecting(true);
       monitorAudioLevel();
@@ -169,9 +180,26 @@ export const useVoiceActivityDetection = ({
       }
       const overallAverage = totalSum / bufferLength;
 
+      // Establish baseline during first 500ms
+      const timeSinceStart = Date.now() - startTimeRef.current;
+      if (timeSinceStart < 500) {
+        baselineSamplesRef.current.push(speechAverage);
+        animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
+        return;
+      }
+      
+      // Set baseline once after 500ms
+      if (!baselineEstablishedRef.current && baselineSamplesRef.current.length > 0) {
+        const avgBaseline = baselineSamplesRef.current.reduce((a, b) => a + b, 0) / baselineSamplesRef.current.length;
+        baselineLevelRef.current = Math.max(30, avgBaseline); // Minimum baseline of 30
+        baselineEstablishedRef.current = true;
+        console.log("VAD: Baseline established at", baselineLevelRef.current.toFixed(1));
+      }
+
       // Speech should have higher energy in speech frequencies compared to overall
-      // This helps distinguish speech from broadband noise
+      // AND must be significantly above baseline (2x)
       const isSpeechLike = speechAverage > overallAverage * 1.2;
+      const isAboveBaseline = speechAverage > baselineLevelRef.current * 2;
 
       // Update current level for visual feedback (use speech-filtered level)
       setCurrentLevel(speechAverage);
@@ -179,22 +207,22 @@ export const useVoiceActivityDetection = ({
         onAudioLevel(speechAverage);
       }
 
-      // Check if voice detected above threshold with speech-like characteristics
-      if (speechAverage > threshold && isSpeechLike) {
+      // Check if voice detected above threshold with speech-like characteristics AND above baseline
+      if (speechAverage > threshold && isSpeechLike && isAboveBaseline) {
         consecutiveHighFramesRef.current++;
         
-        // Require at least 3 consecutive frames above threshold (more reliable)
-        if (consecutiveHighFramesRef.current >= 3) {
+        // Require at least 5 consecutive frames above threshold (more reliable)
+        if (consecutiveHighFramesRef.current >= 5) {
           const now = Date.now();
-          // Cooldown of 500ms between triggers
-          if (now - lastTriggerRef.current < 500) {
+          // Cooldown of 800ms between triggers
+          if (now - lastTriggerRef.current < 800) {
             animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
             return;
           }
 
           if (!detectionTimerRef.current) {
             detectionTimerRef.current = setTimeout(() => {
-              console.log("VAD: Speech detected! Speech avg:", speechAverage.toFixed(1), "Overall:", overallAverage.toFixed(1));
+              console.log("VAD: Speech detected! Speech avg:", speechAverage.toFixed(1), "Baseline:", baselineLevelRef.current.toFixed(1), "Overall:", overallAverage.toFixed(1));
               lastTriggerRef.current = Date.now();
               consecutiveHighFramesRef.current = 0;
               onVoiceDetected();

@@ -3,7 +3,7 @@ import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { X, Volume2, VolumeX, Loader2, Mic } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
@@ -88,7 +88,7 @@ export const ConversationMode = ({
     }
   }, [isSpeaking, hasAutoStarted]);
 
-  // VAD for ConversationMode - only enabled after grace period
+  // VAD for ConversationMode - with high threshold + baseline tracking
   const { isDetecting } = useVoiceActivityDetection({
     enabled: vadEnabled,
     onVoiceDetected: () => {
@@ -100,8 +100,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 55,
-    detectionDuration: 400,
+    threshold: 85, // High threshold to prevent echo false positives
+    detectionDuration: 700, // Longer duration for sustained detection
   });
 
   // Auto-scroll to bottom
@@ -271,9 +271,9 @@ export const ConversationMode = ({
       <ConversationStageIndicator currentStage={conversationStage} />
 
       {/* Main Content Area - Split view */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left: Voice Status */}
-        <div className="w-1/2 flex items-center justify-center border-r bg-muted/30">
+        <div className="w-1/2 flex items-center justify-center border-r bg-muted/30 relative">
           <VoiceStatusIndicator 
             state={conversationState} 
             gender={counselorGender}
@@ -283,6 +283,19 @@ export const ConversationMode = ({
             isVADActive={isDetecting}
             vadLevel={vadLevel}
           />
+          
+          {/* Visual Interrupt Button - appears when AI is speaking */}
+          {isSpeaking && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
+              <Button
+                onClick={handleInterruptClick}
+                className="animate-pulse bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full px-6 py-3 shadow-lg flex items-center gap-2"
+              >
+                <Mic className="h-5 w-5" />
+                Tap to Speak
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Right: Transcript */}

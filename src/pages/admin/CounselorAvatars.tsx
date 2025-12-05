@@ -245,14 +245,17 @@ export default function CounselorAvatars() {
               <Label>Generated Images (click to save)</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {generatedImages.map((img, idx) => (
-                  <div key={idx} className="relative group">
+                  <div 
+                    key={idx} 
+                    className="relative group cursor-pointer"
+                    onClick={() => handleSaveImage(img)}
+                  >
                     <img 
                       src={img} 
                       alt={`Generated ${idx + 1}`}
-                      className="w-full aspect-[3/4] object-cover rounded-lg border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                      onClick={() => handleSaveImage(img)}
+                      className="w-full aspect-[3/4] object-cover rounded-lg border hover:ring-2 hover:ring-primary transition-all"
                     />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg pointer-events-none">
                       <span className="text-white text-sm font-medium">Click to Save</span>
                     </div>
                   </div>
