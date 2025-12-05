@@ -394,34 +394,36 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
 
-    // 1. First try to find the saved voice by name
-    if (targetVoiceName) {
+    // ALWAYS try Google हिन्दी first for BOTH languages (user preference)
+    matchingVoice = voices.find(voice => {
+      const voiceName = voice.name.toLowerCase();
+      return voiceName.includes('google') && (voiceName.includes('हिन्दी') || voiceName.includes('hindi'));
+    }) || voices.find(voice => voice.name === 'Google हिन्दी') || null;
+    
+    if (matchingVoice) {
+      console.log(`✅ Using Google Hindi voice for ${isHindiLanguage ? 'Hindi' : 'English'}: ${matchingVoice.name}`);
+    }
+
+    // Fallback: try saved voice if Google Hindi not found
+    if (!matchingVoice && targetVoiceName) {
       matchingVoice = voices.find(voice => 
         voice.name === targetVoiceName || 
         voice.name.toLowerCase().includes(targetVoiceName.toLowerCase().split(' ')[0])
       ) || null;
       
       if (matchingVoice) {
-        console.log(`✅ Using saved ${isHindiLanguage ? 'Hindi' : 'English'} voice: ${matchingVoice.name}`);
+        console.log(`✅ Using fallback voice: ${matchingVoice.name}`);
+        isFallback = true;
       }
     }
 
-    // 2. Fallback voice selection if saved voice not found
+    // Further fallback voice selection if still not found
     if (!matchingVoice) {
-      const GOOGLE_HINDI_VOICE = 'google हिन्दी';
       const NEURAL_VOICES = ['neerja online', 'hemant online', 'natural', 'neural'];
       const GOOGLE_VOICES = ['google'];
       const WINDOWS_FEMALE_VOICES = ['heera', 'aditi'];
       const APPLE_VOICES = ['samantha', 'siri'];
       const GENERIC_FEMALE = ['female', 'woman', 'zira', 'raveena', 'priya'];
-
-      // Try Google हिन्दी for Hindi language
-      if (isHindiLanguage) {
-        matchingVoice = voices.find(voice => {
-          const voiceName = voice.name.toLowerCase();
-          return voiceName === GOOGLE_HINDI_VOICE || voiceName.includes('google हिन्दी') || voiceName.includes('hindi');
-        }) || null;
-      }
 
       // Try Google voices
       if (!matchingVoice) {
@@ -518,21 +520,31 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       console.log("✅ Speech synthesis speak() called");
       
       // Chrome bug workaround: speech synthesis can stop after ~15 seconds
-      // Keep it alive with periodic resume calls
+      // Keep it alive with more frequent periodic resume calls
       const keepAliveInterval = setInterval(() => {
         if (!window.speechSynthesis.speaking) {
           clearInterval(keepAliveInterval);
           return;
         }
+        // More aggressive keep-alive for longer sentences
         window.speechSynthesis.pause();
         window.speechSynthesis.resume();
-      }, 10000);
+      }, 5000); // Reduced from 10s to 5s
       
       utterance.onend = () => {
         clearInterval(keepAliveInterval);
-        console.log("⏹️ Speech ended");
+        console.log("⏹️ Speech ended naturally");
         setIsSpeaking(false);
         onComplete?.();
+      };
+      
+      utterance.onerror = (event) => {
+        clearInterval(keepAliveInterval);
+        console.error("❌ Speech error in try block:", event.error);
+        setIsSpeaking(false);
+        if (event.error !== 'interrupted' && event.error !== 'canceled') {
+          onComplete?.();
+        }
       };
       
     } catch (error) {
