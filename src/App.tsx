@@ -76,6 +76,7 @@ import HolidaysManager from "./pages/admin/HolidaysManager";
 import Documentation from "./pages/admin/Documentation";
 import GenerateSeedImages from "./pages/admin/GenerateSeedImages";
 import FileBrowser from "./pages/admin/FileBrowser";
+import CounselorAvatars from "./pages/admin/CounselorAvatars";
 
 const App = () => (
   <HelmetProvider>
@@ -159,6 +160,7 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
                 <Route path="settings/documentation" element={<Documentation />} />
                 <Route path="settings/generate-images" element={<GenerateSeedImages />} />
+                <Route path="settings/counselor-avatars" element={<CounselorAvatars />} />
                 <Route path="files" element={<FileBrowser />} />
                 
                 {/* Human Resource Routes */}
