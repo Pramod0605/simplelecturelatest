@@ -113,13 +113,14 @@ export const ChatInterface = ({
     handleInterrupt();
   }, [handleInterrupt]);
 
-  // Voice Activity Detection with audio level feedback - better speech filtering
+  // Voice Activity Detection DISABLED - causes feedback loop where AI speech is picked up
+  // Users must tap to interrupt instead
   const { isDetecting, currentLevel } = useVoiceActivityDetection({
-    enabled: isSpeaking,
+    enabled: false, // Disabled to prevent AI speech being picked up as user voice
     onVoiceDetected: debouncedInterrupt,
     onAudioLevel: setVadLevel,
-    threshold: 70, // Higher threshold to reduce false positives
-    detectionDuration: 500, // Longer duration for sustained voice detection
+    threshold: 70,
+    detectionDuration: 500,
   });
 
   // Auto-scroll to bottom
