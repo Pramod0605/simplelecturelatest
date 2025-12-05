@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SEOHead } from "@/components/SEO";
@@ -13,32 +13,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Users, Clock, Search, Home, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePaginatedCourses } from "@/hooks/usePaginatedCourses";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const Programs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   
   const categorySlug = searchParams.get("category");
   const subcategorySlug = searchParams.get("subcategory");
+  const pageParam = searchParams.get("page");
+  const searchParam = searchParams.get("q");
   
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState(searchParam || "");
+  const [sortBy, setSortBy] = useState<"newest" | "popular" | "price-low" | "price-high">("newest");
+  const [currentPage, setCurrentPage] = useState(pageParam ? parseInt(pageParam) : 1);
   const coursesPerPage = 12;
 
-  // Fetch categories
+  // Debounce search query to avoid excessive API calls
+  const debouncedSearch = useDebounce(searchQuery, 400);
+
+  // Fetch categories (lightweight query)
   const { data: categories, isLoading: categoriesLoading } = useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("categories")
-        .select("*")
+        .select("id, name, slug, parent_id, level, icon, description, display_order")
         .eq("is_active", true)
         .order("display_order");
       
       if (error) throw error;
       return data;
     },
+    staleTime: 300000, // Cache for 5 minutes
   });
 
   // Get parent categories (level 1)
@@ -59,75 +66,70 @@ const Programs = () => {
     ? categories?.find(cat => cat.slug === subcategorySlug)
     : null;
 
-  // Fetch courses based on selected category/subcategory
-  const { data: courses, isLoading: coursesLoading } = useQuery({
-    queryKey: ["courses-filtered", selectedParentCategory?.id, selectedSubcategory?.id],
-    queryFn: async () => {
-      let query = supabase
-        .from("courses")
-        .select(`
-          *,
-          course_categories!inner(category_id)
-        `)
-        .eq("is_active", true);
-
-      // If subcategory is selected, filter by subcategory only
-      if (selectedSubcategory?.id) {
-        query = query.eq("course_categories.category_id", selectedSubcategory.id);
-      } 
-      // If parent category is selected, filter by parent OR any of its subcategories
-      else if (selectedParentCategory?.id) {
-        const categoryIds = [selectedParentCategory.id, ...subcategories.map(s => s.id)];
-        query = query.in("course_categories.category_id", categoryIds);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: true,
+  // Fetch courses with server-side pagination and search
+  const { data: paginatedData, isLoading: coursesLoading, isFetching } = usePaginatedCourses({
+    page: currentPage,
+    pageSize: coursesPerPage,
+    searchQuery: debouncedSearch,
+    categoryId: selectedParentCategory?.id,
+    subcategoryId: selectedSubcategory?.id,
+    sortBy,
   });
 
-  // Apply search and sort
-  let filteredCourses = courses || [];
-  
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredCourses = filteredCourses.filter(course =>
-      course.name.toLowerCase().includes(query) ||
-      course.description?.toLowerCase().includes(query)
-    );
-  }
-
-  // Sort courses
-  filteredCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return (a.price_inr || 0) - (b.price_inr || 0);
-      case "price-high":
-        return (b.price_inr || 0) - (a.price_inr || 0);
-      case "popular":
-        return (b.student_count || 0) - (a.student_count || 0);
-      case "newest":
-      default:
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-    }
-  });
-
-  // Pagination
-  const totalCourses = filteredCourses.length;
-  const totalPages = Math.ceil(totalCourses / coursesPerPage);
-  const startIndex = (currentPage - 1) * coursesPerPage;
-  const endIndex = startIndex + coursesPerPage;
-  const displayedCourses = filteredCourses.slice(startIndex, endIndex);
+  const { courses = [], totalCount = 0, totalPages = 0 } = paginatedData || {};
 
   // Update URL when filters change
-  const updateFilters = (category?: string, subcategory?: string) => {
+  const updateFilters = useCallback((category?: string, subcategory?: string, page?: number, search?: string) => {
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (subcategory) params.set("subcategory", subcategory);
+    if (page && page > 1) params.set("page", page.toString());
+    if (search) params.set("q", search);
     setSearchParams(params);
-    setCurrentPage(1);
+  }, [setSearchParams]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearch, categorySlug, subcategorySlug, sortBy]);
+
+  // Sync URL with state
+  useEffect(() => {
+    updateFilters(categorySlug || undefined, subcategorySlug || undefined, currentPage, debouncedSearch || undefined);
+  }, [currentPage, debouncedSearch, categorySlug, subcategorySlug, updateFilters]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+    return pages;
   };
 
   return (
@@ -191,7 +193,10 @@ const Programs = () => {
               <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto gap-2 bg-muted/50 p-2">
                 <TabsTrigger 
                   value="all"
-                  onClick={() => updateFilters()}
+                  onClick={() => {
+                    setSearchParams({});
+                    setCurrentPage(1);
+                  }}
                   className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
                   All Programs
@@ -200,7 +205,10 @@ const Programs = () => {
                   <TabsTrigger
                     key={category.id}
                     value={category.slug}
-                    onClick={() => updateFilters(category.slug)}
+                    onClick={() => {
+                      setSearchParams({ category: category.slug });
+                      setCurrentPage(1);
+                    }}
                     className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                   >
                     <span className="mr-2">{category.icon}</span>
@@ -219,7 +227,7 @@ const Programs = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
               <Card 
                 className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 border-2"
-                onClick={() => updateFilters(categorySlug)}
+                onClick={() => setSearchParams({ category: categorySlug })}
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-4xl mb-3">📚</div>
@@ -231,7 +239,7 @@ const Programs = () => {
                 <Card
                   key={subcat.id}
                   className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 border-2 hover:border-primary"
-                  onClick={() => updateFilters(categorySlug, subcat.slug)}
+                  onClick={() => setSearchParams({ category: categorySlug, subcategory: subcat.slug })}
                 >
                   <CardContent className="p-6 text-center">
                     <div className="text-4xl mb-3">{subcat.icon || "📖"}</div>
@@ -263,9 +271,9 @@ const Programs = () => {
             
             <div className="flex gap-4 items-center w-full md:w-auto">
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {totalCourses} courses found
+                {isFetching ? "Loading..." : `${totalCount} courses found`}
               </span>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -293,10 +301,10 @@ const Programs = () => {
                 </Card>
               ))}
             </div>
-          ) : displayedCourses.length > 0 ? (
+          ) : courses.length > 0 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {displayedCourses.map((course) => (
+                {courses.map((course) => (
                   <Link key={course.id} to={`/programs/${course.slug}`}>
                     <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer">
                       <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
@@ -305,6 +313,7 @@ const Programs = () => {
                             src={course.thumbnail_url}
                             alt={course.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
                           />
                         )}
                         {course.price_inr === 0 && (
@@ -358,42 +367,33 @@ const Programs = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   
                   <div className="flex items-center gap-1">
-                    {[...Array(Math.min(totalPages, 7))].map((_, i) => {
-                      let pageNum;
-                      if (totalPages <= 7) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 4) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 3) {
-                        pageNum = totalPages - 6 + i;
-                      } else {
-                        pageNum = currentPage - 3 + i;
-                      }
-                      
-                      return (
+                    {getPageNumbers().map((pageNum, idx) => (
+                      pageNum === "..." ? (
+                        <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                      ) : (
                         <Button
-                          key={i}
+                          key={pageNum}
                           variant={currentPage === pageNum ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
+                          onClick={() => handlePageChange(pageNum as number)}
                         >
                           {pageNum}
                         </Button>
-                      );
-                    })}
+                      )
+                    ))}
                   </div>
 
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -409,7 +409,8 @@ const Programs = () => {
               </p>
               <Button onClick={() => {
                 setSearchQuery("");
-                updateFilters();
+                setSearchParams({});
+                setCurrentPage(1);
               }}>
                 Clear All Filters
               </Button>

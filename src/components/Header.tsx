@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Menu, Search, ChevronDown, Bell, User, LogOut, LayoutDashboard, ShoppingCart } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Menu, Search, ChevronDown, Bell, User, LogOut, LayoutDashboard, ShoppingCart, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
@@ -13,65 +13,21 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MegaMenu } from "@/components/MegaMenu";
 import { supabase } from "@/integrations/supabase/client";
+import { useSearchCourses } from "@/hooks/usePaginatedCourses";
+import { useDebounce } from "@/hooks/useDebounce";
 import logo from "@/assets/website-logo.png";
-
-const categories = [
-  "Generative AI",
-  "AI & Machine Learning",
-  "Data Science & Business Analytics",
-  "Project Management",
-  "Cyber Security",
-  "Agile and Scrum",
-  "Cloud Computing & DevOps",
-  "Business and Leadership",
-  "Software Development",
-  "Product and Design",
-  "IT Service and Architecture",
-];
-
-const programs = [
-  {
-    id: 1,
-    title: "Applied Generative AI Specialization",
-    institution: "PURDUE UNIVERSITY",
-    duration: "16 Weeks",
-    badge: "Trending Now",
-    category: "Generative AI",
-  },
-  {
-    id: 2,
-    title: "Generative AI for Business Transformation",
-    institution: "PURDUE UNIVERSITY",
-    duration: "12 Weeks",
-    category: "Generative AI",
-  },
-  {
-    id: 3,
-    title: "Professional Certificate Program in Generative AI and Machine Learning - IITG",
-    institution: "E&ICT Academy IIT Guwahati",
-    duration: "11 Months",
-    badge: "Most Popular",
-    category: "AI & Machine Learning",
-  },
-  {
-    id: 4,
-    title: "Professional Certificate Course in Generative AI and Machine Learning",
-    institution: "E&ICT Academy, IT Kanpur",
-    duration: "11 Months",
-    category: "AI & Machine Learning",
-  },
-];
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("All Courses");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const filteredPrograms = selectedCategory === "All Courses" 
-    ? programs 
-    : programs.filter(p => p.category === selectedCategory);
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const { data: searchResults, isLoading: searchLoading } = useSearchCourses(debouncedSearch, 8);
 
   useEffect(() => {
     // Fetch user profile helper
@@ -112,6 +68,18 @@ export const Header = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
@@ -129,6 +97,21 @@ export const Header = () => {
     return user?.email?.[0]?.toUpperCase() || 'U';
   };
 
+  const handleSearchSelect = (slug: string) => {
+    setSearchQuery("");
+    setIsSearchOpen(false);
+    navigate(`/programs/${slug}`);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setIsSearchOpen(false);
+      navigate(`/programs?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background shadow-sm">
       <div className="container mx-auto px-4">
@@ -142,13 +125,89 @@ export const Header = () => {
           <div className="hidden lg:flex items-center gap-3 flex-1 max-w-4xl">
             <MegaMenu />
 
-            {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="What do you want to learn?"
-                className="pl-10 bg-muted/50"
-              />
+            {/* Search Bar with Dropdown */}
+            <div ref={searchRef} className="relative flex-1 max-w-md">
+              <form onSubmit={handleSearchSubmit}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search courses..."
+                  className="pl-10 pr-8 bg-muted/50"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  onFocus={() => setIsSearchOpen(true)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </form>
+
+              {/* Search Results Dropdown */}
+              {isSearchOpen && searchQuery.length >= 2 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+                  {searchLoading ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      Searching...
+                    </div>
+                  ) : searchResults && searchResults.length > 0 ? (
+                    <>
+                      {searchResults.map((course) => (
+                        <button
+                          key={course.id}
+                          onClick={() => handleSearchSelect(course.slug)}
+                          className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted transition-colors text-left"
+                        >
+                          {course.thumbnail_url ? (
+                            <img
+                              src={course.thumbnail_url}
+                              alt={course.name}
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center">
+                              <Search className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{course.name}</p>
+                            {course.short_description && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {course.short_description}
+                              </p>
+                            )}
+                            {course.price_inr !== null && (
+                              <p className="text-xs font-semibold text-primary">
+                                {course.price_inr === 0 ? "Free" : `₹${course.price_inr.toLocaleString()}`}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full px-4 py-3 text-center text-sm text-primary hover:bg-muted transition-colors border-t"
+                      >
+                        View all results for "{searchQuery}"
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No courses found for "{searchQuery}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -252,13 +311,15 @@ export const Header = () => {
         {isMenuOpen && (
           <div className="lg:hidden py-4 border-t">
             <nav className="flex flex-col gap-4">
-              <div className="relative">
+              <form onSubmit={handleSearchSubmit} className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="What do you want to learn?"
+                  placeholder="Search courses..."
                   className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </div>
+              </form>
               
               {user ? (
                 <>
