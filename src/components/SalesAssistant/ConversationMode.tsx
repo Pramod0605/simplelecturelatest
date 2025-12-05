@@ -118,19 +118,25 @@ export const ConversationMode = ({
         setHasAutoStarted(true);
         console.log("✅ Voices ready! Speaking welcome message (VAD DISABLED):", firstAssistantMessage.content.substring(0, 50) + "...");
         
-        // Small delay to ensure voices are fully ready
+        // CRITICAL: Cancel any existing speech first to prevent interruption
+        window.speechSynthesis.cancel();
+        
+        // Longer delay to ensure everything is fully ready
         setTimeout(() => {
-          speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
-            // CRITICAL: Mark welcome as done ONLY after speech fully completes
-            console.log("✅ Welcome speech completed! Enabling VAD for future responses");
-            initialWelcomeDoneRef.current = true;
-            
-            setTimeout(() => {
-              console.log("Starting listening after welcome message");
-              startListening(selectedLanguage);
-            }, 500);
-          });
-        }, 200);
+          // Double-check nothing is speaking before starting
+          if (!window.speechSynthesis.speaking) {
+            speak(firstAssistantMessage.content, selectedLanguage, counselorGender, () => {
+              // CRITICAL: Mark welcome as done ONLY after speech fully completes
+              console.log("✅ Welcome speech completed! Enabling VAD for future responses");
+              initialWelcomeDoneRef.current = true;
+              
+              setTimeout(() => {
+                console.log("Starting listening after welcome message");
+                startListening(selectedLanguage);
+              }, 500);
+            });
+          }
+        }, 500); // Increased from 200ms to 500ms for reliability
       }
     }
   }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
