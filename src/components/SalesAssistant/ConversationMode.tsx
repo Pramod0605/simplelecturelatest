@@ -9,6 +9,7 @@ import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
+import { CounselorPersona, PERSONA_CONFIGS } from "@/hooks/useWebSpeech";
 
 interface Message {
   role: "user" | "assistant";
@@ -27,11 +28,13 @@ interface ConversationModeProps {
   onInterrupt: () => void;
   onClose: () => void;
   detectedLanguage: string;
-  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void, persona?: CounselorPersona) => void;
   startListening: (language?: string) => void;
   stopSpeaking: () => void;
   onLanguageChange?: (language: string, gender: "female" | "male") => void;
+  onPersonaChange?: (persona: CounselorPersona) => void;
   voicesLoaded?: boolean;
+  currentPersona?: CounselorPersona;
 }
 
 export const ConversationMode = ({
@@ -50,11 +53,14 @@ export const ConversationMode = ({
   startListening,
   stopSpeaking,
   onLanguageChange,
+  onPersonaChange,
   voicesLoaded = false,
+  currentPersona = "priya",
 }: ConversationModeProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [counselorGender, setCounselorGender] = useState<"female" | "male">("male");
-  const counselorName = counselorGender === "female" ? "Priya" : "Rahul";
+  const [counselorGender] = useState<"female" | "male">("female"); // Always female for our personas
+  const [selectedPersona, setSelectedPersona] = useState<CounselorPersona>(currentPersona);
+  const counselorName = PERSONA_CONFIGS[selectedPersona].name;
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en-IN");
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
@@ -139,30 +145,45 @@ export const ConversationMode = ({
         }, 500); // Increased from 200ms to 500ms for reliability
       }
     }
-  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
+  }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded, selectedPersona]);
 
-  // Handle language button click
-  const handleLanguageSelect = (language: string, gender: "female" | "male") => {
-    if (language === selectedLanguage) return;
+  // Handle persona change
+  const handlePersonaSelect = (persona: CounselorPersona) => {
+    if (persona === selectedPersona) return;
     
     setIsSwitchingCounselor(true);
+    setSelectedPersona(persona);
     
-    setCounselorGender(gender);
-    setSelectedLanguage(language);
-    
-    if (onLanguageChange) {
-      onLanguageChange(language, gender);
+    if (onPersonaChange) {
+      onPersonaChange(persona);
     }
     
     toast({
-      title: gender === "female" ? "Switched to Priya (Hindi)" : "Switched to Rahul (English)",
-      description: `Voice and language updated to ${language === "hi-IN" ? "Hindi" : "English"}`,
+      title: `Switched to ${PERSONA_CONFIGS[persona].name}`,
+      description: PERSONA_CONFIGS[persona].description,
       duration: 2000,
     });
     
     setTimeout(() => {
       setIsSwitchingCounselor(false);
     }, 500);
+  };
+
+  // Handle language change
+  const handleLanguageSelect = (language: string) => {
+    if (language === selectedLanguage) return;
+    
+    setSelectedLanguage(language);
+    
+    if (onLanguageChange) {
+      onLanguageChange(language, "female");
+    }
+    
+    toast({
+      title: `Language: ${language === "hi-IN" ? "हिंदी" : "English"}`,
+      description: `Voice language updated`,
+      duration: 2000,
+    });
   };
 
   // Track user interactions
@@ -183,13 +204,13 @@ export const ConversationMode = ({
           ? "मैं अभी भी आपकी मदद के लिए यहाँ हूँ। जब भी आप तैयार हों, मुझसे कुछ भी पूछ सकते हैं।"
           : "I'm still here to assist you. Feel free to ask me anything whenever you're ready.";
         
-        speak(reminder, selectedLanguage, counselorGender);
+        speak(reminder, selectedLanguage, counselorGender, undefined, selectedPersona);
         lastInteractionRef.current = Date.now();
       }
     }, 60000);
 
     return () => clearInterval(checkInactivity);
-  }, [conversationState, messages.length, speak, selectedLanguage, counselorGender]);
+  }, [conversationState, messages.length, speak, selectedLanguage, counselorGender, selectedPersona]);
 
   const handleInterruptClick = () => {
     window.speechSynthesis.cancel();
@@ -240,41 +261,55 @@ export const ConversationMode = ({
           </div>
         </div>
         
-        {/* Language Selector - Prominent Row */}
-        <div className="flex items-center justify-center gap-2 bg-primary-foreground/10 rounded-lg p-2">
-          <span className="text-xs text-primary-foreground/80 mr-2">Choose Counselor:</span>
-          <Button
-            variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleLanguageSelect("en-IN", "male")}
-            disabled={isSwitchingCounselor}
-            className={`text-sm font-semibold px-4 ${
-              selectedLanguage === "en-IN" 
-                ? "bg-primary-foreground text-primary shadow-md" 
-                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-            }`}
-          >
-            {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            🇬🇧 English (Rahul)
-          </Button>
-          <Button
-            variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleLanguageSelect("hi-IN", "female")}
-            disabled={isSwitchingCounselor}
-            className={`text-sm font-semibold px-4 ${
-              selectedLanguage === "hi-IN" 
-                ? "bg-primary-foreground text-primary shadow-md" 
-                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-            }`}
-          >
-            {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            🇮🇳 हिंदी (Priya)
-          </Button>
+        {/* Persona Selector - Choose Female Counselor */}
+        <div className="flex flex-col gap-2 bg-primary-foreground/10 rounded-lg p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-primary-foreground/80">Choose Counselor:</span>
+            <div className="flex gap-1">
+              <Button
+                variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => handleLanguageSelect("en-IN")}
+                className="text-xs px-2 py-1 h-6"
+              >
+                🇬🇧 EN
+              </Button>
+              <Button
+                variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => handleLanguageSelect("hi-IN")}
+                className="text-xs px-2 py-1 h-6"
+              >
+                🇮🇳 हिंदी
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            {(Object.keys(PERSONA_CONFIGS) as CounselorPersona[]).map((persona) => (
+              <Button
+                key={persona}
+                variant={selectedPersona === persona ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => handlePersonaSelect(persona)}
+                disabled={isSwitchingCounselor}
+                className={`text-sm font-semibold px-3 ${
+                  selectedPersona === persona 
+                    ? "bg-primary-foreground text-primary shadow-md" 
+                    : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
+                }`}
+              >
+                {isSwitchingCounselor && selectedPersona !== persona ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <span className="mr-1">👩</span>
+                )}
+                {PERSONA_CONFIGS[persona].name}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-primary-foreground/60 text-center">
+            {PERSONA_CONFIGS[selectedPersona].description}
+          </p>
         </div>
       </div>
 
@@ -288,11 +323,12 @@ export const ConversationMode = ({
           <VoiceStatusIndicator 
             state={conversationState} 
             gender={counselorGender}
-            avatarUrl={counselorGender === "female" ? avatars.female : avatars.male}
+            avatarUrl={avatars.female}
             isGenerating={isGenerating || isSwitchingCounselor}
             onTap={handleInterruptClick}
             isVADActive={isDetecting}
             vadLevel={vadLevel}
+            persona={selectedPersona}
           />
           
           {/* Visual Interrupt Button - appears when AI is speaking */}
