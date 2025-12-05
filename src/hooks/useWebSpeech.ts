@@ -310,40 +310,46 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
-    // Preferred voice names
-    const PREFERRED_FEMALE_VOICES = ['Aditi', 'Heera', 'Raveena', 'Priya', 'Female', 'Google', 'woman'];
-    const PREFERRED_MALE_VOICES = ['Hemant', 'Ravi', 'Ajit', 'Male', 'Google', 'man'];
+    // ALWAYS use female Indian English voice as requested
+    const PREFERRED_FEMALE_VOICES = ['Aditi', 'Heera', 'Raveena', 'Priya', 'Female', 'Google', 'woman', 'Zira', 'Samantha'];
 
-    // Find matching voice
+    // Find matching voice - ALWAYS prefer female voice
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
     const primaryLang = langCode.split('-')[0];
     
-    // Voice selection logic (simplified for reliability)
-    if (gender) {
-      const preferredNames = gender === "female" ? PREFERRED_FEMALE_VOICES : PREFERRED_MALE_VOICES;
+    // Voice selection logic - always use female voice for natural Indian English
+    // Try to find female Indian English voice first
+    matchingVoice = voices.find(voice => {
+      const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+      const voiceName = voice.name.toLowerCase();
+      return voiceLang === 'en-in' && 
+             PREFERRED_FEMALE_VOICES.some(name => voiceName.includes(name.toLowerCase()));
+    }) || null;
+    
+    // If no Indian English female, try any English female voice
+    if (!matchingVoice) {
       matchingVoice = voices.find(voice => {
         const voiceLang = voice.lang.replace('_', '-').toLowerCase();
         const voiceName = voice.name.toLowerCase();
-        return voiceLang === langCode.toLowerCase() && 
-               preferredNames.some(name => voiceName.includes(name.toLowerCase()));
+        return voiceLang.startsWith('en') && 
+               PREFERRED_FEMALE_VOICES.some(name => voiceName.includes(name.toLowerCase()));
       }) || null;
     }
     
+    // Try any female English voice as fallback
     if (!matchingVoice) {
-      matchingVoice = voices.find(voice => 
-        voice.lang.replace('_', '-').toLowerCase() === langCode.toLowerCase()
-      ) || null;
-    }
-    
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => 
-        voice.lang.toLowerCase().startsWith(primaryLang)
-      ) || null;
+      matchingVoice = voices.find(voice => {
+        const voiceName = voice.name.toLowerCase();
+        return voice.lang.toLowerCase().startsWith('en') && 
+               (voiceName.includes('female') || voiceName.includes('woman') || 
+                voiceName.includes('zira') || voiceName.includes('samantha') ||
+                voiceName.includes('siri') || voiceName.includes('google'));
+      }) || null;
       if (matchingVoice) isFallback = true;
     }
     
-    // Fallback to any English voice
+    // Final fallback to any English voice
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.toLowerCase().startsWith('en')
