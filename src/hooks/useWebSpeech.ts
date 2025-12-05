@@ -1,17 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+// Persona voice configurations for female counselors
+export type CounselorPersona = "priya" | "ananya" | "kavya";
+
+export const PERSONA_CONFIGS: Record<CounselorPersona, { name: string; pitch: number; rate: number; description: string }> = {
+  priya: { name: "Priya", pitch: 1.15, rate: 0.80, description: "Warm & Caring" },
+  ananya: { name: "Ananya", pitch: 1.05, rate: 0.85, description: "Professional" },
+  kavya: { name: "Kavya", pitch: 1.20, rate: 0.82, description: "Friendly & Young" },
+};
+
 interface UseWebSpeechReturn {
   isListening: boolean;
   isSpeaking: boolean;
   transcript: string;
   startListening: (language?: string) => void;
   stopListening: () => void;
-  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void) => void;
+  speak: (text: string, language?: string, gender?: "female" | "male", onComplete?: () => void, persona?: CounselorPersona) => void;
   stopSpeaking: () => void;
   clearTranscript: () => void;
   isSupported: boolean;
   voicesLoaded: boolean;
+  availableVoices: SpeechSynthesisVoice[];
 }
 
 export const useWebSpeech = (): UseWebSpeechReturn => {
@@ -22,7 +32,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voiceFallbackShown, setVoiceFallbackShown] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
-  const pendingSpeechRef = useRef<{ text: string; language: string; gender?: "female" | "male"; onComplete?: () => void } | null>(null);
+  const pendingSpeechRef = useRef<{ text: string; language: string; gender?: "female" | "male"; onComplete?: () => void; persona?: CounselorPersona } | null>(null);
   const { toast } = useToast();
 
   // Check if Web Speech API is supported
@@ -79,6 +89,12 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
           v.name.toLowerCase().includes('india')
         );
         console.log("🇮🇳 Indian voices:", indianVoices.map(v => `${v.name} (${v.lang})`));
+        
+        // Log Windows voices (Ravi, Hemant, Heera)
+        const windowsVoices = availableVoices.filter(v => 
+          ['ravi', 'hemant', 'heera', 'microsoft'].some(name => v.name.toLowerCase().includes(name))
+        );
+        console.log("🪟 Windows voices:", windowsVoices.map(v => `${v.name} (${v.lang})`));
       }
     };
 
@@ -111,12 +127,12 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   useEffect(() => {
     if (voicesLoaded && pendingSpeechRef.current && userInteracted) {
       console.log("🔊 Processing pending speech request");
-      const { text, language, gender, onComplete } = pendingSpeechRef.current;
+      const { text, language, gender, onComplete, persona } = pendingSpeechRef.current;
       pendingSpeechRef.current = null;
       
       // Small delay to ensure everything is ready
       setTimeout(() => {
-        speakInternal(text, language, gender, onComplete);
+        speakInternal(text, language, gender, onComplete, persona);
       }, 100);
     }
   }, [voicesLoaded, userInteracted]);
@@ -255,7 +271,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   }, [recognition]);
 
-  const speakInternal = (text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
+  const speakInternal = (text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "priya") => {
     if (!speechSynthesisSupported) {
       console.warn("Speech synthesis not supported");
       onComplete?.();
@@ -283,11 +299,13 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
-    // Add pauses for natural speech
+    // Add natural pauses for more human-like speech
     cleanText = cleanText
-      .replace(/\.\s+/g, '... ')
-      .replace(/,\s+/g, ', ')
-      .replace(/([.!?])\s*([A-Z])/g, '$1... $2');
+      .replace(/\.\s+/g, '... ')        // Long pause after sentences
+      .replace(/,\s+/g, ', ')           // Short pause after commas
+      .replace(/([.!?])\s*([A-Z])/g, '$1... $2')  // Pause between sentences
+      .replace(/(\?)\s*/g, '$1... ')    // Pause after questions
+      .replace(/(!)\s*/g, '$1... ');    // Pause after exclamations
 
     console.log("🔊 Speaking text:", cleanText.substring(0, 100) + "...");
 
@@ -305,51 +323,88 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
     
-    // Fixed 80% speed as requested for clearer speech
-    utterance.rate = 0.80;
-    utterance.pitch = 1.1;
+    // Get persona configuration for pitch and rate
+    const personaConfig = PERSONA_CONFIGS[persona];
+    
+    // Adjust pitch based on sentence type for more natural speech
+    const isQuestion = cleanText.includes('?');
+    const isExclamation = cleanText.includes('!');
+    
+    let basePitch = personaConfig.pitch;
+    if (isQuestion) basePitch += 0.05;  // Slightly higher for questions
+    if (isExclamation) basePitch += 0.03;  // Slightly higher for exclamations
+    
+    utterance.rate = personaConfig.rate;
+    utterance.pitch = basePitch;
     utterance.volume = 1.0;
 
-    // ALWAYS use female Indian English voice as requested
-    const PREFERRED_FEMALE_VOICES = ['Aditi', 'Heera', 'Raveena', 'Priya', 'Female', 'Google', 'woman', 'Zira', 'Samantha'];
+    // Priority order for voice selection:
+    // 1. Microsoft Neural voices (Edge browser) - highest quality
+    // 2. Google voices - good quality
+    // 3. Windows SAPI voices (Heera, Ravi, Hemant) - standard quality
+    // 4. Apple voices (Samantha, Siri) - good on Mac/iOS
+    // 5. Any female English voice
 
-    // Find matching voice - ALWAYS prefer female voice
+    const NEURAL_VOICES = ['neerja online', 'hemant online', 'natural', 'neural'];
+    const GOOGLE_VOICES = ['google'];
+    const WINDOWS_FEMALE_VOICES = ['heera', 'aditi'];
+    const WINDOWS_MALE_VOICES = ['ravi', 'hemant'];
+    const APPLE_VOICES = ['samantha', 'siri'];
+    const GENERIC_FEMALE = ['female', 'woman', 'zira', 'raveena', 'priya'];
+
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
-    const primaryLang = langCode.split('-')[0];
-    
-    // Voice selection logic - always use female voice for natural Indian English
-    // Try to find female Indian English voice first
+
+    // Always prefer female voice for our female counselors
+    const targetFemale = true; // Always use female voice for Priya/Ananya/Kavya
+
+    // 1. Try Microsoft Neural voices (best quality, Edge only)
     matchingVoice = voices.find(voice => {
-      const voiceLang = voice.lang.replace('_', '-').toLowerCase();
       const voiceName = voice.name.toLowerCase();
-      return voiceLang === 'en-in' && 
-             PREFERRED_FEMALE_VOICES.some(name => voiceName.includes(name.toLowerCase()));
+      const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+      return NEURAL_VOICES.some(n => voiceName.includes(n)) && 
+             voiceLang.startsWith('en') &&
+             (targetFemale ? voiceName.includes('neerja') || !voiceName.includes('hemant') : true);
     }) || null;
-    
-    // If no Indian English female, try any English female voice
+
+    // 2. Try Google voices
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => {
-        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
         const voiceName = voice.name.toLowerCase();
-        return voiceLang.startsWith('en') && 
-               PREFERRED_FEMALE_VOICES.some(name => voiceName.includes(name.toLowerCase()));
+        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+        return GOOGLE_VOICES.some(n => voiceName.includes(n)) && 
+               voiceLang.startsWith('en');
       }) || null;
     }
-    
-    // Try any female English voice as fallback
+
+    // 3. Try Indian female voices (Heera, Aditi)
+    if (!matchingVoice && targetFemale) {
+      matchingVoice = voices.find(voice => {
+        const voiceName = voice.name.toLowerCase();
+        return WINDOWS_FEMALE_VOICES.some(n => voiceName.includes(n));
+      }) || null;
+    }
+
+    // 4. Try Apple voices
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => {
         const voiceName = voice.name.toLowerCase();
-        return voice.lang.toLowerCase().startsWith('en') && 
-               (voiceName.includes('female') || voiceName.includes('woman') || 
-                voiceName.includes('zira') || voiceName.includes('samantha') ||
-                voiceName.includes('siri') || voiceName.includes('google'));
+        return APPLE_VOICES.some(n => voiceName.includes(n));
+      }) || null;
+    }
+
+    // 5. Try any female English voice
+    if (!matchingVoice && targetFemale) {
+      matchingVoice = voices.find(voice => {
+        const voiceName = voice.name.toLowerCase();
+        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+        return voiceLang.startsWith('en') && 
+               GENERIC_FEMALE.some(n => voiceName.includes(n));
       }) || null;
       if (matchingVoice) isFallback = true;
     }
-    
-    // Final fallback to any English voice
+
+    // 6. Final fallback to any English voice
     if (!matchingVoice) {
       matchingVoice = voices.find(voice => 
         voice.lang.toLowerCase().startsWith('en')
@@ -359,7 +414,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
 
     if (matchingVoice) {
       utterance.voice = matchingVoice;
-      console.log(`🗣️ Using voice: ${matchingVoice.name} (${matchingVoice.lang})${isFallback ? ' [FALLBACK]' : ''}`);
+      console.log(`🗣️ Using voice: ${matchingVoice.name} (${matchingVoice.lang}) for persona ${personaConfig.name}${isFallback ? ' [FALLBACK]' : ''}`);
     } else {
       console.warn("⚠️ No voice found, using browser default");
     }
@@ -424,8 +479,8 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     }
   };
 
-  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void) => {
-    console.log("📢 speak() called:", { textLength: text.length, language, gender, voicesLoaded, userInteracted });
+  const speak = useCallback((text: string, language = 'en-IN', gender?: "female" | "male", onComplete?: () => void, persona: CounselorPersona = "priya") => {
+    console.log("📢 speak() called:", { textLength: text.length, language, gender, persona, voicesLoaded, userInteracted });
     
     if (!speechSynthesisSupported) {
       toast({
@@ -440,14 +495,14 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     // If voices not loaded yet, queue the speech
     if (!voicesLoaded) {
       console.log("⏳ Voices not loaded yet, queuing speech...");
-      pendingSpeechRef.current = { text, language, gender, onComplete };
+      pendingSpeechRef.current = { text, language, gender, onComplete, persona };
       return;
     }
 
     // If no user interaction yet, queue and show helpful message
     if (!userInteracted) {
       console.log("⚠️ No user interaction yet, queuing speech...");
-      pendingSpeechRef.current = { text, language, gender, onComplete };
+      pendingSpeechRef.current = { text, language, gender, onComplete, persona };
       toast({
         title: "Click to Enable Voice",
         description: "Click anywhere on the page to enable voice responses.",
@@ -456,7 +511,7 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
       return;
     }
 
-    speakInternal(text, language, gender, onComplete);
+    speakInternal(text, language, gender, onComplete, persona);
   }, [speechSynthesisSupported, voicesLoaded, userInteracted, voices, voiceFallbackShown, toast]);
 
   const stopSpeaking = useCallback(() => {
@@ -481,5 +536,6 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     clearTranscript,
     isSupported,
     voicesLoaded,
+    availableVoices: voices,
   };
 };

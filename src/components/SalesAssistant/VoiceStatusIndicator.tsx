@@ -1,6 +1,7 @@
 import { ConversationState } from "@/hooks/useSalesAssistant";
 import { AudioWaveform } from "./AudioWaveform";
 import { Loader2 } from "lucide-react";
+import { CounselorPersona, PERSONA_CONFIGS } from "@/hooks/useWebSpeech";
 
 interface VoiceStatusIndicatorProps {
   state: ConversationState;
@@ -10,6 +11,7 @@ interface VoiceStatusIndicatorProps {
   isGenerating?: boolean;
   isVADActive?: boolean;
   vadLevel?: number;
+  persona?: CounselorPersona;
 }
 
 export const VoiceStatusIndicator = ({ 
@@ -19,7 +21,8 @@ export const VoiceStatusIndicator = ({
   onTap,
   isGenerating,
   isVADActive,
-  vadLevel = 0
+  vadLevel = 0,
+  persona = "priya"
 }: VoiceStatusIndicatorProps) => {
   const getStateConfig = () => {
     switch (state) {
@@ -35,7 +38,7 @@ export const VoiceStatusIndicator = ({
   };
 
   const config = getStateConfig();
-  const counselorName = gender === "male" ? "Rahul" : "Priya";
+  const counselorName = PERSONA_CONFIGS[persona].name;
 
   return (
     <div 
