@@ -58,13 +58,39 @@ export const ConversationMode = ({
   const [hasAutoStarted, setHasAutoStarted] = useState(false);
   const [isSwitchingCounselor, setIsSwitchingCounselor] = useState(false);
   const [vadLevel, setVadLevel] = useState(0);
+  const [vadEnabled, setVadEnabled] = useState(false);
   const lastInteractionRef = useRef<number>(Date.now());
+  const initialSpeechDoneRef = useRef(false);
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
   const { toast } = useToast();
 
-  // VAD for ConversationMode - with better speech frequency filtering
+  // Grace period for VAD - don't interrupt welcome message
+  useEffect(() => {
+    if (isSpeaking && !initialSpeechDoneRef.current) {
+      // First speech (welcome) - delay VAD by 5 seconds to let welcome play
+      const timer = setTimeout(() => {
+        console.log("✅ VAD grace period ended, enabling VAD");
+        setVadEnabled(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else if (isSpeaking && initialSpeechDoneRef.current) {
+      // Subsequent speech - enable VAD immediately for interruption
+      setVadEnabled(true);
+    } else {
+      setVadEnabled(false);
+    }
+  }, [isSpeaking]);
+
+  // Mark initial speech as done when first speech ends
+  useEffect(() => {
+    if (!isSpeaking && hasAutoStarted) {
+      initialSpeechDoneRef.current = true;
+    }
+  }, [isSpeaking, hasAutoStarted]);
+
+  // VAD for ConversationMode - only enabled after grace period
   const { isDetecting } = useVoiceActivityDetection({
-    enabled: isSpeaking,
+    enabled: vadEnabled,
     onVoiceDetected: () => {
       console.log("VAD in ConversationMode: Voice detected, interrupting");
       window.speechSynthesis.cancel();
@@ -74,8 +100,8 @@ export const ConversationMode = ({
       }, 400);
     },
     onAudioLevel: setVadLevel,
-    threshold: 55, // Increased to reduce false positives
-    detectionDuration: 400, // Increased for sustained detection
+    threshold: 55,
+    detectionDuration: 400,
   });
 
   // Auto-scroll to bottom
