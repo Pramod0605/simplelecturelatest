@@ -1,5 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+// Voice settings interface
+interface VoiceSettings {
+  englishVoiceName: string;
+  hindiVoiceName: string;
+  englishRate: number;
+  englishPitch: number;
+  hindiRate: number;
+  hindiPitch: number;
+}
+
+const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+  englishVoiceName: "Microsoft Neerja Online (Natural) - English (India)",
+  hindiVoiceName: "Google हिन्दी",
+  englishRate: 0.85,
+  englishPitch: 1.10,
+  hindiRate: 0.80,
+  hindiPitch: 1.15,
+};
 
 // Persona voice configurations for female counselors
 export type CounselorPersona = "priya" | "ananya" | "kavya";
@@ -32,8 +52,32 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voiceFallbackShown, setVoiceFallbackShown] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
+  const [savedVoiceSettings, setSavedVoiceSettings] = useState<VoiceSettings>(DEFAULT_VOICE_SETTINGS);
   const pendingSpeechRef = useRef<{ text: string; language: string; gender?: "female" | "male"; onComplete?: () => void; persona?: CounselorPersona } | null>(null);
   const { toast } = useToast();
+
+  // Fetch saved voice settings from database
+  useEffect(() => {
+    const fetchVoiceSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("ai_settings")
+          .select("setting_value")
+          .eq("setting_key", "voice_settings")
+          .maybeSingle();
+
+        if (!error && data?.setting_value) {
+          const settings = data.setting_value as unknown as VoiceSettings;
+          console.log("🔊 Loaded saved voice settings:", settings);
+          setSavedVoiceSettings(settings);
+        }
+      } catch (err) {
+        console.log("Using default voice settings");
+      }
+    };
+
+    fetchVoiceSettings();
+  }, []);
 
   // Check if Web Speech API is supported
   const isSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
@@ -323,106 +367,113 @@ export const useWebSpeech = (): UseWebSpeechReturn => {
     const langCode = languageMap[language.toLowerCase()] || language;
     utterance.lang = langCode;
     
-    // Get persona configuration for pitch and rate
+    // Detect if text is Hindi (contains Devanagari script)
+    const isHindiText = /[\u0900-\u097F]/.test(cleanText);
+    
+    // Get saved voice settings based on language
+    const targetVoiceName = isHindiText 
+      ? savedVoiceSettings.hindiVoiceName 
+      : savedVoiceSettings.englishVoiceName;
+    
+    // Use saved rate/pitch if available, otherwise use persona config
     const personaConfig = PERSONA_CONFIGS[persona];
+    const savedRate = isHindiText ? savedVoiceSettings.hindiRate : savedVoiceSettings.englishRate;
+    const savedPitch = isHindiText ? savedVoiceSettings.hindiPitch : savedVoiceSettings.englishPitch;
     
     // Adjust pitch based on sentence type for more natural speech
     const isQuestion = cleanText.includes('?');
     const isExclamation = cleanText.includes('!');
     
-    let basePitch = personaConfig.pitch;
-    if (isQuestion) basePitch += 0.05;  // Slightly higher for questions
-    if (isExclamation) basePitch += 0.03;  // Slightly higher for exclamations
+    let basePitch = savedPitch || personaConfig.pitch;
+    if (isQuestion) basePitch += 0.05;
+    if (isExclamation) basePitch += 0.03;
     
-    utterance.rate = personaConfig.rate;
+    utterance.rate = savedRate || personaConfig.rate;
     utterance.pitch = basePitch;
     utterance.volume = 1.0;
-
-    // Priority order for voice selection:
-    // 1. Google हिन्दी voice - preferred natural Indian voice
-    // 2. Microsoft Neural voices (Edge browser) - high quality
-    // 3. Windows SAPI voices (Heera, Ravi, Hemant) - standard quality
-    // 4. Apple voices (Samantha, Siri) - good on Mac/iOS
-    // 5. Any female English voice
-
-    const GOOGLE_HINDI_VOICE = 'google हिन्दी';
-    const NEURAL_VOICES = ['neerja online', 'hemant online', 'natural', 'neural'];
-    const GOOGLE_VOICES = ['google'];
-    const WINDOWS_FEMALE_VOICES = ['heera', 'aditi'];
-    const WINDOWS_MALE_VOICES = ['ravi', 'hemant'];
-    const APPLE_VOICES = ['samantha', 'siri'];
-    const GENERIC_FEMALE = ['female', 'woman', 'zira', 'raveena', 'priya'];
 
     let matchingVoice: SpeechSynthesisVoice | null = null;
     let isFallback = false;
 
-    // Always prefer female voice for our female counselors
-    const targetFemale = true; // Always use female voice for Priya/Ananya/Kavya
-
-    // 1. Try Google हिन्दी voice first (preferred natural Indian voice)
-    matchingVoice = voices.find(voice => {
-      const voiceName = voice.name.toLowerCase();
-      return voiceName === GOOGLE_HINDI_VOICE || voiceName.includes('google हिन्दी');
-    }) || null;
-    
-    if (matchingVoice) {
-      console.log("✅ Found Google हिन्दी voice - using as primary");
-    }
-
-    // 2. Try other Google voices (English)
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => {
-        const voiceName = voice.name.toLowerCase();
-        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
-        return GOOGLE_VOICES.some(n => voiceName.includes(n)) && 
-               (voiceLang.startsWith('en') || voiceLang.startsWith('hi'));
-      }) || null;
-    }
-
-    // 3. Try Microsoft Neural voices (Edge only)
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => {
-        const voiceName = voice.name.toLowerCase();
-        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
-        return NEURAL_VOICES.some(n => voiceName.includes(n)) && 
-               voiceLang.startsWith('en') &&
-               (targetFemale ? voiceName.includes('neerja') || !voiceName.includes('hemant') : true);
-      }) || null;
-    }
-
-    // 4. Try Indian female voices (Heera, Aditi)
-    if (!matchingVoice && targetFemale) {
-      matchingVoice = voices.find(voice => {
-        const voiceName = voice.name.toLowerCase();
-        return WINDOWS_FEMALE_VOICES.some(n => voiceName.includes(n));
-      }) || null;
-    }
-
-    // 5. Try Apple voices
-    if (!matchingVoice) {
-      matchingVoice = voices.find(voice => {
-        const voiceName = voice.name.toLowerCase();
-        return APPLE_VOICES.some(n => voiceName.includes(n));
-      }) || null;
-    }
-
-    // 6. Try any female English voice
-    if (!matchingVoice && targetFemale) {
-      matchingVoice = voices.find(voice => {
-        const voiceName = voice.name.toLowerCase();
-        const voiceLang = voice.lang.replace('_', '-').toLowerCase();
-        return voiceLang.startsWith('en') && 
-               GENERIC_FEMALE.some(n => voiceName.includes(n));
-      }) || null;
-      if (matchingVoice) isFallback = true;
-    }
-
-    // 7. Final fallback to any English voice
-    if (!matchingVoice) {
+    // 1. First try to find the saved voice by name
+    if (targetVoiceName) {
       matchingVoice = voices.find(voice => 
-        voice.lang.toLowerCase().startsWith('en')
+        voice.name === targetVoiceName || 
+        voice.name.toLowerCase().includes(targetVoiceName.toLowerCase().split(' ')[0])
       ) || null;
-      if (matchingVoice) isFallback = true;
+      
+      if (matchingVoice) {
+        console.log(`✅ Using saved ${isHindiText ? 'Hindi' : 'English'} voice: ${matchingVoice.name}`);
+      }
+    }
+
+    // 2. Fallback voice selection if saved voice not found
+    if (!matchingVoice) {
+      const GOOGLE_HINDI_VOICE = 'google हिन्दी';
+      const NEURAL_VOICES = ['neerja online', 'hemant online', 'natural', 'neural'];
+      const GOOGLE_VOICES = ['google'];
+      const WINDOWS_FEMALE_VOICES = ['heera', 'aditi'];
+      const APPLE_VOICES = ['samantha', 'siri'];
+      const GENERIC_FEMALE = ['female', 'woman', 'zira', 'raveena', 'priya'];
+
+      // Try Google हिन्दी for Hindi text
+      if (isHindiText) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          return voiceName === GOOGLE_HINDI_VOICE || voiceName.includes('google हिन्दी') || voiceName.includes('hindi');
+        }) || null;
+      }
+
+      // Try Google voices
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          const voiceLang = voice.lang.replace('_', '-').toLowerCase();
+          return GOOGLE_VOICES.some(n => voiceName.includes(n)) && 
+                 (voiceLang.startsWith('en') || voiceLang.startsWith('hi'));
+        }) || null;
+      }
+
+      // Try Microsoft Neural voices
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          return NEURAL_VOICES.some(n => voiceName.includes(n));
+        }) || null;
+      }
+
+      // Try Indian female voices
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          return WINDOWS_FEMALE_VOICES.some(n => voiceName.includes(n));
+        }) || null;
+      }
+
+      // Try Apple voices
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          return APPLE_VOICES.some(n => voiceName.includes(n));
+        }) || null;
+      }
+
+      // Try any female voice
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => {
+          const voiceName = voice.name.toLowerCase();
+          return GENERIC_FEMALE.some(n => voiceName.includes(n));
+        }) || null;
+        if (matchingVoice) isFallback = true;
+      }
+
+      // Final fallback to any English voice
+      if (!matchingVoice) {
+        matchingVoice = voices.find(voice => 
+          voice.lang.toLowerCase().startsWith('en')
+        ) || null;
+        if (matchingVoice) isFallback = true;
+      }
     }
 
     if (matchingVoice) {
