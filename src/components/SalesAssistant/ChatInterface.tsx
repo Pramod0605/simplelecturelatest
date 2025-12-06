@@ -153,13 +153,18 @@ export const ChatInterface = ({
     ) {
       lastMessageRef.current = lastMessage.content;
       
-      speak(lastMessage.content, detectedLanguage, counselorGender, () => {
-        console.log("AI finished speaking, starting listening");
-        sentTranscriptRef.current = "";
-        startListening(detectedLanguage);
-      });
+      // For welcome message (first message), speak immediately even without prior interaction
+      const isWelcomeMessage = messages.length === 1;
+      
+      if (isWelcomeMessage || hasInteracted) {
+        speak(lastMessage.content, detectedLanguage, counselorGender, () => {
+          console.log("AI finished speaking, starting listening");
+          sentTranscriptRef.current = "";
+          startListening(detectedLanguage);
+        });
+      }
     }
-  }, [messages, autoSpeak, speak, detectedLanguage, startListening, counselorGender]);
+  }, [messages, autoSpeak, speak, detectedLanguage, startListening, counselorGender, hasInteracted]);
 
   // Smart silence detection based on utterance length
   useEffect(() => {

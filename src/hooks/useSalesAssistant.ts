@@ -180,6 +180,8 @@ Tell me, are you a student preparing for exams, or a parent looking for the righ
 
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (line.startsWith(":") || line.trim() === "") continue;
+          // Skip OPENROUTER processing lines
+          if (line.includes("OPENROUTER")) continue;
           if (!line.startsWith("data: ")) continue;
 
           const jsonStr = line.slice(6).trim();
