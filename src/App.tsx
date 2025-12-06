@@ -109,6 +109,7 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
+            <Route path="/learning/:courseId" element={<Learning />} />
             <Route path="/learning/:courseId/:subjectId" element={<Learning />} />
             <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
             <Route path="/mobile" element={<MobileHome />} />
