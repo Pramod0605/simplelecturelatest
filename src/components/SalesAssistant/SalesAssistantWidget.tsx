@@ -177,6 +177,7 @@ export const SalesAssistantWidget = () => {
                     isSupported={isSupported}
                     detectedLanguage={currentLanguage}
                     counselorGender={currentGender}
+                    isVoiceMode={isVoiceMode}
                   />
                 </div>
                 {isSupported && (
