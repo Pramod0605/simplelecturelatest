@@ -73,7 +73,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     setError(null);
 
     try {
-      console.log(`🔊 Google TTS: Speaking in ${languageCode}, gender: ${gender}, text length: ${cleanText.length}`);
+      console.log(`🔊 OpenAI TTS: Speaking in ${languageCode}, gender: ${gender}, text length: ${cleanText.length}`);
 
       const { data, error: functionError } = await supabase.functions.invoke('google-tts', {
         body: {
@@ -99,13 +99,13 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       audioRef.current = audio;
 
       audio.onplay = () => {
-        console.log("▶️ Google TTS: Audio playing");
+        console.log("▶️ OpenAI TTS: Audio playing");
         setIsSpeaking(true);
         setIsLoading(false);
       };
 
       audio.onended = () => {
-        console.log("⏹️ Google TTS: Audio ended");
+        console.log("⏹️ OpenAI TTS: Audio ended");
         setIsSpeaking(false);
         URL.revokeObjectURL(audioUrl);
         audioRef.current = null;
@@ -113,7 +113,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       };
 
       audio.onerror = (e) => {
-        console.error("❌ Google TTS: Audio error", e);
+        console.error("❌ OpenAI TTS: Audio error", e);
         setIsSpeaking(false);
         setIsLoading(false);
         URL.revokeObjectURL(audioUrl);
@@ -126,7 +126,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown TTS error';
-      console.error("❌ Google TTS error:", errorMessage);
+      console.error("❌ OpenAI TTS error:", errorMessage);
       setError(errorMessage);
       setIsLoading(false);
       setIsSpeaking(false);
