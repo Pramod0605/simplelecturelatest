@@ -55,6 +55,7 @@ serve(async (req) => {
         input: text,
         voice: voice,
         response_format: 'mp3',
+        speed: 0.85, // Slower, more natural speech
       }),
     });
 
