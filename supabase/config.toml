@@ -107,3 +107,6 @@ verify_jwt = true
 
 [functions.ai-sales-assistant]
 verify_jwt = false
+
+[functions.google-tts]
+verify_jwt = false
