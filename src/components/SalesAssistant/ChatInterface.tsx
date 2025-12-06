@@ -34,6 +34,7 @@ interface ChatInterfaceProps {
   clearTranscript: () => void;
   isSupported: boolean;
   detectedLanguage: string;
+  isVoiceMode?: boolean;
 }
 
 export const ChatInterface = ({ 
@@ -53,6 +54,7 @@ export const ChatInterface = ({
   isSupported,
   detectedLanguage,
   counselorGender,
+  isVoiceMode = false,
 }: ChatInterfaceProps) => {
   const [input, setInput] = useState("");
   const [autoSpeak, setAutoSpeak] = useState(true);
@@ -143,7 +145,11 @@ export const ChatInterface = ({
   }, [isListening, isSpeaking, isLoading, onStateChange]);
 
   // Auto-speak new assistant messages and start continuous listening
+  // CRITICAL: Skip auto-speak when voice mode is active (ConversationMode handles it)
   useEffect(() => {
+    // When voice mode is active, ConversationMode handles all speaking
+    if (isVoiceMode) return;
+    
     const lastMessage = messages[messages.length - 1];
     if (
       autoSpeak &&
@@ -164,7 +170,7 @@ export const ChatInterface = ({
         });
       }
     }
-  }, [messages, autoSpeak, speak, detectedLanguage, startListening, counselorGender, hasInteracted]);
+  }, [messages, autoSpeak, speak, detectedLanguage, startListening, counselorGender, hasInteracted, isVoiceMode]);
 
   // Smart silence detection based on utterance length
   useEffect(() => {

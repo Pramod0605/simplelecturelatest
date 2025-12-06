@@ -69,6 +69,7 @@ export const ConversationMode = ({
   const [vadEnabled, setVadEnabled] = useState(false);
   const lastInteractionRef = useRef<number>(Date.now());
   const initialWelcomeDoneRef = useRef(false);
+  const lastSpokenMessageRef = useRef<string>("");
   const { avatars, isGenerating } = useGenerateCounselorAvatars();
   const { toast } = useToast();
 
@@ -141,6 +142,31 @@ export const ConversationMode = ({
       }
     }
   }, [hasAutoStarted, messages, speak, startListening, selectedLanguage, counselorGender, voicesLoaded]);
+
+  // Auto-speak ALL new assistant messages (not just the welcome message)
+  useEffect(() => {
+    // Skip if still waiting for initial welcome
+    if (!initialWelcomeDoneRef.current) return;
+    
+    // Find the last assistant message
+    const lastMessage = messages[messages.length - 1];
+    if (
+      autoSpeak &&
+      lastMessage?.role === "assistant" &&
+      lastMessage.content &&
+      lastMessage.content !== lastSpokenMessageRef.current
+    ) {
+      console.log("🔊 ConversationMode: Speaking new AI response");
+      lastSpokenMessageRef.current = lastMessage.content;
+      
+      speak(lastMessage.content, selectedLanguage, counselorGender, () => {
+        console.log("✅ AI finished speaking response, starting listening");
+        setTimeout(() => {
+          startListening(selectedLanguage);
+        }, 300);
+      });
+    }
+  }, [messages, autoSpeak, speak, startListening, selectedLanguage, counselorGender]);
 
   // Handle language button click
   const handleLanguageSelect = (language: string, gender: "female" | "male") => {
