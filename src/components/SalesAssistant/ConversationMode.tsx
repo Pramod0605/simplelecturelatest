@@ -3,12 +3,19 @@ import { useGenerateCounselorAvatars } from "@/hooks/useGenerateCounselorAvatars
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Volume2, VolumeX, Loader2, Mic } from "lucide-react";
+import { X, Volume2, VolumeX, Loader2, Mic, ChevronDown } from "lucide-react";
 import { VoiceStatusIndicator } from "./VoiceStatusIndicator";
 import { ConversationStageIndicator } from "./ConversationStageIndicator";
 import { ConversationState, ConversationStage } from "@/hooks/useSalesAssistant";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceActivityDetection } from "@/hooks/useVoiceActivityDetection";
+import { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/hooks/useWebSpeech";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
   role: "user" | "assistant";
@@ -234,41 +241,41 @@ export const ConversationMode = ({
           </div>
         </div>
         
-        {/* Language Selector - Prominent Row */}
+        {/* Language Selector - All Indian Languages */}
         <div className="flex items-center justify-center gap-2 bg-primary-foreground/10 rounded-lg p-2">
-          <span className="text-xs text-primary-foreground/80 mr-2">Choose Counselor:</span>
-          <Button
-            variant={selectedLanguage === "en-IN" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleLanguageSelect("en-IN", "male")}
-            disabled={isSwitchingCounselor}
-            className={`text-sm font-semibold px-4 ${
-              selectedLanguage === "en-IN" 
-                ? "bg-primary-foreground text-primary shadow-md" 
-                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-            }`}
-          >
-            {isSwitchingCounselor && selectedLanguage !== "en-IN" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            🇬🇧 English (Rahul)
-          </Button>
-          <Button
-            variant={selectedLanguage === "hi-IN" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => handleLanguageSelect("hi-IN", "female")}
-            disabled={isSwitchingCounselor}
-            className={`text-sm font-semibold px-4 ${
-              selectedLanguage === "hi-IN" 
-                ? "bg-primary-foreground text-primary shadow-md" 
-                : "text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/30"
-            }`}
-          >
-            {isSwitchingCounselor && selectedLanguage !== "hi-IN" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            🇮🇳 हिंदी (Priya)
-          </Button>
+          <span className="text-xs text-primary-foreground/80 mr-2">Language:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isSwitchingCounselor}
+                className="bg-primary-foreground text-primary shadow-md font-semibold px-4 flex items-center gap-2"
+              >
+                {isSwitchingCounselor ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                {SUPPORTED_LANGUAGES[selectedLanguage as SupportedLanguage]?.flag}{' '}
+                {SUPPORTED_LANGUAGES[selectedLanguage as SupportedLanguage]?.shortName || 'English'}
+                <ChevronDown className="h-4 w-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-48">
+              {Object.entries(SUPPORTED_LANGUAGES).map(([code, lang]) => (
+                <DropdownMenuItem
+                  key={code}
+                  onClick={() => handleLanguageSelect(
+                    code, 
+                    code === 'hi-IN' ? 'female' : 'male'
+                  )}
+                  className={`cursor-pointer ${selectedLanguage === code ? 'bg-primary/10 font-semibold' : ''}`}
+                >
+                  <span className="mr-2">{lang.flag}</span>
+                  {lang.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
