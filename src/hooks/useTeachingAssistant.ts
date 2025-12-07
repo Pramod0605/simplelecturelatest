@@ -69,26 +69,69 @@ export function useTeachingAssistant() {
       console.log('[useTeachingAssistant] Raw response:', JSON.stringify(data).substring(0, 1000));
       console.log('[useTeachingAssistant] presentationSlides count:', data.presentationSlides?.length);
       
-      // Normalize slide structure - ensure all fields are properly mapped
-      const normalizedSlides: PresentationSlide[] = (data.presentationSlides || []).map((slide: any) => ({
-        title: slide.title || 'Untitled Slide',
-        content: slide.content || '',
-        keyPoints: slide.keyPoints || slide.key_points || [],
-        formula: slide.formula || null,
-        narration: slide.narration || slide.content || '',
-        isStory: slide.isStory === true || slide.is_story === true,
-        isTips: slide.isTips === true || slide.is_tips === true,
-        infographic: slide.infographic || null,
-        infographicUrl: slide.infographicUrl || slide.infographic_url || null,
-        videoUrl: slide.videoUrl || slide.video_url || null,
-      }));
+      // Check if there's an error in the response
+      if (data.error) {
+        console.error('[useTeachingAssistant] Error from edge function:', data.error);
+        throw new Error(data.error);
+      }
       
-      console.log('[useTeachingAssistant] First normalized slide:', JSON.stringify(normalizedSlides[0], null, 2));
+      // Helper to detect if content is raw JSON (parsing failure indicator)
+      const isContentRawJson = (content: string): boolean => {
+        if (!content || typeof content !== 'string') return false;
+        const trimmed = content.trim();
+        return trimmed.startsWith('{') && (trimmed.includes('"presentation_slides"') || trimmed.includes('"title"'));
+      };
+      
+      // Normalize slide structure - ensure all fields are properly mapped
+      const normalizedSlides: PresentationSlide[] = (data.presentationSlides || []).map((slide: any) => {
+        // Check if content is actually raw JSON (indicates parsing failed upstream)
+        if (slide.content && isContentRawJson(slide.content)) {
+          console.warn('[useTeachingAssistant] ⚠️ Detected raw JSON in slide content - this slide is invalid');
+          return {
+            title: 'Error',
+            content: 'There was an issue loading this content.',
+            keyPoints: ['Please try again'],
+            formula: null,
+            narration: 'Sorry, there was a problem loading this slide. Please try asking again.',
+            isStory: false,
+            isTips: false,
+            infographic: null,
+            infographicUrl: null,
+            videoUrl: null,
+          };
+        }
+        
+        return {
+          title: slide.title || 'Untitled Slide',
+          content: slide.content || '',
+          keyPoints: slide.keyPoints || slide.key_points || [],
+          formula: slide.formula || null,
+          narration: slide.narration || slide.content || '',
+          isStory: slide.isStory === true || slide.is_story === true,
+          isTips: slide.isTips === true || slide.is_tips === true,
+          infographic: slide.infographic || null,
+          infographicUrl: slide.infographicUrl || slide.infographic_url || null,
+          videoUrl: slide.videoUrl || slide.video_url || null,
+        };
+      });
+      
+      // Filter out completely invalid slides (those with raw JSON content)
+      const validSlides = normalizedSlides.filter(slide => 
+        slide.title !== 'Error' && 
+        slide.keyPoints.length > 0 &&
+        !isContentRawJson(slide.narration)
+      );
+      
+      console.log('[useTeachingAssistant] Valid slides:', validSlides.length, 'of', normalizedSlides.length);
+      console.log('[useTeachingAssistant] First normalized slide:', JSON.stringify(validSlides[0] || normalizedSlides[0], null, 2));
 
+      // Use valid slides if available, otherwise fall back to all normalized slides
+      const slidesToUse = validSlides.length > 0 ? validSlides : normalizedSlides;
+      
       const response: TeachingResponse = {
         cached: data.cached || false,
         answer: data.answer || '',
-        presentationSlides: normalizedSlides,
+        presentationSlides: slidesToUse,
         latexFormulas: data.latexFormulas || data.latex_formulas || [],
         keyPoints: data.keyPoints || data.key_points || [],
         followUpQuestions: data.followUpQuestions || data.follow_up_questions || [],
