@@ -347,10 +347,32 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setNarrationLanguage(lang);
     stopSpeaking();
     clearTimers();
-    narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
     setInfographicPhase('hidden');
+    
+    // Restart narration from current slide in the new language
+    if (activeResponse?.presentationSlides) {
+      const remainingSlides = activeResponse.presentationSlides.slice(currentSlideIndex);
+      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
+      
+      remainingSlides.forEach((slide, idx) => {
+        const narrationText = slide.narration || slide.content;
+        if (narrationText) {
+          queue.push({
+            text: narrationText,
+            slideIndex: currentSlideIndex + idx,
+            subtitleChunks: splitIntoSubtitleChunks(narrationText),
+            hasInfographic: !!slide.infographicUrl
+          });
+        }
+      });
+      
+      if (queue.length > 0) {
+        narrationQueueRef.current = queue;
+        setTimeout(() => startNarration(), 300);
+      }
+    }
   };
 
   const handleMuteToggle = () => {

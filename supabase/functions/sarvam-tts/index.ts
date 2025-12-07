@@ -134,8 +134,8 @@ serve(async (req) => {
           inputs: [chunk],
           target_language_code: sarvamLangCode,
           speaker: speaker,
-          pitch: 0.8, // Higher pitch for energetic, lively tone (max 1)
-          pace: 0.65, // Slower for better comprehension and clarity
+              pitch: 0.8, // Higher pitch for energetic, lively tone (max 1)
+              pace: 0.55, // Even slower for clearer comprehension
           loudness: 1.5,
           speech_sample_rate: 22050,
           enable_preprocessing: true,
@@ -162,8 +162,8 @@ serve(async (req) => {
               inputs: [chunk],
               target_language_code: sarvamLangCode,
               speaker: speaker,
-              pitch: 0.8,
-              pace: 0.65,
+            pitch: 0.8,
+            pace: 0.55,
               loudness: 1.5,
               speech_sample_rate: 22050,
               enable_preprocessing: true,
