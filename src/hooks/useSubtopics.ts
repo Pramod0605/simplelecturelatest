@@ -14,6 +14,7 @@ export interface Subtopic {
   notes_markdown?: string;
   content_markdown?: string;
   pdf_url?: string;
+  content_json?: any;
   ai_generated_video_url?: string;
   ai_generated_podcast_url?: string;
   created_at?: string;

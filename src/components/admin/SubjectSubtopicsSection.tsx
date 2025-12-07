@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, Upload, HelpCircle } from "lucide-react";
+import { Plus, Edit, Trash2, HelpCircle } from "lucide-react";
 import { VideoPreview } from "./VideoPreview";
 import { PDFPreview } from "./PDFPreview";
 import { B2FileUploadWidget } from "./B2FileUploadWidget";
+import { JsonUploadParseWidget } from "./JsonUploadParseWidget";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -77,6 +78,7 @@ export function SubjectSubtopicsSection({
     notes_markdown: "",
     content_markdown: "",
     pdf_url: "",
+    content_json: null as any,
   });
 
   const { data: subtopics, isLoading } = useSubtopics(topicId);
@@ -95,6 +97,7 @@ export function SubjectSubtopicsSection({
       notes_markdown: "",
       content_markdown: "",
       pdf_url: "",
+      content_json: null,
     });
   };
 
@@ -173,6 +176,7 @@ export function SubjectSubtopicsSection({
       notes_markdown: subtopic.notes_markdown || "",
       content_markdown: subtopic.content_markdown || "",
       pdf_url: subtopic.pdf_url || "",
+      content_json: subtopic.content_json || null,
     });
   };
 
@@ -416,6 +420,15 @@ export function SubjectSubtopicsSection({
                 />
               )}
             </div>
+
+            {/* JSON Upload/Parse for Subtopics */}
+            <JsonUploadParseWidget
+              currentJson={subtopicForm.content_json}
+              onJsonChange={(json) => setSubtopicForm({ ...subtopicForm, content_json: json })}
+              pdfUrl={subtopicForm.pdf_url}
+              entityType="subtopic"
+              entityName={subtopicForm.title || "New Subtopic"}
+            />
           </div>
 
           <DialogFooter>
