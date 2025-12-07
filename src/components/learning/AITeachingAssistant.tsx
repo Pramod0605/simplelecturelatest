@@ -48,6 +48,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [isNarrating, setIsNarrating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [hasSpokenLoadingMessage, setHasSpokenLoadingMessage] = useState(false);
+  const [loadingMessageComplete, setLoadingMessageComplete] = useState(false);
+  const [isPresentationReady, setIsPresentationReady] = useState(false);
   const [infographicPhase, setInfographicPhase] = useState<'hidden' | 'zooming' | 'zoomed' | 'returning'>('hidden');
   
   // UI States
@@ -115,44 +117,104 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   useEffect(() => {
     if (isLoading && !hasSpokenLoadingMessage && !isMuted) {
       setHasSpokenLoadingMessage(true);
+      setLoadingMessageComplete(false);
+      setIsPresentationReady(false);
       const loadingMessage = narrationLanguage === 'hi-IN' 
         ? 'आपकी प्रस्तुति तैयार हो रही है! बस कुछ ही सेकंड!'
         : 'Working on your presentation! Just a moment!';
-      speak(loadingMessage, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male');
+      speak(loadingMessage, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
+        // Loading message finished speaking
+        setLoadingMessageComplete(true);
+      });
     }
     if (!isLoading) {
       setHasSpokenLoadingMessage(false);
     }
   }, [isLoading, hasSpokenLoadingMessage, isMuted, narrationLanguage, speak]);
 
-  // Start narration when response is received
+  // Preload infographic images when response arrives
+  const preloadImages = useCallback(async (slides: PresentationSlide[]): Promise<void> => {
+    const imageUrls = slides
+      .map(s => s.infographicUrl)
+      .filter((url): url is string => !!url);
+    
+    if (imageUrls.length === 0) {
+      return Promise.resolve();
+    }
+    
+    const loadPromises = imageUrls.map(url => {
+      return new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve(); // Don't block on errors
+        img.src = url;
+      });
+    });
+    
+    // Wait for all images or timeout after 3 seconds
+    await Promise.race([
+      Promise.all(loadPromises),
+      new Promise<void>(resolve => setTimeout(resolve, 3000))
+    ]);
+  }, []);
+
+  // Prepare presentation when response is received
   useEffect(() => {
-    if (currentResponse?.presentationSlides && !isMuted && !isNarratingRef.current) {
+    if (currentResponse?.presentationSlides && currentResponse.presentationSlides.length > 0) {
+      setIsPresentationReady(false);
+      
+      // Preload images, then mark ready
+      preloadImages(currentResponse.presentationSlides).then(() => {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            setIsPresentationReady(true);
+          }, 100);
+        });
+      });
+    }
+  }, [currentResponse, preloadImages]);
+
+  // Start narration only when both loading message is done AND presentation is ready
+  useEffect(() => {
+    if (
+      currentResponse?.presentationSlides && 
+      !isMuted && 
+      !isNarratingRef.current && 
+      isPresentationReady && 
+      (loadingMessageComplete || !hasSpokenLoadingMessage)
+    ) {
+      // Stop any remaining audio
       stopSpeaking();
       
-      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
+      // Brief delay after loading message
+      const startDelay = loadingMessageComplete ? 500 : 100;
       
-      currentResponse.presentationSlides.forEach((slide, index) => {
-        const narrationText = slide.narration || slide.content;
-        if (narrationText) {
-          queue.push({ 
-            text: narrationText, 
-            slideIndex: index,
-            subtitleChunks: splitIntoSubtitleChunks(narrationText),
-            hasInfographic: !!slide.infographicUrl
-          });
+      setTimeout(() => {
+        const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
+        
+        currentResponse.presentationSlides.forEach((slide, index) => {
+          const narrationText = slide.narration || slide.content;
+          if (narrationText) {
+            queue.push({ 
+              text: narrationText, 
+              slideIndex: index,
+              subtitleChunks: splitIntoSubtitleChunks(narrationText),
+              hasInfographic: !!slide.infographicUrl
+            });
+          }
+        });
+        
+        if (queue.length > 0) {
+          narrationQueueRef.current = queue;
+          setCurrentSlideIndex(0);
+          setProgress(0);
+          setCurrentTime(0);
+          startNarration();
         }
-      });
-      
-      if (queue.length > 0) {
-        narrationQueueRef.current = queue;
-        setCurrentSlideIndex(0);
-        setProgress(0);
-        setCurrentTime(0);
-        startNarration();
-      }
+      }, startDelay);
     }
-  }, [currentResponse, isMuted]);
+  }, [currentResponse, isMuted, isPresentationReady, loadingMessageComplete, hasSpokenLoadingMessage]);
 
   const startNarration = async () => {
     if (isNarratingRef.current || narrationQueueRef.current.length === 0) return;
@@ -330,6 +392,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setInfographicPhase('hidden');
     setProgress(0);
     setCurrentTime(0);
+    setIsPresentationReady(false);
+    setLoadingMessageComplete(false);
     
     const question = inputText.trim();
     setInputText('');
@@ -569,16 +633,19 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
           )}>
             {/* Presentation Display */}
             <div className="flex-1 relative min-h-0">
-              {isLoading ? (
+              {isLoading || (activeResponse && !isPresentationReady) ? (
                 <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
                   <CardContent className="text-center py-12">
                     <Loader2 className="h-16 w-16 animate-spin mx-auto text-primary mb-4" />
                     <p className="text-lg text-muted-foreground">
-                      {narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...'}
+                      {isLoading 
+                        ? (narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...')
+                        : (narrationLanguage === 'hi-IN' ? 'स्लाइड्स लोड हो रही हैं...' : 'Loading slides...')
+                      }
                     </p>
                   </CardContent>
                 </Card>
-              ) : activeResponse && currentSlide ? (
+              ) : activeResponse && currentSlide && isPresentationReady ? (
                 <div className="h-full flex flex-col">
                   <div className="flex-1 relative overflow-hidden rounded-xl min-h-0">
                     <SlideComponent
