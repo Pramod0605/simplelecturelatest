@@ -119,6 +119,11 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
+      // Add delay between chunks to avoid rate limiting (except for first chunk)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       const response = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
@@ -141,6 +146,40 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Sarvam API error on chunk ${i + 1}:`, response.status, errorText);
+        
+        // On rate limit, wait and retry once
+        if (response.status === 429) {
+          console.log(`  Rate limited, waiting 2s and retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const retryResponse = await fetch('https://api.sarvam.ai/text-to-speech', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'API-Subscription-Key': apiKey,
+            },
+            body: JSON.stringify({
+              inputs: [chunk],
+              target_language_code: sarvamLangCode,
+              speaker: speaker,
+              pitch: 0.2,
+              pace: 0.7,
+              loudness: 1.5,
+              speech_sample_rate: 22050,
+              enable_preprocessing: true,
+              model: 'bulbul:v2',
+            }),
+          });
+          
+          if (retryResponse.ok) {
+            const retryResult = await retryResponse.json();
+            if (retryResult.audios && retryResult.audios.length > 0) {
+              audioChunks.push(retryResult.audios[0]);
+              continue;
+            }
+          }
+        }
+        
         return new Response(
           JSON.stringify({ error: 'Sarvam TTS failed', details: errorText }),
           { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
