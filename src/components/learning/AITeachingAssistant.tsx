@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Mic, MicOff, Send, Loader2, Globe, ChevronLeft, ChevronRight, Languages, Eye } from 'lucide-react';
+import { Mic, MicOff, Send, Loader2, Globe, ChevronLeft, ChevronRight, Languages, Eye, Play } from 'lucide-react';
 import { useTeachingAssistant, TeachingResponse, PresentationSlide } from '@/hooks/useTeachingAssistant';
 import { useWebSpeech } from '@/hooks/useWebSpeech';
 import { TeacherAvatarPanel } from './TeacherAvatarPanel';
@@ -20,7 +20,7 @@ interface AITeachingAssistantProps {
   onTabActive?: () => void;
 }
 
-// Split text into chunks of ~15 words for dynamic subtitle display
+// Split text into chunks of ~12 words for dynamic subtitle display
 function splitIntoSubtitleChunks(text: string): string[] {
   const words = text.split(/\s+/);
   const chunks: string[] = [];
@@ -43,6 +43,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [isMuted, setIsMuted] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
   const [hasSpokenLoadingMessage, setHasSpokenLoadingMessage] = useState(false);
+  const [infographicPhase, setInfographicPhase] = useState<'hidden' | 'zooming' | 'zoomed' | 'returning'>('hidden');
   
   const { isLoading, currentResponse, askQuestion, clearResponse } = useTeachingAssistant();
   const { 
@@ -57,10 +58,11 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     isSupported 
   } = useWebSpeech();
 
-  const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[] }>>([]);
+  const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }>>([]);
   const isNarratingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
   const subtitleIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const infographicTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Notify parent when tab is active
   useEffect(() => {
@@ -84,8 +86,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     if (isLoading && !hasSpokenLoadingMessage && !isMuted) {
       setHasSpokenLoadingMessage(true);
       const loadingMessage = narrationLanguage === 'hi-IN' 
-        ? 'आपकी प्रस्तुति तैयार हो रही है, कृपया प्रतीक्षा करें...'
-        : 'We are working on your presentation, please wait...';
+        ? 'आपकी प्रस्तुति तैयार हो रही है! बस कुछ ही सेकंड, आपके लिए कुछ बहुत खास तैयार कर रहा हूं!'
+        : 'Working on your presentation! Just a moment, I am preparing something special for you!';
       speak(loadingMessage, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male');
     }
     if (!isLoading) {
@@ -99,7 +101,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       // Stop loading message if playing
       stopSpeaking();
       
-      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[] }> = [];
+      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
       
       currentResponse.presentationSlides.forEach((slide, index) => {
         const narrationText = slide.narration || slide.content;
@@ -107,7 +109,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
           queue.push({ 
             text: narrationText, 
             slideIndex: index,
-            subtitleChunks: splitIntoSubtitleChunks(narrationText)
+            subtitleChunks: splitIntoSubtitleChunks(narrationText),
+            hasInfographic: !!slide.infographicUrl
           });
         }
       });
@@ -115,8 +118,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       if (queue.length > 0) {
         narrationQueueRef.current = queue;
         setCurrentSlideIndex(0);
-        // Start narration after a brief delay to ensure UI is ready
-        setTimeout(() => startNarration(), 500);
+        // Start narration after showing slide for 3 seconds (reading time)
+        setTimeout(() => startNarration(), 3000);
       }
     }
   }, [currentResponse, isMuted]);
@@ -136,6 +139,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       
       // Update slide
       setCurrentSlideIndex(item.slideIndex);
+      setInfographicPhase('hidden');
       
       // Start dynamic subtitle cycling
       let chunkIndex = 0;
@@ -154,6 +158,15 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
       }, timePerChunk);
       
+      // If slide has infographic, zoom it after 2 seconds of narration
+      if (item.hasInfographic) {
+        infographicTimerRef.current = setTimeout(() => {
+          setInfographicPhase('zooming');
+          // Set to fully zoomed after animation
+          setTimeout(() => setInfographicPhase('zoomed'), 700);
+        }, 2000);
+      }
+      
       // Wait for speech to complete
       await new Promise<void>((resolve) => {
         speak(item.text, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
@@ -167,19 +180,80 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         subtitleIntervalRef.current = null;
       }
       
+      // Clear infographic timer
+      if (infographicTimerRef.current) {
+        clearTimeout(infographicTimerRef.current);
+        infographicTimerRef.current = null;
+      }
+      
+      // Return infographic to normal if it was zoomed
+      if (item.hasInfographic && (infographicPhase === 'zoomed' || infographicPhase === 'zooming')) {
+        setInfographicPhase('returning');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setInfographicPhase('hidden');
+      }
+      
       // Remove from queue after speaking
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Brief pause between slides (max 10 seconds wait is enforced by TTS)
+      // Pause between slides - show next slide for 2 seconds before narrating
       if (narrationQueueRef.current.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        setCurrentSubtitle('');
+        // Move to next slide immediately but wait before starting narration
+        setCurrentSlideIndex(narrationQueueRef.current[0].slideIndex);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
     
     // Narration complete
     setCurrentSubtitle('');
     setIsNarrating(false);
+    setInfographicPhase('hidden');
     isNarratingRef.current = false;
+  };
+
+  // Replay a specific slide
+  const handleReplaySlide = (slideIndex: number) => {
+    if (!activeResponse) return;
+    
+    // Stop any ongoing narration
+    stopSpeaking();
+    clearTimers();
+    
+    const slide = activeResponse.presentationSlides[slideIndex];
+    if (!slide) return;
+    
+    const narrationText = slide.narration || slide.content;
+    if (!narrationText) return;
+    
+    // Reset state
+    narrationQueueRef.current = [];
+    isNarratingRef.current = false;
+    setIsNarrating(false);
+    setCurrentSlideIndex(slideIndex);
+    setInfographicPhase('hidden');
+    
+    // Build single-slide queue
+    narrationQueueRef.current = [{
+      text: narrationText,
+      slideIndex,
+      subtitleChunks: splitIntoSubtitleChunks(narrationText),
+      hasInfographic: !!slide.infographicUrl
+    }];
+    
+    // Start after brief delay
+    setTimeout(() => startNarration(), 500);
+  };
+
+  const clearTimers = () => {
+    if (subtitleIntervalRef.current) {
+      clearInterval(subtitleIntervalRef.current);
+      subtitleIntervalRef.current = null;
+    }
+    if (infographicTimerRef.current) {
+      clearTimeout(infographicTimerRef.current);
+      infographicTimerRef.current = null;
+    }
   };
 
   const handleSend = async () => {
@@ -187,13 +261,11 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     
     // Stop any ongoing narration
     stopSpeaking();
-    if (subtitleIntervalRef.current) {
-      clearInterval(subtitleIntervalRef.current);
-      subtitleIntervalRef.current = null;
-    }
+    clearTimers();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
+    setInfographicPhase('hidden');
     
     const question = inputText.trim();
     setInputText('');
@@ -218,17 +290,14 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     const newLang = narrationLanguage === 'en-IN' ? 'hi-IN' : 'en-IN';
     setNarrationLanguage(newLang);
     stopSpeaking();
-    if (subtitleIntervalRef.current) {
-      clearInterval(subtitleIntervalRef.current);
-      subtitleIntervalRef.current = null;
-    }
+    clearTimers();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
+    setInfographicPhase('hidden');
   };
 
   const handleSubtitleLanguageToggle = () => {
-    // Just toggle subtitle language - display what's available
     setSubtitleLanguage(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN');
   };
 
@@ -237,13 +306,11 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setIsMuted(newMuted);
     if (newMuted) {
       stopSpeaking();
-      if (subtitleIntervalRef.current) {
-        clearInterval(subtitleIntervalRef.current);
-        subtitleIntervalRef.current = null;
-      }
+      clearTimers();
       narrationQueueRef.current = [];
       isNarratingRef.current = false;
       setIsNarrating(false);
+      setInfographicPhase('hidden');
     }
   };
 
@@ -269,13 +336,11 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const handleReplay = (slides: PresentationSlide[], narrationText: string) => {
     // Stop any ongoing narration first
     stopSpeaking();
-    if (subtitleIntervalRef.current) {
-      clearInterval(subtitleIntervalRef.current);
-      subtitleIntervalRef.current = null;
-    }
+    clearTimers();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
+    setInfographicPhase('hidden');
     
     // Create replay response
     const response: TeachingResponse = {
@@ -294,21 +359,23 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setCurrentSubtitle('');
     
     // Build narration queue
-    const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[] }> = [];
+    const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
     slides.forEach((slide, index) => {
       const text = slide.narration || slide.content;
       if (text) {
         queue.push({ 
           text, 
           slideIndex: index,
-          subtitleChunks: splitIntoSubtitleChunks(text)
+          subtitleChunks: splitIntoSubtitleChunks(text),
+          hasInfographic: !!slide.infographicUrl
         });
       }
     });
     
     if (queue.length > 0 && !isMuted) {
       narrationQueueRef.current = queue;
-      setTimeout(() => startNarration(), 500);
+      // Show first slide for 3 seconds before narrating
+      setTimeout(() => startNarration(), 3000);
     }
   };
 
@@ -327,9 +394,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (subtitleIntervalRef.current) {
-        clearInterval(subtitleIntervalRef.current);
-      }
+      clearTimers();
     };
   }, []);
 
@@ -355,7 +420,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     {narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...'}
                   </p>
                   <p className="text-sm text-muted-foreground/70 mt-2">
-                    {narrationLanguage === 'hi-IN' ? 'कृपया प्रतीक्षा करें...' : 'This may take a few seconds...'}
+                    {narrationLanguage === 'hi-IN' ? 'कुछ खास तैयार हो रहा है!' : 'Something special is being prepared!'}
                   </p>
                 </CardContent>
               </Card>
@@ -371,10 +436,12 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     isStorySlide={currentSlide.isStory}
                     currentSubtitle={showSubtitles ? currentSubtitle : undefined}
                     isNarrating={isNarrating}
+                    infographicPhase={infographicPhase}
+                    onReplaySlide={() => handleReplaySlide(currentSlideIndex)}
                   />
                 </div>
 
-                {/* Slide Navigation */}
+                {/* Slide Navigation with Replay Buttons */}
                 <div className="flex items-center justify-center gap-4 mt-3">
                   <Button
                     variant="outline"
@@ -386,19 +453,33 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   
-                  {/* Slide Indicators */}
+                  {/* Slide Indicators with Replay on Hover */}
                   <div className="flex items-center gap-2">
                     {activeResponse.presentationSlides.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentSlideIndex(idx)}
-                        className={cn(
-                          "w-2.5 h-2.5 rounded-full transition-all",
-                          idx === currentSlideIndex 
-                            ? "bg-primary scale-125" 
-                            : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                        )}
-                      />
+                      <Tooltip key={idx}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => {
+                              setCurrentSlideIndex(idx);
+                              if (!isNarrating) {
+                                handleReplaySlide(idx);
+                              }
+                            }}
+                            className={cn(
+                              "w-3 h-3 rounded-full transition-all hover:scale-125",
+                              idx === currentSlideIndex 
+                                ? "bg-primary scale-125" 
+                                : "bg-muted-foreground/30 hover:bg-primary/50"
+                            )}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          <div className="flex items-center gap-1">
+                            <Play className="h-3 w-3" />
+                            Play Slide {idx + 1}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     ))}
                   </div>
                   

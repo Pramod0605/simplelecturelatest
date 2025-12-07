@@ -5,15 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Map language codes to OpenAI voices
+// Map gender to lively, energetic voices
 // OpenAI TTS voices: alloy, echo, fable, onyx, nova, shimmer
 const getVoiceForGender = (gender: string): string => {
-  // shimmer/nova are more feminine, onyx/echo are more masculine
+  // Use more energetic, lively voices
   if (gender === 'male') {
-    return 'onyx'; // Deep male voice
+    return 'fable'; // Expressive, engaging British-accented voice
   }
-  return 'shimmer'; // Warm female voice
+  return 'nova'; // Energetic, youthful female voice
 };
+
+// Add energy to text for more lively speech
+function addEnergyToText(text: string): string {
+  // Add natural pauses and emphasis
+  let energized = text
+    // Add slight emphasis after key educational words
+    .replace(/\b(important|remember|key|note|formula|concept)\b/gi, '$1!')
+    // Add natural pauses after periods
+    .replace(/\. /g, '... ')
+    // Add enthusiasm markers
+    .replace(/\?/g, '?!')
+    // Keep it natural for Hindi
+    .replace(/। /g, '। ... ');
+  
+  return energized;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -41,9 +57,13 @@ serve(async (req) => {
     }
 
     const voice = getVoiceForGender(gender);
-    console.log(`Synthesizing speech: lang=${languageCode}, voice=${voice}, gender=${gender}, text length=${text.length}`);
+    
+    // Add energy to the text for lively delivery
+    const energizedText = addEnergyToText(text);
+    
+    console.log(`Synthesizing lively speech: lang=${languageCode}, voice=${voice}, gender=${gender}, text length=${energizedText.length}`);
 
-    // Call OpenAI TTS API
+    // Call OpenAI TTS API with faster, more energetic speed
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -51,11 +71,11 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'tts-1',
-        input: text,
+        model: 'tts-1-hd', // Use HD model for better quality
+        input: energizedText,
         voice: voice,
         response_format: 'mp3',
-        speed: 0.85, // Slower, more natural speech
+        speed: 1.0, // Normal speed for more energetic delivery
       }),
     });
 
@@ -81,7 +101,7 @@ serve(async (req) => {
     }
     const base64Audio = btoa(binary);
 
-    console.log(`Speech synthesized successfully, audio size: ${audioBuffer.byteLength} bytes`);
+    console.log(`Lively speech synthesized successfully, audio size: ${audioBuffer.byteLength} bytes`);
 
     return new Response(
       JSON.stringify({ 
