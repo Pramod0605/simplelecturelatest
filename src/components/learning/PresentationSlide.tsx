@@ -4,7 +4,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, BookOpen, Lightbulb, Play, Loader2 } from 'lucide-react';
+import { CheckCircle, BookOpen, Lightbulb, Image, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PresentationSlideProps {
@@ -16,12 +16,14 @@ interface PresentationSlideProps {
     narration?: string;
     isStory?: boolean;
     infographic?: string;
+    infographicUrl?: string;
     videoUrl?: string;
   };
   isActive?: boolean;
   slideNumber?: number;
   totalSlides?: number;
   isStorySlide?: boolean;
+  currentSubtitle?: string;
 }
 
 // Gradient backgrounds for different slides
@@ -38,9 +40,11 @@ export function PresentationSlide({
   isActive = false,
   slideNumber = 1,
   totalSlides = 1,
-  isStorySlide = false
+  isStorySlide = false,
+  currentSubtitle,
 }: PresentationSlideProps) {
   const [videoLoading, setVideoLoading] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const gradientIndex = (slideNumber - 1) % slideGradients.length;
   const gradient = slideGradients[gradientIndex];
 
@@ -100,7 +104,7 @@ export function PresentationSlide({
             {/* Content Column (2/3) */}
             <div className={cn(
               "lg:col-span-2 space-y-3",
-              !slide.formula && !slide.keyPoints?.length && "lg:col-span-3"
+              !slide.formula && !slide.keyPoints?.length && !slide.infographicUrl && "lg:col-span-3"
             )}>
               {/* Main Content */}
               <div className={cn(
@@ -116,15 +120,24 @@ export function PresentationSlide({
                 </ReactMarkdown>
               </div>
 
-              {/* Infographic Display */}
-              {slide.infographic && (
-                <div className="mt-3 p-3 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl border border-primary/20">
+              {/* Current Subtitle Display - Moved to slide area */}
+              {currentSubtitle && (
+                <div className="p-3 bg-background/80 backdrop-blur-sm rounded-lg border border-primary/20 shadow-sm">
+                  <p className="text-sm text-foreground/90 italic leading-relaxed">
+                    "{currentSubtitle.length > 200 ? currentSubtitle.substring(0, 200) + '...' : currentSubtitle}"
+                  </p>
+                </div>
+              )}
+
+              {/* Infographic Description (only if no image URL) */}
+              {slide.infographic && !slide.infographicUrl && (
+                <div className="p-3 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl border border-primary/20">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                      <Play className="h-4 w-4 text-primary" />
+                      <Image className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-primary mb-1">Infographic</p>
+                      <p className="text-xs font-medium text-primary mb-1">Visual Diagram</p>
                       <p className="text-sm text-muted-foreground">
                         {slide.infographic}
                       </p>
@@ -134,9 +147,41 @@ export function PresentationSlide({
               )}
             </div>
 
-            {/* Sidebar - Formula & Key Points (1/3) */}
-            {(slide.formula || (slide.keyPoints && slide.keyPoints.length > 0)) && (
+            {/* Sidebar - Infographic Image, Formula & Key Points (1/3) */}
+            {(slide.formula || (slide.keyPoints && slide.keyPoints.length > 0) || slide.infographicUrl) && (
               <div className="space-y-3">
+                {/* Infographic Image - Prominently Displayed */}
+                {slide.infographicUrl && (
+                  <div className="bg-background/80 backdrop-blur-sm p-3 rounded-xl border shadow-sm">
+                    <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide flex items-center gap-1">
+                      <Image className="h-3 w-3" />
+                      Visual Diagram
+                    </p>
+                    <div className="relative rounded-lg overflow-hidden bg-muted/30">
+                      {!imageLoaded && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      )}
+                      <img 
+                        src={slide.infographicUrl} 
+                        alt={slide.infographic || "Infographic"} 
+                        className={cn(
+                          "w-full max-h-48 object-contain rounded-lg transition-opacity duration-300",
+                          imageLoaded ? "opacity-100" : "opacity-0"
+                        )}
+                        onLoad={() => setImageLoaded(true)}
+                        onError={() => setImageLoaded(true)}
+                      />
+                    </div>
+                    {slide.infographic && (
+                      <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">
+                        {slide.infographic}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Formula Card */}
                 {slide.formula && (
                   <div className="bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-sm">

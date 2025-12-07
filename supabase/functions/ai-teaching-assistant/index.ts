@@ -304,9 +304,11 @@ STORY REQUIREMENT FOR LAST SLIDE:
     }));
 
     // Generate infographics for slides that need them
+    console.log(`Processing ${slides.length} slides for infographics...`);
     const slidesWithInfographics = await Promise.all(
-      slides.map(async (slide: any) => {
+      slides.map(async (slide: any, idx: number) => {
         if (slide.infographic) {
+          console.log(`Generating infographic for slide ${idx + 1}: ${slide.infographic.substring(0, 50)}...`);
           try {
             // Generate actual infographic using Lovable AI image generation
             const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -327,15 +329,23 @@ STORY REQUIREMENT FOR LAST SLIDE:
               }),
             });
 
+            console.log(`Infographic API response status for slide ${idx + 1}:`, imageResponse.status);
+            
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
               const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
               if (generatedImage) {
+                console.log(`Infographic generated successfully for slide ${idx + 1}, URL length: ${generatedImage.length}`);
                 return { ...slide, infographicUrl: generatedImage };
+              } else {
+                console.log(`No image URL in response for slide ${idx + 1}:`, JSON.stringify(imageData).substring(0, 200));
               }
+            } else {
+              const errorText = await imageResponse.text();
+              console.error(`Infographic API error for slide ${idx + 1}:`, imageResponse.status, errorText.substring(0, 200));
             }
           } catch (imgError) {
-            console.error('Infographic generation error:', imgError);
+            console.error(`Infographic generation error for slide ${idx + 1}:`, imgError);
           }
         }
         return slide;

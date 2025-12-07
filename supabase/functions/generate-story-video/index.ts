@@ -26,20 +26,22 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Video generation not configured",
+          error: "Video generation not configured - KIE_AI_API_KEY missing",
           videoUrl: null 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create a visual prompt from the story
-    const videoPrompt = prompt || `Educational animation: ${storyText.substring(0, 200)}. Simple, clear visuals with smooth animation. Suitable for educational content.`;
+    // Create a visual prompt from the story - keep it concise for video gen
+    const videoPrompt = prompt || `Educational animation showing: ${storyText.substring(0, 150)}. Simple, clear visuals with smooth motion.`;
 
-    console.log("Generating video with WAN 2.2:", videoPrompt.substring(0, 100));
+    console.log("Generating video with WAN 2.2 via kie.ai:", videoPrompt.substring(0, 80));
+    console.log("Using API Key:", KIE_AI_API_KEY.substring(0, 8) + "...");
 
-    // Call KIE.AI WAN 2.2 API
-    const response = await fetch("https://api.kie.ai/v1/video/generate", {
+    // Call KIE.AI WAN 2.2 API - correct endpoint format
+    // Based on kie.ai documentation for WAN 2.2 model
+    const response = await fetch("https://api.kie.ai/api/v1/video/wan/generate", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${KIE_AI_API_KEY}`,
@@ -47,39 +49,81 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt: videoPrompt,
+        model: "wan-2.2", // WAN 2.2 model
         resolution: "480p",
         aspect_ratio: "16:9",
-        enable_prompt_expansion: true,
-        duration: 8, // 8-10 seconds
+        duration: 5, // 5 seconds for story video
       }),
     });
+
+    console.log("KIE.AI Response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("KIE.AI API error:", response.status, errorText);
+      
+      // Try alternative endpoint format
+      console.log("Trying alternative endpoint...");
+      const altResponse = await fetch("https://api.kie.ai/v1/generations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${KIE_AI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "wan-2.2",
+          prompt: videoPrompt,
+          type: "video",
+          settings: {
+            resolution: "480p",
+            aspect_ratio: "16:9",
+            duration: 5,
+          }
+        }),
+      });
+
+      if (!altResponse.ok) {
+        const altErrorText = await altResponse.text();
+        console.error("KIE.AI alt endpoint error:", altResponse.status, altErrorText);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Video generation failed: ${response.status} - ${errorText.substring(0, 200)}`,
+            videoUrl: null 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const altResult = await altResponse.json();
+      console.log("Alt endpoint result:", JSON.stringify(altResult).substring(0, 200));
+      
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: `Video generation failed: ${response.status}`,
-          videoUrl: null 
+          success: true, 
+          videoUrl: altResult.output?.url || altResult.video_url || altResult.url || null,
+          taskId: altResult.task_id || altResult.id
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const result = await response.json();
-    console.log("Video generation result:", result);
+    console.log("Video generation result:", JSON.stringify(result).substring(0, 300));
 
-    // KIE.AI returns task_id for async processing
-    if (result.task_id) {
-      // Poll for completion (simplified - in production use webhooks)
+    // Handle async task-based response
+    if (result.task_id || result.id) {
+      const taskId = result.task_id || result.id;
+      console.log("Got task ID:", taskId, "- polling for completion...");
+      
+      // Poll for completion (max 60 seconds)
       let attempts = 0;
-      const maxAttempts = 30; // 30 seconds max wait
+      const maxAttempts = 30;
       
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
         
-        const statusResponse = await fetch(`https://api.kie.ai/v1/video/status/${result.task_id}`, {
+        const statusResponse = await fetch(`https://api.kie.ai/api/v1/video/status/${taskId}`, {
           headers: {
             "Authorization": `Bearer ${KIE_AI_API_KEY}`,
           },
@@ -87,19 +131,26 @@ serve(async (req) => {
         
         if (statusResponse.ok) {
           const statusResult = await statusResponse.json();
-          if (statusResult.status === "completed" && statusResult.video_url) {
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                videoUrl: statusResult.video_url 
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          } else if (statusResult.status === "failed") {
+          console.log("Status check attempt", attempts + 1, ":", statusResult.status);
+          
+          if (statusResult.status === "completed" || statusResult.status === "success") {
+            const videoUrl = statusResult.video_url || statusResult.output?.url || statusResult.url;
+            if (videoUrl) {
+              console.log("Video generated successfully:", videoUrl.substring(0, 50));
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  videoUrl: videoUrl 
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } else if (statusResult.status === "failed" || statusResult.status === "error") {
+            console.error("Video generation failed:", statusResult.error || statusResult.message);
             return new Response(
               JSON.stringify({ 
                 success: false, 
-                error: "Video generation failed",
+                error: statusResult.error || "Video generation failed",
                 videoUrl: null 
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -109,12 +160,13 @@ serve(async (req) => {
         attempts++;
       }
       
-      // Timeout - return task_id for later checking
+      // Timeout - return task ID for later checking
+      console.log("Video generation timed out, returning task ID for later");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          taskId: result.task_id,
-          error: "Video generation in progress",
+          taskId: taskId,
+          error: "Video generation in progress - check back later",
           videoUrl: null 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -122,10 +174,13 @@ serve(async (req) => {
     }
 
     // Direct response with video URL
+    const videoUrl = result.video_url || result.output?.url || result.url || null;
+    console.log("Direct video URL response:", videoUrl?.substring(0, 50) || "none");
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        videoUrl: result.video_url || result.url || null 
+        videoUrl: videoUrl 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
