@@ -162,6 +162,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   };
 
   const handleSubtitleLanguageToggle = () => {
+    // Just toggle subtitle language - don't throw error, just show what's available
     setSubtitleLanguage(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN');
   };
 
@@ -192,9 +193,18 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setInputText(question);
   };
 
+  // Store replay response separately to maintain presentation mode
+  const [replayResponse, setReplayResponse] = useState<TeachingResponse | null>(null);
+
   const handleReplay = (slides: PresentationSlide[], narrationText: string) => {
-    // Set the response for replay
-    const replayResponse: TeachingResponse = {
+    // Stop any ongoing narration first
+    stopSpeaking();
+    narrationQueueRef.current = [];
+    isNarratingRef.current = false;
+    setIsNarrating(false);
+    
+    // Create replay response
+    const response: TeachingResponse = {
       cached: true,
       answer: narrationText,
       presentationSlides: slides,
@@ -204,9 +214,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       narrationText: narrationText,
     };
     
-    // Clear current and set replay
-    clearResponse();
+    // Set replay response (this will be used for display)
+    setReplayResponse(response);
     setCurrentSlideIndex(0);
+    setCurrentSubtitle('');
     
     // Build narration queue
     const queue: Array<{ text: string; slideIndex: number }> = [];
@@ -223,8 +234,17 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     }
   };
 
-  const totalSlides = currentResponse?.presentationSlides?.length || 0;
-  const currentSlide = currentResponse?.presentationSlides?.[currentSlideIndex];
+  // Use currentResponse or replayResponse, whichever is available
+  const activeResponse = currentResponse || replayResponse;
+  const totalSlides = activeResponse?.presentationSlides?.length || 0;
+  const currentSlide = activeResponse?.presentationSlides?.[currentSlideIndex];
+
+  // Clear replay response when new question is asked
+  useEffect(() => {
+    if (currentResponse) {
+      setReplayResponse(null);
+    }
+  }, [currentResponse]);
 
   return (
     <TooltipProvider>
@@ -249,7 +269,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                   </p>
                 </CardContent>
               </Card>
-            ) : currentResponse && currentSlide ? (
+            ) : activeResponse && currentSlide ? (
               <div className="h-full flex flex-col">
                 {/* Single Slide Display - PPT Style */}
                 <div className="flex-1 relative overflow-hidden rounded-xl">
@@ -259,6 +279,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     slideNumber={currentSlideIndex + 1}
                     totalSlides={totalSlides}
                     isStorySlide={currentSlide.isStory}
+                    currentSubtitle={showSubtitles ? currentSubtitle : undefined}
                   />
                 </div>
 
@@ -276,7 +297,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                   
                   {/* Slide Indicators */}
                   <div className="flex items-center gap-2">
-                    {currentResponse.presentationSlides.map((_, idx) => (
+                    {activeResponse.presentationSlides.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentSlideIndex(idx)}
@@ -322,9 +343,9 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                 )}
 
                 {/* Follow-up Questions */}
-                {currentResponse.followUpQuestions && currentResponse.followUpQuestions.length > 0 && (
+                {activeResponse.followUpQuestions && activeResponse.followUpQuestions.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3 justify-center">
-                    {currentResponse.followUpQuestions.map((q, idx) => (
+                    {activeResponse.followUpQuestions.map((q, idx) => (
                       <Button
                         key={idx}
                         variant="outline"

@@ -10,6 +10,7 @@ export interface PresentationSlide {
   narration?: string;
   isStory?: boolean;
   infographic?: string;
+  infographicUrl?: string;
   videoUrl?: string;
 }
 
