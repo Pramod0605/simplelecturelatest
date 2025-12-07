@@ -223,9 +223,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
 
   const processNarrationQueue = async () => {
     while (narrationQueueRef.current.length > 0 && !isMutedRef.current) {
-      // Check for pause
-      while (isPausedRef.current) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      // Check for pause - if paused, exit loop cleanly so resume can restart
+      if (isPausedRef.current) {
+        console.log('[Narration] Paused - exiting queue processing');
+        break;
       }
       
       const item = narrationQueueRef.current[0];
@@ -243,13 +244,13 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       // 40-40-20 timing phases (concurrent with narration)
       const phase1Duration = estimatedAudioDuration * 0.40; // Slide display
       const phase2Duration = estimatedAudioDuration * 0.40; // Infographic zoom
-      const phase3Duration = estimatedAudioDuration * 0.20; // Return to slide
       
       let chunkIndex = 0;
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
       
       // Start speech and track completion
       let speechCompleted = false;
+      let wasStopped = false;
       let speechStartTime = Date.now();
       
       speak(item.text, narrationLanguage, 'male', () => {
@@ -261,16 +262,20 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       if (item.hasInfographic) {
         // Phase 2 starts at 40% - zoom infographic
         infographicTimers.push(setTimeout(() => {
-          console.log('[Narration] Phase 2: Zooming infographic at 40%');
-          setInfographicPhase('zooming');
-          setTimeout(() => setInfographicPhase('zoomed'), 200);
+          if (!isPausedRef.current) {
+            console.log('[Narration] Phase 2: Zooming infographic at 40%');
+            setInfographicPhase('zooming');
+            setTimeout(() => setInfographicPhase('zoomed'), 200);
+          }
         }, phase1Duration));
         
         // Phase 3 starts at 80% - return to slide
         infographicTimers.push(setTimeout(() => {
-          console.log('[Narration] Phase 3: Returning to slide at 80%');
-          setInfographicPhase('returning');
-          setTimeout(() => setInfographicPhase('hidden'), 300);
+          if (!isPausedRef.current) {
+            console.log('[Narration] Phase 3: Returning to slide at 80%');
+            setInfographicPhase('returning');
+            setTimeout(() => setInfographicPhase('hidden'), 300);
+          }
         }, phase1Duration + phase2Duration));
       }
       
@@ -283,7 +288,14 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       }, timePerChunk);
       
       // Wait for speech to actually complete before moving to next slide
-      while (!speechCompleted && !isMutedRef.current) {
+      while (!speechCompleted && !isMutedRef.current && !wasStopped) {
+        // Check if paused - exit cleanly
+        if (isPausedRef.current) {
+          console.log('[Narration] Pause detected during speech wait');
+          wasStopped = true;
+          break;
+        }
+        
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // Safety timeout - if speech takes way too long (3x estimated), move on
@@ -303,22 +315,39 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       }
       
       setInfographicPhase('hidden');
+      
+      // If stopped/paused, exit loop cleanly
+      if (wasStopped) {
+        console.log('[Narration] Exiting queue due to pause/stop');
+        break;
+      }
+      
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Brief pause before next slide
+      // Longer pause before next slide to prevent TTS rate limiting
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Increased from 400ms
+        
+        // Check pause again after delay
+        if (isPausedRef.current) {
+          console.log('[Narration] Paused during inter-slide delay');
+          break;
+        }
+        
         setCurrentSlideIndex(narrationQueueRef.current[0].slideIndex);
       }
     }
     
-    // Narration complete
-    setCurrentSubtitle('');
+    // Only mark complete if not paused (paused = will resume later)
+    if (!isPausedRef.current) {
+      setCurrentSubtitle('');
+      setProgress(100);
+    }
+    
     setIsNarrating(false);
     setInfographicPhase('hidden');
     isNarratingRef.current = false;
-    setProgress(100);
     
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -328,14 +357,29 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
 
   const handlePlayPause = () => {
     if (isPaused) {
+      // Resume: restart from current slide
       setIsPaused(false);
-      if (!isNarratingRef.current && activeResponse) {
-        // Restart from current slide
-        handleReplaySlide(currentSlideIndex);
+      isPausedRef.current = false;
+      
+      if (activeResponse) {
+        console.log('[PlayPause] Resuming from slide', currentSlideIndex);
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          handleReplaySlide(currentSlideIndex);
+        }, 100);
       }
     } else {
+      // Pause: stop everything cleanly
+      console.log('[PlayPause] Pausing');
       setIsPaused(true);
+      isPausedRef.current = true;
       stopSpeaking();
+      clearTimers();
+      
+      // Clear queue so processNarrationQueue exits
+      narrationQueueRef.current = [];
+      isNarratingRef.current = false;
+      setIsNarrating(false);
     }
   };
 

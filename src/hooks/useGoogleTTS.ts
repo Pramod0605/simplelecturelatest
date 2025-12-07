@@ -31,9 +31,11 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stoppedRef = useRef(false); // Track intentional stops
   const { toast } = useToast();
 
   const stopSpeaking = useCallback(() => {
+    stoppedRef.current = true; // Mark as intentionally stopped
     // Stop OpenAI TTS audio
     if (audioRef.current) {
       audioRef.current.pause();
@@ -169,6 +171,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
 
     setIsLoading(true);
     setError(null);
+    stoppedRef.current = false; // Reset stopped flag
 
     try {
       // Process each chunk sequentially
@@ -206,14 +209,24 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         // If Sarvam fails, complete silently - NO fallback to Web Speech
         if (audioContents.length === 0) {
           console.warn('⚠️ Sarvam TTS unavailable - skipping audio (no fallback)');
-          toast({
-            title: "Voice Unavailable",
-            description: "Voice narration is temporarily unavailable.",
-            variant: "default"
-          });
+          // Only show toast if not intentionally stopped
+          if (!stoppedRef.current) {
+            toast({
+              title: "Voice Unavailable",
+              description: "Voice narration is temporarily unavailable.",
+              variant: "default"
+            });
+          }
           setIsLoading(false);
           setIsSpeaking(false);
           onComplete?.();
+          return;
+        }
+
+        // Check if stopped before playing
+        if (stoppedRef.current) {
+          setIsLoading(false);
+          setIsSpeaking(false);
           return;
         }
 
@@ -226,6 +239,14 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
           const audioBlob = base64ToBlob(audioContent, mimeType);
           const audioUrl = URL.createObjectURL(audioBlob);
           
+          // Check if stopped before each segment
+          if (stoppedRef.current) {
+            URL.revokeObjectURL(audioUrl);
+            setIsLoading(false);
+            setIsSpeaking(false);
+            return;
+          }
+
           const audio = new Audio(audioUrl);
           audioRef.current = audio;
 
@@ -248,10 +269,21 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
               console.error(`❌ TTS: Audio segment ${j + 1} error`, e);
               URL.revokeObjectURL(audioUrl);
               audioRef.current = null;
-              reject(new Error('Audio playback failed'));
+              // If stopped, just resolve
+              if (stoppedRef.current) {
+                resolve();
+              } else {
+                reject(new Error('Audio playback failed'));
+              }
             };
 
-            audio.play().catch(reject);
+            audio.play().catch((err) => {
+              if (stoppedRef.current) {
+                resolve();
+              } else {
+                reject(err);
+              }
+            });
           });
 
           // Small pause between segments for natural flow
