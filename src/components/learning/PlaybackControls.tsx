@@ -25,8 +25,8 @@ interface PlaybackControlsProps {
   onFullScreenToggle: () => void;
   isMinimized: boolean;
   onMinimizeToggle: () => void;
-  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN';
-  onLanguageChange: (lang: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN') => void;
+  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN';
+  onLanguageChange: (lang: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN') => void;
   playbackSpeed: number;
   onSpeedChange: (speed: number) => void;
   progress: number; // 0-100
@@ -40,6 +40,8 @@ const languages = [
   { code: 'hi-IN', label: 'हिंदी', flag: '🇮🇳' },
   { code: 'kn-IN', label: 'ಕನ್ನಡ', flag: '🇮🇳' },
   { code: 'ta-IN', label: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'te-IN', label: 'తెలుగు', flag: '🇮🇳' },
+  { code: 'ml-IN', label: 'മലയാളം', flag: '🇮🇳' },
 ] as const;
 
 const speeds = [0.5, 0.75, 1, 1.25, 1.5];
