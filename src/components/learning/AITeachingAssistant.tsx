@@ -20,6 +20,19 @@ interface AITeachingAssistantProps {
   onTabActive?: () => void;
 }
 
+// Split text into chunks of ~15 words for dynamic subtitle display
+function splitIntoSubtitleChunks(text: string): string[] {
+  const words = text.split(/\s+/);
+  const chunks: string[] = [];
+  const wordsPerChunk = 12;
+  
+  for (let i = 0; i < words.length; i += wordsPerChunk) {
+    chunks.push(words.slice(i, i + wordsPerChunk).join(' '));
+  }
+  
+  return chunks;
+}
+
 export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectName, onTabActive }: AITeachingAssistantProps) {
   const [inputText, setInputText] = useState('');
   const [narrationLanguage, setNarrationLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
@@ -29,6 +42,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
+  const [hasSpokenLoadingMessage, setHasSpokenLoadingMessage] = useState(false);
   
   const { isLoading, currentResponse, askQuestion, clearResponse } = useTeachingAssistant();
   const { 
@@ -43,9 +57,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     isSupported 
   } = useWebSpeech();
 
-  const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number }>>([]);
+  const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[] }>>([]);
   const isNarratingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
+  const subtitleIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Notify parent when tab is active
   useEffect(() => {
@@ -64,22 +79,44 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     }
   }, [transcript]);
 
+  // Speak loading message when loading starts
+  useEffect(() => {
+    if (isLoading && !hasSpokenLoadingMessage && !isMuted) {
+      setHasSpokenLoadingMessage(true);
+      const loadingMessage = narrationLanguage === 'hi-IN' 
+        ? 'आपकी प्रस्तुति तैयार हो रही है, कृपया प्रतीक्षा करें...'
+        : 'We are working on your presentation, please wait...';
+      speak(loadingMessage, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male');
+    }
+    if (!isLoading) {
+      setHasSpokenLoadingMessage(false);
+    }
+  }, [isLoading, hasSpokenLoadingMessage, isMuted, narrationLanguage, speak]);
+
   // Handle narration when response is received - build queue from per-slide narration
   useEffect(() => {
     if (currentResponse?.presentationSlides && !isMuted && !isNarratingRef.current) {
-      const queue: Array<{ text: string; slideIndex: number }> = [];
+      // Stop loading message if playing
+      stopSpeaking();
+      
+      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[] }> = [];
       
       currentResponse.presentationSlides.forEach((slide, index) => {
         const narrationText = slide.narration || slide.content;
         if (narrationText) {
-          queue.push({ text: narrationText, slideIndex: index });
+          queue.push({ 
+            text: narrationText, 
+            slideIndex: index,
+            subtitleChunks: splitIntoSubtitleChunks(narrationText)
+          });
         }
       });
       
       if (queue.length > 0) {
         narrationQueueRef.current = queue;
         setCurrentSlideIndex(0);
-        startNarration();
+        // Start narration after a brief delay to ensure UI is ready
+        setTimeout(() => startNarration(), 500);
       }
     }
   }, [currentResponse, isMuted]);
@@ -97,10 +134,25 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     while (narrationQueueRef.current.length > 0 && !isMutedRef.current) {
       const item = narrationQueueRef.current[0];
       
-      // Update slide and subtitle
+      // Update slide
       setCurrentSlideIndex(item.slideIndex);
-      // Show subtitle in selected subtitle language (always English by default)
-      setCurrentSubtitle(item.text);
+      
+      // Start dynamic subtitle cycling
+      let chunkIndex = 0;
+      const totalChunks = item.subtitleChunks.length;
+      
+      // Calculate time per chunk based on narration length
+      const estimatedSpeakTime = item.text.length * 50; // ~50ms per character
+      const timePerChunk = Math.max(2000, estimatedSpeakTime / totalChunks);
+      
+      // Show first chunk immediately
+      setCurrentSubtitle(item.subtitleChunks[0] || item.text);
+      
+      // Cycle through subtitle chunks during narration
+      subtitleIntervalRef.current = setInterval(() => {
+        chunkIndex = (chunkIndex + 1) % totalChunks;
+        setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
+      }, timePerChunk);
       
       // Wait for speech to complete
       await new Promise<void>((resolve) => {
@@ -109,12 +161,18 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         });
       });
       
+      // Clear subtitle interval
+      if (subtitleIntervalRef.current) {
+        clearInterval(subtitleIntervalRef.current);
+        subtitleIntervalRef.current = null;
+      }
+      
       // Remove from queue after speaking
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Reduced pause between slides (100ms instead of 500ms)
+      // Brief pause between slides (max 10 seconds wait is enforced by TTS)
       if (narrationQueueRef.current.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
     
@@ -129,6 +187,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     
     // Stop any ongoing narration
     stopSpeaking();
+    if (subtitleIntervalRef.current) {
+      clearInterval(subtitleIntervalRef.current);
+      subtitleIntervalRef.current = null;
+    }
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
@@ -156,13 +218,17 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     const newLang = narrationLanguage === 'en-IN' ? 'hi-IN' : 'en-IN';
     setNarrationLanguage(newLang);
     stopSpeaking();
+    if (subtitleIntervalRef.current) {
+      clearInterval(subtitleIntervalRef.current);
+      subtitleIntervalRef.current = null;
+    }
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
   };
 
   const handleSubtitleLanguageToggle = () => {
-    // Just toggle subtitle language - don't throw error, just show what's available
+    // Just toggle subtitle language - display what's available
     setSubtitleLanguage(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN');
   };
 
@@ -171,6 +237,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setIsMuted(newMuted);
     if (newMuted) {
       stopSpeaking();
+      if (subtitleIntervalRef.current) {
+        clearInterval(subtitleIntervalRef.current);
+        subtitleIntervalRef.current = null;
+      }
       narrationQueueRef.current = [];
       isNarratingRef.current = false;
       setIsNarrating(false);
@@ -184,7 +254,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   };
 
   const handleNextSlide = () => {
-    if (currentResponse && currentSlideIndex < currentResponse.presentationSlides.length - 1) {
+    if (activeResponse && currentSlideIndex < activeResponse.presentationSlides.length - 1) {
       setCurrentSlideIndex(prev => prev + 1);
     }
   };
@@ -199,6 +269,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const handleReplay = (slides: PresentationSlide[], narrationText: string) => {
     // Stop any ongoing narration first
     stopSpeaking();
+    if (subtitleIntervalRef.current) {
+      clearInterval(subtitleIntervalRef.current);
+      subtitleIntervalRef.current = null;
+    }
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
@@ -220,17 +294,21 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setCurrentSubtitle('');
     
     // Build narration queue
-    const queue: Array<{ text: string; slideIndex: number }> = [];
+    const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[] }> = [];
     slides.forEach((slide, index) => {
       const text = slide.narration || slide.content;
       if (text) {
-        queue.push({ text, slideIndex: index });
+        queue.push({ 
+          text, 
+          slideIndex: index,
+          subtitleChunks: splitIntoSubtitleChunks(text)
+        });
       }
     });
     
     if (queue.length > 0 && !isMuted) {
       narrationQueueRef.current = queue;
-      startNarration();
+      setTimeout(() => startNarration(), 500);
     }
   };
 
@@ -245,6 +323,15 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setReplayResponse(null);
     }
   }, [currentResponse]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (subtitleIntervalRef.current) {
+        clearInterval(subtitleIntervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <TooltipProvider>
@@ -267,6 +354,9 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                   <p className="text-lg text-muted-foreground">
                     {narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...'}
                   </p>
+                  <p className="text-sm text-muted-foreground/70 mt-2">
+                    {narrationLanguage === 'hi-IN' ? 'कृपया प्रतीक्षा करें...' : 'This may take a few seconds...'}
+                  </p>
                 </CardContent>
               </Card>
             ) : activeResponse && currentSlide ? (
@@ -280,6 +370,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     totalSlides={totalSlides}
                     isStorySlide={currentSlide.isStory}
                     currentSubtitle={showSubtitles ? currentSubtitle : undefined}
+                    isNarrating={isNarrating}
                   />
                 </div>
 
@@ -325,22 +416,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                     {currentSlideIndex + 1} / {totalSlides}
                   </span>
                 </div>
-
-                {/* Subtitle Bar - Compact at bottom */}
-                {showSubtitles && currentSubtitle && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="mt-2 bg-background/95 backdrop-blur-sm border rounded-lg px-4 py-2 text-center cursor-help">
-                        <p className="text-sm text-foreground line-clamp-2">
-                          {currentSubtitle}
-                        </p>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-lg p-4">
-                      <p className="text-sm">{currentSubtitle}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
 
                 {/* Follow-up Questions */}
                 {activeResponse.followUpQuestions && activeResponse.followUpQuestions.length > 0 && (
@@ -467,14 +542,13 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         </div>
 
         {/* Right Panel - Teacher Avatar (25%) */}
-        <div className="flex-[25]">
+        <div className="flex-[25] min-w-[200px]">
           <TeacherAvatarPanel
             isSpeaking={isSpeaking || isNarrating}
             isProcessing={isLoading}
-            language={narrationLanguage}
-            onMuteToggle={handleMuteToggle}
             isMuted={isMuted}
-            subjectName={subjectName}
+            onMuteToggle={handleMuteToggle}
+            language={narrationLanguage}
           />
         </div>
       </div>

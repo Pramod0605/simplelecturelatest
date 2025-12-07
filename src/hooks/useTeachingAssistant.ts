@@ -9,6 +9,7 @@ export interface PresentationSlide {
   formula?: string;
   narration?: string;
   isStory?: boolean;
+  isTips?: boolean;
   infographic?: string;
   infographicUrl?: string;
   videoUrl?: string;
