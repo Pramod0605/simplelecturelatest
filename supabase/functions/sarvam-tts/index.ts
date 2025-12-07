@@ -83,12 +83,13 @@ async function makeTTSRequest(
   sarvamLangCode: string, 
   speaker: string, 
   apiKey: string,
-  maxRetries: number = 3
+  maxRetries: number = 5
 ): Promise<{ success: boolean; audio?: string; error?: string }> {
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (attempt > 0) {
-      const delay = attempt * 2000; // 2s, 4s, 6s
+      // Exponential backoff: 3s, 6s, 12s, 24s
+      const delay = Math.min(3000 * Math.pow(2, attempt - 1), 30000);
       console.log(`  Retry ${attempt}/${maxRetries}, waiting ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -175,9 +176,9 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
-      // Add delay between chunks to avoid rate limiting
+      // Add delay between chunks to avoid rate limiting - increased to 2.5s
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2500));
       }
 
       const result = await makeTTSRequest(chunk, sarvamLangCode, speaker, apiKey);
