@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Circle, Lock, AlertCircle } from "lucide-react";
+import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft } from "lucide-react";
 import { SubjectNavigationBar } from "@/components/learning/SubjectNavigationBar";
 import { PodcastPlayer } from "@/components/learning/PodcastPlayer";
 import { MCQTest } from "@/components/learning/MCQTest";
@@ -17,12 +17,14 @@ import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function Learning() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { data: learningData, isLoading: courseLoading } = useLearningCourse(courseId);
   const { data: chapters, isLoading: chaptersLoading } = useSubjectChapters(selectedSubjectId || undefined);
@@ -135,7 +137,21 @@ export default function Learning() {
         />
         
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-80 border-r bg-card overflow-y-auto">
+          {/* Collapse/Expand Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-card border shadow-sm hover:bg-accent ml-1"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
+
+          <aside className={cn(
+            "border-r bg-card overflow-y-auto transition-all duration-300",
+            sidebarCollapsed ? "w-0 overflow-hidden" : "w-80"
+          )}>
             <div className="p-4">
               <h2 className="text-xl font-bold mb-4">{selectedSubject?.name || "Select Subject"}</h2>
               
@@ -148,10 +164,10 @@ export default function Learning() {
               ) : chapters && chapters.length > 0 ? (
                 <Accordion type="single" collapsible className="space-y-2">
                   {chapters.map((chapter: any) => (
-                    <AccordionItem key={chapter.id} value={chapter.id}>
-                      <AccordionTrigger className="hover:bg-accent px-3 rounded">
+                    <AccordionItem key={chapter.id} value={chapter.id} className="border-b-0">
+                      <AccordionTrigger className="hover:bg-accent/50 px-3 py-2 rounded-lg bg-primary/10">
                         <div className="flex-1 text-left">
-                          <div className="font-semibold text-sm">
+                          <div className="font-semibold text-sm text-foreground">
                             Ch {chapter.chapter_number}: {chapter.title}
                           </div>
                           <Progress value={chapter.progress || 0} className="mt-2 h-1" />
@@ -202,8 +218,8 @@ export default function Learning() {
 
           <main className="flex-1 overflow-y-auto p-6">
             {selectedTopic ? (
-              <Tabs defaultValue="ai-assistant" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-8">
+              <Tabs defaultValue="videos" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-7">
                   <TabsTrigger value="videos">Videos</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                   <TabsTrigger value="podcast">Podcast</TabsTrigger>
@@ -211,7 +227,6 @@ export default function Learning() {
                   <TabsTrigger value="dpt">DPT</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                  <TabsTrigger value="content">Content</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="videos">
@@ -240,17 +255,6 @@ export default function Learning() {
 
                 <TabsContent value="assignments">
                   <AssignmentViewer topicId={selectedTopic.id} />
-                </TabsContent>
-
-                <TabsContent value="content">
-                  <div className="prose dark:prose-invert max-w-none">
-                    <h1>{selectedTopic.title}</h1>
-                    {selectedTopic.content_markdown ? (
-                      <div dangerouslySetInnerHTML={{ __html: selectedTopic.content_markdown }} />
-                    ) : (
-                      <p className="text-muted-foreground">No content available for this topic yet.</p>
-                    )}
-                  </div>
                 </TabsContent>
               </Tabs>
             ) : (
