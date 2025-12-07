@@ -18,9 +18,28 @@ export const SUPPORTED_LANGUAGES = {
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
-// Global request throttling to prevent rate limiting
+// Global request queue to prevent rate limiting - serializes ALL TTS requests
 let lastTTSRequestTime = 0;
 const MIN_REQUEST_GAP = 4000; // 4 seconds minimum between TTS API calls
+
+// Global request queue - ensures only ONE request at a time across ALL components
+let requestQueue: Promise<any> = Promise.resolve();
+const queueTTSRequest = async <T>(fn: () => Promise<T>): Promise<T> => {
+  // Chain this request to the end of the queue
+  const result = requestQueue.then(async () => {
+    // Enforce minimum gap
+    const timeSinceLastRequest = Date.now() - lastTTSRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_GAP) {
+      const waitTime = MIN_REQUEST_GAP - timeSinceLastRequest;
+      console.log(`⏳ Queue: waiting ${waitTime}ms before TTS request...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    lastTTSRequestTime = Date.now();
+    return fn();
+  });
+  requestQueue = result.catch(() => {}); // Don't break queue on errors
+  return result;
+};
 
 interface UseGoogleTTSReturn {
   speak: (text: string, languageCode?: SupportedLanguage, gender?: "female" | "male", onComplete?: () => void) => Promise<void>;
@@ -162,42 +181,37 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
   const getCacheKey = (text: string, lang: string, gender: string) => 
     `${lang}:${gender}:${text.substring(0, 100)}`;
 
-  // Fetch audio from Sarvam with throttling
+  // Fetch audio from Sarvam with queue-based throttling (serializes ALL requests)
   const fetchAudioFromSarvam = async (
     chunk: string, 
     languageCode: SupportedLanguage, 
     gender: "female" | "male"
   ): Promise<{ audioContents: string[]; mimeType: string } | null> => {
-    // Global throttling - wait if needed
-    const timeSinceLastRequest = Date.now() - lastTTSRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_GAP) {
-      const waitTime = MIN_REQUEST_GAP - timeSinceLastRequest;
-      console.log(`⏳ Throttling TTS request, waiting ${waitTime}ms...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    lastTTSRequestTime = Date.now();
+    // Use global queue to serialize requests
+    return queueTTSRequest(async () => {
+      console.log(`🔄 Sarvam TTS request starting...`);
+      try {
+        const sarvamResponse = await supabase.functions.invoke('sarvam-tts', {
+          body: { text: chunk, languageCode, gender },
+        });
 
-    try {
-      const sarvamResponse = await supabase.functions.invoke('sarvam-tts', {
-        body: { text: chunk, languageCode, gender },
-      });
-
-      if (!sarvamResponse.error && sarvamResponse.data?.audioContent) {
-        let audioContents: string[];
-        if (sarvamResponse.data.isChunked && Array.isArray(sarvamResponse.data.audioContent)) {
-          audioContents = sarvamResponse.data.audioContent;
-        } else {
-          audioContents = [sarvamResponse.data.audioContent];
+        if (!sarvamResponse.error && sarvamResponse.data?.audioContent) {
+          let audioContents: string[];
+          if (sarvamResponse.data.isChunked && Array.isArray(sarvamResponse.data.audioContent)) {
+            audioContents = sarvamResponse.data.audioContent;
+          } else {
+            audioContents = [sarvamResponse.data.audioContent];
+          }
+          console.log(`✅ Sarvam TTS success (${audioContents.length} segments)`);
+          return { audioContents, mimeType: 'audio/wav' };
         }
-        console.log(`✅ Sarvam TTS success (${audioContents.length} segments)`);
-        return { audioContents, mimeType: 'audio/wav' };
+        console.warn('⚠️ Sarvam TTS failed:', sarvamResponse.error?.message || sarvamResponse.data?.error);
+        return null;
+      } catch (err) {
+        console.warn('⚠️ Sarvam TTS error:', err);
+        return null;
       }
-      console.warn('⚠️ Sarvam TTS failed:', sarvamResponse.error?.message || sarvamResponse.data?.error);
-      return null;
-    } catch (err) {
-      console.warn('⚠️ Sarvam TTS error:', err);
-      return null;
-    }
+    });
   };
 
   // Pre-cache audio for upcoming slides (background generation)
