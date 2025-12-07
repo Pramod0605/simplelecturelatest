@@ -69,22 +69,48 @@ export function PresentationSlide({
       {/* Full-screen Infographic Zoom - Fills entire presentation area */}
       {showZoomedInfographic && slide.infographicUrl && (
         <div className={cn(
-          "absolute inset-0 z-20 bg-background/98 backdrop-blur-sm flex flex-col items-center justify-center p-8",
+          "absolute inset-0 z-20 bg-background/98 backdrop-blur-sm flex flex-col items-center justify-center p-6",
           infographicPhase === 'zooming' && "animate-in fade-in zoom-in-95 duration-500",
           infographicPhase === 'returning' && "animate-out fade-out zoom-out-95 duration-300"
         )}>
-          {/* Large Infographic - Constrained to prevent overflow */}
-          <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden">
-            <img 
-              src={slide.infographicUrl} 
-              alt="Visual diagram" 
-              className="max-w-[80%] max-h-[80%] object-contain rounded-xl shadow-2xl"
-            />
+          {/* Main content: Infographic + Subtitle side by side */}
+          <div className="flex-1 w-full flex items-center justify-center gap-6 overflow-hidden">
+            {/* Large Infographic - Constrained to prevent overflow */}
+            <div className="relative flex-1 flex items-center justify-center overflow-hidden max-w-[60%]">
+              <img 
+                src={slide.infographicUrl} 
+                alt="Visual diagram" 
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl"
+              />
+            </div>
+            
+            {/* Subtitle next to infographic during zoom */}
+            {currentSubtitle && (
+              <div className="flex-shrink-0 max-w-[35%] flex flex-col justify-center">
+                <div className={cn(
+                  "bg-gradient-to-r from-background/95 via-primary/5 to-background/95 backdrop-blur-sm border border-primary/20 rounded-xl px-5 py-4 shadow-lg",
+                  isFullScreen && "px-6 py-5"
+                )}>
+                  <div className={cn(
+                    "text-foreground leading-relaxed font-medium prose prose-sm dark:prose-invert max-w-none",
+                    "[&_p]:m-0 [&_.katex]:text-primary",
+                    isFullScreen ? "text-lg" : "text-base"
+                  )}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {currentSubtitle}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Key Points below infographic in zoom view */}
           {slide.keyPoints && slide.keyPoints.length > 0 && (
-            <div className="flex flex-wrap gap-2 justify-center mt-4 max-w-4xl">
+            <div className="flex flex-wrap gap-2 justify-center mt-4 max-w-4xl shrink-0">
               {slide.keyPoints.map((point, idx) => (
                 <Badge 
                   key={idx} 
@@ -284,19 +310,25 @@ export function PresentationSlide({
           </div>
         </div>
 
-        {/* Bottom: Subtitle Bar */}
-        {currentSubtitle && (
+        {/* Bottom: Subtitle Bar with LaTeX support - hidden during zoom (shown next to infographic instead) */}
+        {currentSubtitle && !showZoomedInfographic && (
           <div className="mt-4 shrink-0">
             <div className={cn(
               "bg-gradient-to-r from-background/95 via-primary/5 to-background/95 backdrop-blur-sm border border-primary/20 rounded-lg px-4 py-3",
               isFullScreen && "px-6 py-4"
             )}>
-              <p className={cn(
-                "text-foreground leading-relaxed line-clamp-2 text-center font-medium animate-in fade-in duration-200",
+              <div className={cn(
+                "text-foreground leading-relaxed text-center font-medium animate-in fade-in duration-200 prose prose-sm dark:prose-invert max-w-none",
+                "[&_p]:m-0 [&_.katex]:text-primary",
                 isFullScreen ? "text-lg" : "text-sm"
               )}>
-                {currentSubtitle}
-              </p>
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {currentSubtitle}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         )}

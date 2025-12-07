@@ -259,13 +259,17 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setCurrentSlideIndex(item.slideIndex);
       setInfographicPhase('hidden');
       
-      // Calculate subtitle timing based on word count
-      // Aim for ~2.5 words per second which matches slow TTS speed
+      // Calculate timing based on word count for 40-40-20 rule
       const totalChunks = item.subtitleChunks.length;
       const wordsInText = item.text.split(/\s+/).length;
       const wordsPerSecond = 2.0; // Slower to match audio pace
       const estimatedAudioDuration = (wordsInText / wordsPerSecond) * 1000;
       const timePerChunk = Math.max(1800, estimatedAudioDuration / totalChunks);
+      
+      // 40-40-20 timing phases (concurrent with narration)
+      const phase1Duration = estimatedAudioDuration * 0.40; // Slide display
+      const phase2Duration = estimatedAudioDuration * 0.40; // Infographic zoom
+      const phase3Duration = estimatedAudioDuration * 0.20; // Return to slide
       
       let chunkIndex = 0;
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
@@ -278,6 +282,24 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         speechCompleted = true;
       });
       
+      // Schedule infographic phases CONCURRENT with narration (40-40-20)
+      let infographicTimers: NodeJS.Timeout[] = [];
+      if (item.hasInfographic) {
+        // Phase 2 starts at 40% - zoom infographic
+        infographicTimers.push(setTimeout(() => {
+          console.log('[Narration] Phase 2: Zooming infographic at 40%');
+          setInfographicPhase('zooming');
+          setTimeout(() => setInfographicPhase('zoomed'), 200);
+        }, phase1Duration));
+        
+        // Phase 3 starts at 80% - return to slide
+        infographicTimers.push(setTimeout(() => {
+          console.log('[Narration] Phase 3: Returning to slide at 80%');
+          setInfographicPhase('returning');
+          setTimeout(() => setInfographicPhase('hidden'), 300);
+        }, phase1Duration + phase2Duration));
+      }
+      
       // Sync subtitles with estimated audio timing
       subtitleIntervalRef.current = setInterval(() => {
         if (chunkIndex < totalChunks - 1) {
@@ -287,7 +309,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       }, timePerChunk);
       
       // Wait for speech to actually complete before moving to next slide
-      // Check every 200ms if speech is done
       while (!speechCompleted && !isMutedRef.current) {
         await new Promise(resolve => setTimeout(resolve, 200));
         
@@ -298,16 +319,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         }
       }
       
-      // Handle infographic zoom after speech completes (quick visual emphasis)
-      if (item.hasInfographic && speechCompleted) {
-        setInfographicPhase('zooming');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setInfographicPhase('zoomed');
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setInfographicPhase('returning');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setInfographicPhase('hidden');
-      }
+      // Clear any remaining infographic timers
+      infographicTimers.forEach(timer => clearTimeout(timer));
       
       // Clear subtitle interval
       if (subtitleIntervalRef.current) {
