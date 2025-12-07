@@ -180,7 +180,8 @@ export function PresentationSlide({
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeKatex]}
                 >
-                  {`$$${slide.formula}$$`}
+                  {/* Clean formula: remove existing $ signs and wrap properly */}
+                  {`$$${slide.formula.replace(/^\$+|\$+$/g, '').replace(/\$\$/g, '').trim()}$$`}
                 </ReactMarkdown>
               </div>
             </div>
