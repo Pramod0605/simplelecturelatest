@@ -7,6 +7,9 @@ export interface PresentationSlide {
   content: string;
   keyPoints?: string[];
   formula?: string;
+  narration?: string;
+  isStory?: boolean;
+  infographic?: string;
 }
 
 export interface LatexFormula {
@@ -22,6 +25,7 @@ export interface TeachingResponse {
   keyPoints?: string[];
   followUpQuestions?: string[];
   narrationText: string;
+  subjectName?: string;
 }
 
 export function useTeachingAssistant() {
@@ -33,7 +37,8 @@ export function useTeachingAssistant() {
     question: string,
     topicId?: string,
     chapterId?: string,
-    language: string = 'en-IN'
+    language: string = 'en-IN',
+    subjectName?: string
   ): Promise<TeachingResponse | null> => {
     if (!question.trim()) {
       toast({
@@ -47,7 +52,7 @@ export function useTeachingAssistant() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-teaching-assistant', {
-        body: { question, topicId, chapterId, language }
+        body: { question, topicId, chapterId, language, subjectName }
       });
 
       if (error) {
@@ -66,6 +71,7 @@ export function useTeachingAssistant() {
         keyPoints: data.keyPoints || [],
         followUpQuestions: data.followUpQuestions || [],
         narrationText: data.narrationText || data.answer || '',
+        subjectName: data.subjectName,
       };
 
       setCurrentResponse(response);
