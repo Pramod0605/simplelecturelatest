@@ -68,6 +68,7 @@ import {
   useUpdateTopicOrder,
 } from "@/hooks/useSubjectManagement";
 import { B2FileUploadWidget } from "./B2FileUploadWidget";
+import { JsonUploadParseWidget } from "./JsonUploadParseWidget";
 import { SubjectSubtopicsSection } from "./SubjectSubtopicsSection";
 import { TopicVideosManager } from "./TopicVideosManager";
 import { VideoPreview } from "./VideoPreview";
@@ -166,6 +167,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     video_platform: "",
     notes_markdown: "",
     pdf_url: "",
+    content_json: null as any,
   });
 
   const [topicForm, setTopicForm] = useState({
@@ -178,6 +180,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     content_markdown: "",
     pdf_url: "",
     sequence_order: 1,
+    content_json: null as any,
   });
 
   const { data: chapters, isLoading } = useSubjectChapters(subjectId);
@@ -268,6 +271,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             video_platform: "",
             notes_markdown: "",
             pdf_url: "",
+            content_json: null,
           });
         },
         onError: (error: any) => {
@@ -321,6 +325,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             video_platform: "",
             notes_markdown: "",
             pdf_url: "",
+            content_json: null,
           });
         },
       }
@@ -392,6 +397,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             content_markdown: "",
             pdf_url: "",
             sequence_order: 1,
+            content_json: null,
           });
         },
         onError: (error: any) => {
@@ -446,6 +452,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             content_markdown: "",
             pdf_url: "",
             sequence_order: 1,
+            content_json: null,
           });
         },
       }
@@ -893,6 +900,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                       video_platform: "",
                       notes_markdown: "",
                       pdf_url: "",
+                      content_json: null,
                     });
                   }
                 }}
@@ -1096,6 +1104,15 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         )}
                       </div>
 
+                      {/* JSON Upload/Parse for Chapters */}
+                      <JsonUploadParseWidget
+                        currentJson={chapterForm.content_json}
+                        onJsonChange={(json) => setChapterForm({ ...chapterForm, content_json: json })}
+                        pdfUrl={chapterForm.pdf_url}
+                        entityType="chapter"
+                        entityName={chapterForm.title || "New Chapter"}
+                      />
+
                       <div className="space-y-2">
                         <Label>Notes (Markdown)</Label>
                         <Textarea
@@ -1183,14 +1200,15 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         setEditingChapter(chapter);
                         setChapterForm({
                           chapter_number: chapter.chapter_number,
-                      title: chapter.title,
-                      description: chapter.description || "",
-                      sequence_order: chapter.sequence_order,
-                      video_id: chapter.video_id || "",
-                      video_platform: chapter.video_platform || "",
-                      notes_markdown: chapter.notes_markdown || "",
-                      pdf_url: chapter.pdf_url || "",
-                    });
+                          title: chapter.title,
+                          description: chapter.description || "",
+                          sequence_order: chapter.sequence_order,
+                          video_id: chapter.video_id || "",
+                          video_platform: chapter.video_platform || "",
+                          notes_markdown: chapter.notes_markdown || "",
+                          pdf_url: chapter.pdf_url || "",
+                          content_json: (chapter as any).content_json || null,
+                        });
                   }}
                   onDelete={() => setDeleteChapterId(chapter.id)}
                   onAddTopic={() => {
@@ -1210,6 +1228,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                       content_markdown: topic.content_markdown || "",
                       pdf_url: topic.pdf_url || "",
                       sequence_order: topic.sequence_order,
+                      content_json: (topic as any).content_json || null,
                     });
                   }}
                   onDeleteTopic={(topicId) => {
@@ -1258,6 +1277,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
               content_markdown: "",
               pdf_url: "",
               sequence_order: 1,
+              content_json: null,
             });
           }
         }}
@@ -1439,6 +1459,15 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                  />
                )}
             </div>
+
+            {/* JSON Upload/Parse for Topics */}
+            <JsonUploadParseWidget
+              currentJson={topicForm.content_json}
+              onJsonChange={(json) => setTopicForm({ ...topicForm, content_json: json })}
+              pdfUrl={topicForm.pdf_url}
+              entityType="topic"
+              entityName={topicForm.title || "New Topic"}
+            />
           </div>
           <DialogFooter>
             <Button

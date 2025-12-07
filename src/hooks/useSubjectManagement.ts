@@ -28,6 +28,7 @@ export interface SubjectChapter {
   video_platform?: string;
   notes_markdown?: string;
   pdf_url?: string;
+  content_json?: any;
   ai_generated_video_url?: string;
   ai_generated_podcast_url?: string;
   created_at: string;
@@ -45,6 +46,7 @@ export interface SubjectTopic {
   notes_markdown?: string;
   content_markdown?: string;
   pdf_url?: string;
+  content_json?: any;
   ai_generated_video_url?: string;
   ai_generated_podcast_url?: string;
   sequence_order: number;
