@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Play, Video } from "lucide-react";
 import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RecordedVideosProps {
@@ -104,24 +104,23 @@ export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topi
 
   return (
     <div className="space-y-4">
-      {/* Language Filter */}
-      {availableLanguages.length > 1 && (
-        <div className="flex items-center gap-2">
-          <Select value={filterLanguage} onValueChange={setFilterLanguage}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Languages</SelectItem>
-              {availableLanguages.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {getLanguageLabel(lang)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Language Tabs */}
+      <Tabs value={filterLanguage} onValueChange={setFilterLanguage} className="w-full">
+        <TabsList className="h-auto flex-wrap gap-1">
+          <TabsTrigger value="all" className="text-xs px-3 py-1.5">
+            All ({allVideos.length})
+          </TabsTrigger>
+          {availableLanguages.map((lang) => {
+            const langLabel = getLanguageLabel(lang);
+            const count = allVideos.filter(v => v.language === lang).length;
+            return (
+              <TabsTrigger key={lang} value={lang} className="text-xs px-3 py-1.5">
+                {langLabel} ({count})
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
 
       {/* Video Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
