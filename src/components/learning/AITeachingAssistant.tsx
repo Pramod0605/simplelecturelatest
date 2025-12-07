@@ -148,54 +148,56 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       const estimatedDurationMs = (wordCount / wordsPerMinute) * 60 * 1000;
       
       // Phase timing: 40% slide view, 40% infographic zoom, 20% return
-      const phase1Duration = Math.max(3000, estimatedDurationMs * 0.4); // 40% for slide (min 3s)
-      const phase2Duration = Math.max(3000, estimatedDurationMs * 0.4); // 40% for infographic (min 3s)
-      const phase3Duration = Math.max(1500, estimatedDurationMs * 0.2); // 20% return (min 1.5s)
+      const phase1Duration = Math.max(2000, estimatedDurationMs * 0.4); // 40% for slide (min 2s)
+      const phase2Duration = Math.max(2000, estimatedDurationMs * 0.4); // 40% for infographic (min 2s)
+      const phase3Duration = Math.max(1000, estimatedDurationMs * 0.2); // 20% return (min 1s)
       
       // Subtitle timing
       let chunkIndex = 0;
       const totalChunks = item.subtitleChunks.length;
       const totalDuration = phase1Duration + phase2Duration + phase3Duration;
-      const timePerChunk = Math.max(2000, totalDuration / totalChunks);
+      const timePerChunk = Math.max(1500, totalDuration / totalChunks);
       
-      // Set initial subtitle
+      // Set initial subtitle IMMEDIATELY
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
       
-      // Start subtitle cycling immediately
+      // Start subtitle cycling
       subtitleIntervalRef.current = setInterval(() => {
         chunkIndex = (chunkIndex + 1) % totalChunks;
         setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
       }, timePerChunk);
       
-      // Start narration IMMEDIATELY
-      const speechPromise = new Promise<void>((resolve) => {
-        speak(item.text, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
-          resolve();
-        });
+      // START NARRATION IMMEDIATELY - Male voice for English, Female for Hindi
+      // Use 'male' for English to get the fable voice
+      let speechCompleted = false;
+      speak(item.text, narrationLanguage, 'male', () => {
+        speechCompleted = true;
       });
       
-      // PHASE 1: Slide visible for 40% of narration
+      // PHASE 1: Slide visible for 40% of narration (speech is already playing)
       await new Promise(resolve => setTimeout(resolve, phase1Duration));
       
       // PHASE 2: Zoom infographic for 40% of narration (synced with speech)
       if (item.hasInfographic) {
         setInfographicPhase('zooming');
-        await new Promise(resolve => setTimeout(resolve, 400)); // Quick zoom animation
+        await new Promise(resolve => setTimeout(resolve, 300)); // Quick zoom animation
         setInfographicPhase('zoomed');
-        await new Promise(resolve => setTimeout(resolve, phase2Duration - 400));
+        await new Promise(resolve => setTimeout(resolve, phase2Duration - 300));
         
         // PHASE 3: Return to slide for 20%
         setInfographicPhase('returning');
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 200));
         setInfographicPhase('hidden');
-        await new Promise(resolve => setTimeout(resolve, phase3Duration - 300));
+        await new Promise(resolve => setTimeout(resolve, phase3Duration - 200));
       } else {
         // No infographic - just wait for remaining time
         await new Promise(resolve => setTimeout(resolve, phase2Duration + phase3Duration));
       }
       
       // Wait for speech to complete if still playing
-      await speechPromise;
+      while (!speechCompleted && !isMutedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       
       // Clear subtitle interval
       if (subtitleIntervalRef.current) {
