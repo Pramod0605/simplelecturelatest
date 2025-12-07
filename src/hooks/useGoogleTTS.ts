@@ -183,7 +183,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
 
         // Try Sarvam AI first (authentic Indian voices)
         let audioContents: string[] = [];
-        let usedSarvam = false;
+        let mimeType = 'audio/wav';
 
         try {
           const sarvamResponse = await supabase.functions.invoke('sarvam-tts', {
@@ -197,19 +197,37 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
             } else {
               audioContents = [sarvamResponse.data.audioContent];
             }
-            usedSarvam = true;
             console.log(`✅ Using Sarvam AI TTS (${audioContents.length} audio segments)`);
           } else {
-            console.warn('⚠️ Sarvam TTS failed, trying Web Speech:', sarvamResponse.error?.message || sarvamResponse.data?.error);
+            console.warn('⚠️ Sarvam TTS failed, trying OpenAI:', sarvamResponse.error?.message || sarvamResponse.data?.error);
           }
         } catch (sarvamErr) {
-          console.warn('⚠️ Sarvam TTS error, trying Web Speech:', sarvamErr);
+          console.warn('⚠️ Sarvam TTS error, trying OpenAI:', sarvamErr);
         }
 
-        // If Sarvam fails, complete silently - NO fallback to Web Speech
+        // Fallback to OpenAI TTS if Sarvam fails
         if (audioContents.length === 0) {
-          console.warn('⚠️ Sarvam TTS unavailable - skipping audio (no fallback)');
-          // Only show toast if not intentionally stopped
+          console.log('🔄 Trying OpenAI TTS fallback...');
+          try {
+            const openaiResponse = await supabase.functions.invoke('google-tts', {
+              body: { text: chunk, languageCode, gender },
+            });
+
+            if (!openaiResponse.error && openaiResponse.data?.audioContent) {
+              audioContents = [openaiResponse.data.audioContent];
+              mimeType = 'audio/mpeg'; // OpenAI returns MP3
+              console.log('✅ Using OpenAI TTS fallback');
+            } else {
+              console.warn('⚠️ OpenAI TTS also failed:', openaiResponse.error?.message || openaiResponse.data?.error);
+            }
+          } catch (openaiErr) {
+            console.warn('⚠️ OpenAI TTS error:', openaiErr);
+          }
+        }
+
+        // If both fail, complete silently
+        if (audioContents.length === 0) {
+          console.warn('⚠️ All TTS providers unavailable - skipping audio');
           if (!stoppedRef.current) {
             toast({
               title: "Voice Unavailable",
@@ -234,8 +252,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         for (let j = 0; j < audioContents.length; j++) {
           const audioContent = audioContents[j];
           
-          // Create audio from base64 - Sarvam returns WAV
-          const mimeType = 'audio/wav';
+          // Create audio from base64
           const audioBlob = base64ToBlob(audioContent, mimeType);
           const audioUrl = URL.createObjectURL(audioBlob);
           
