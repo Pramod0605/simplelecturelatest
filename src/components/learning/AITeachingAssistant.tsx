@@ -141,38 +141,55 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setCurrentSlideIndex(item.slideIndex);
       setInfographicPhase('hidden');
       
+      // Calculate estimated narration duration for percentage-based timing
+      // At 0.75x speed, ~90 words per minute = ~1.5 words per second
+      const wordCount = item.text.split(/\s+/).length;
+      const wordsPerMinute = 90; // Slower speech at 0.75x
+      const estimatedDurationMs = (wordCount / wordsPerMinute) * 60 * 1000;
+      
+      // Phase timing: 40% slide reading, 40% infographic, 20% return to slide
+      const phase1Duration = Math.max(2000, estimatedDurationMs * 0.4); // Min 2s for slide reading
+      const phase2Duration = Math.max(2000, estimatedDurationMs * 0.4); // Min 2s for infographic
+      const phase3Duration = Math.max(1000, estimatedDurationMs * 0.2); // Min 1s for return
+      
       // Start dynamic subtitle cycling
       let chunkIndex = 0;
       const totalChunks = item.subtitleChunks.length;
+      const timePerChunk = Math.max(2500, (phase1Duration + phase2Duration + phase3Duration) / totalChunks);
       
-      // Calculate time per chunk based on narration length
-      const estimatedSpeakTime = item.text.length * 50; // ~50ms per character
-      const timePerChunk = Math.max(2000, estimatedSpeakTime / totalChunks);
-      
-      // Show first chunk immediately
+      // PHASE 1: Show slide for reading (40% of narration time)
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
+      await new Promise(resolve => setTimeout(resolve, phase1Duration));
       
-      // Cycle through subtitle chunks during narration
+      // Start subtitle cycling
       subtitleIntervalRef.current = setInterval(() => {
         chunkIndex = (chunkIndex + 1) % totalChunks;
         setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
       }, timePerChunk);
       
-      // If slide has infographic, zoom it after 2 seconds of narration
-      if (item.hasInfographic) {
-        infographicTimerRef.current = setTimeout(() => {
-          setInfographicPhase('zooming');
-          // Set to fully zoomed after animation
-          setTimeout(() => setInfographicPhase('zoomed'), 700);
-        }, 2000);
-      }
-      
-      // Wait for speech to complete
-      await new Promise<void>((resolve) => {
+      // Start narration
+      const speechPromise = new Promise<void>((resolve) => {
         speak(item.text, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
           resolve();
         });
       });
+      
+      // PHASE 2: Zoom infographic after brief delay (40% of narration time)
+      if (item.hasInfographic) {
+        infographicTimerRef.current = setTimeout(() => {
+          setInfographicPhase('zooming');
+          setTimeout(() => setInfographicPhase('zoomed'), 700);
+        }, 500); // Start zoom shortly after speech begins
+        
+        // Schedule return to slide after phase2 duration
+        setTimeout(() => {
+          setInfographicPhase('returning');
+          setTimeout(() => setInfographicPhase('hidden'), 500);
+        }, phase2Duration);
+      }
+      
+      // Wait for speech to complete
+      await speechPromise;
       
       // Clear subtitle interval
       if (subtitleIntervalRef.current) {
@@ -186,22 +203,20 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         infographicTimerRef.current = null;
       }
       
-      // Return infographic to normal if it was zoomed
-      if (item.hasInfographic && (infographicPhase === 'zoomed' || infographicPhase === 'zooming')) {
-        setInfographicPhase('returning');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setInfographicPhase('hidden');
-      }
+      // Ensure infographic is hidden
+      setInfographicPhase('hidden');
+      
+      // PHASE 3: Return to slide mode (20% of narration time) before next slide
+      await new Promise(resolve => setTimeout(resolve, phase3Duration));
       
       // Remove from queue after speaking
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Pause between slides - show next slide for 2 seconds before narrating
+      // Brief pause between slides
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
-        // Move to next slide immediately but wait before starting narration
         setCurrentSlideIndex(narrationQueueRef.current[0].slideIndex);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     

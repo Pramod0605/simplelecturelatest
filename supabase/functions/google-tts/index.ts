@@ -75,7 +75,7 @@ serve(async (req) => {
         input: energizedText,
         voice: voice,
         response_format: 'mp3',
-        speed: 1.0, // Normal speed for more energetic delivery
+        speed: 0.75, // Slower speed for better understanding
       }),
     });
 
