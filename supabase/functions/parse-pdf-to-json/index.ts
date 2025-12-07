@@ -20,8 +20,10 @@ interface DatalabResponse {
 // Helper function to get B2 signed download URL
 async function getB2DownloadUrl(filePath: string): Promise<string> {
   const B2_KEY_ID = Deno.env.get("B2_KEY_ID");
-  const B2_APP_KEY = Deno.env.get("B2_APP_KEY");
+  const B2_APP_KEY = Deno.env.get("B2_APPLICATION_KEY"); // Correct secret name
   const B2_BUCKET_NAME = Deno.env.get("B2_BUCKET_NAME") || "Simplelecture";
+  
+  console.log("B2 credentials check - KEY_ID exists:", !!B2_KEY_ID, "APP_KEY exists:", !!B2_APP_KEY);
   
   if (!B2_KEY_ID || !B2_APP_KEY) {
     throw new Error("B2 credentials not configured");
