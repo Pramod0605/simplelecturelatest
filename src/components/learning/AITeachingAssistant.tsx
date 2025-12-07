@@ -186,51 +186,57 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setCurrentSlideIndex(item.slideIndex);
       setInfographicPhase('hidden');
       
-      const wordCount = item.text.split(/\s+/).length;
-      const wordsPerMinute = 90;
-      const estimatedDurationMs = (wordCount / wordsPerMinute) * 60 * 1000;
-      
-      const phase1Duration = Math.max(2000, estimatedDurationMs * 0.4);
-      const phase2Duration = Math.max(2000, estimatedDurationMs * 0.4);
-      const phase3Duration = Math.max(1000, estimatedDurationMs * 0.2);
+      // Calculate subtitle timing based on word count
+      // Aim for ~2.5 words per second which matches slow TTS speed
+      const totalChunks = item.subtitleChunks.length;
+      const wordsInText = item.text.split(/\s+/).length;
+      const wordsPerSecond = 2.0; // Slower to match audio pace
+      const estimatedAudioDuration = (wordsInText / wordsPerSecond) * 1000;
+      const timePerChunk = Math.max(1800, estimatedAudioDuration / totalChunks);
       
       let chunkIndex = 0;
-      const totalChunks = item.subtitleChunks.length;
-      const totalDuration = phase1Duration + phase2Duration + phase3Duration;
-      const timePerChunk = Math.max(1500, totalDuration / totalChunks);
-      
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
       
-      subtitleIntervalRef.current = setInterval(() => {
-        chunkIndex = (chunkIndex + 1) % totalChunks;
-        setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
-      }, timePerChunk);
-      
+      // Start speech and track completion
       let speechCompleted = false;
+      let speechStartTime = Date.now();
+      
       speak(item.text, narrationLanguage, 'male', () => {
         speechCompleted = true;
       });
       
-      await new Promise(resolve => setTimeout(resolve, phase1Duration));
+      // Sync subtitles with estimated audio timing
+      subtitleIntervalRef.current = setInterval(() => {
+        if (chunkIndex < totalChunks - 1) {
+          chunkIndex++;
+          setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
+        }
+      }, timePerChunk);
       
-      if (item.hasInfographic) {
-        setInfographicPhase('zooming');
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setInfographicPhase('zoomed');
-        await new Promise(resolve => setTimeout(resolve, phase2Duration - 300));
+      // Wait for speech to actually complete before moving to next slide
+      // Check every 200ms if speech is done
+      while (!speechCompleted && !isMutedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 200));
         
+        // Safety timeout - if speech takes way too long (3x estimated), move on
+        if (Date.now() - speechStartTime > estimatedAudioDuration * 3) {
+          console.warn('Speech timeout, moving to next slide');
+          break;
+        }
+      }
+      
+      // Handle infographic zoom after speech completes (quick visual emphasis)
+      if (item.hasInfographic && speechCompleted) {
+        setInfographicPhase('zooming');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        setInfographicPhase('zoomed');
+        await new Promise(resolve => setTimeout(resolve, 800));
         setInfographicPhase('returning');
         await new Promise(resolve => setTimeout(resolve, 200));
         setInfographicPhase('hidden');
-        await new Promise(resolve => setTimeout(resolve, phase3Duration - 200));
-      } else {
-        await new Promise(resolve => setTimeout(resolve, phase2Duration + phase3Duration));
       }
       
-      while (!speechCompleted && !isMutedRef.current) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
+      // Clear subtitle interval
       if (subtitleIntervalRef.current) {
         clearInterval(subtitleIntervalRef.current);
         subtitleIntervalRef.current = null;
@@ -239,9 +245,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setInfographicPhase('hidden');
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
+      // Brief pause before next slide
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 400));
         setCurrentSlideIndex(narrationQueueRef.current[0].slideIndex);
       }
     }
