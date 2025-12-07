@@ -47,8 +47,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [isMuted, setIsMuted] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [hasSpokenLoadingMessage, setHasSpokenLoadingMessage] = useState(false);
-  const [loadingMessageComplete, setLoadingMessageComplete] = useState(false);
   const [isPresentationReady, setIsPresentationReady] = useState(false);
   const [infographicPhase, setInfographicPhase] = useState<'hidden' | 'zooming' | 'zoomed' | 'returning'>('hidden');
   
@@ -113,24 +111,12 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     }
   }, [currentResponse]);
 
-  // Speak loading message
+  // Reset presentation ready state when loading starts
   useEffect(() => {
-    if (isLoading && !hasSpokenLoadingMessage && !isMuted) {
-      setHasSpokenLoadingMessage(true);
-      setLoadingMessageComplete(false);
+    if (isLoading) {
       setIsPresentationReady(false);
-      const loadingMessage = narrationLanguage === 'hi-IN' 
-        ? 'आपकी प्रस्तुति तैयार हो रही है! बस कुछ ही सेकंड!'
-        : 'Working on your presentation! Just a moment!';
-      speak(loadingMessage, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
-        // Loading message finished speaking
-        setLoadingMessageComplete(true);
-      });
     }
-    if (!isLoading) {
-      setHasSpokenLoadingMessage(false);
-    }
-  }, [isLoading, hasSpokenLoadingMessage, isMuted, narrationLanguage, speak]);
+  }, [isLoading]);
 
   // Preload infographic images when response arrives
   const preloadImages = useCallback(async (slides: PresentationSlide[]): Promise<void> => {
@@ -166,66 +152,54 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     ]);
   }, []);
 
-  // Prepare presentation when response is received
+  // Prepare presentation when response is received - NON-BLOCKING
   useEffect(() => {
     if (currentResponse?.presentationSlides && currentResponse.presentationSlides.length > 0) {
       console.log('[AITeachingAssistant] Response received with', currentResponse.presentationSlides.length, 'slides');
-      console.log('[AITeachingAssistant] First slide:', JSON.stringify(currentResponse.presentationSlides[0], null, 2).substring(0, 500));
       
-      setIsPresentationReady(false);
+      // Mark ready IMMEDIATELY - preload images in background (non-blocking)
+      setIsPresentationReady(true);
+      console.log('[AITeachingAssistant] isPresentationReady set to true IMMEDIATELY');
       
-      // Preload images, then mark ready
-      preloadImages(currentResponse.presentationSlides).then(() => {
-        console.log('[AITeachingAssistant] Images preloaded, marking presentation ready');
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          setIsPresentationReady(true);
-          console.log('[AITeachingAssistant] isPresentationReady set to true');
-        });
-      });
+      // Preload images in background (don't block narration)
+      preloadImages(currentResponse.presentationSlides);
     }
   }, [currentResponse, preloadImages]);
 
-  // Start narration only when both loading message is done AND presentation is ready
+  // Start narration IMMEDIATELY when presentation is ready
   useEffect(() => {
     if (
       currentResponse?.presentationSlides && 
       !isMuted && 
       !isNarratingRef.current && 
-      isPresentationReady && 
-      (loadingMessageComplete || !hasSpokenLoadingMessage)
+      isPresentationReady
     ) {
-      // Stop any remaining audio
-      stopSpeaking();
+      console.log('[AITeachingAssistant] Starting narration immediately');
       
-      // Brief delay after loading message
-      const startDelay = loadingMessageComplete ? 500 : 100;
+      // Build queue and start immediately - NO DELAY
+      const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
       
-      setTimeout(() => {
-        const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
-        
-        currentResponse.presentationSlides.forEach((slide, index) => {
-          const narrationText = slide.narration || slide.content;
-          if (narrationText) {
-            queue.push({ 
-              text: narrationText, 
-              slideIndex: index,
-              subtitleChunks: splitIntoSubtitleChunks(narrationText),
-              hasInfographic: !!slide.infographicUrl
-            });
-          }
-        });
-        
-        if (queue.length > 0) {
-          narrationQueueRef.current = queue;
-          setCurrentSlideIndex(0);
-          setProgress(0);
-          setCurrentTime(0);
-          startNarration();
+      currentResponse.presentationSlides.forEach((slide, index) => {
+        const narrationText = slide.narration || slide.content;
+        if (narrationText) {
+          queue.push({ 
+            text: narrationText, 
+            slideIndex: index,
+            subtitleChunks: splitIntoSubtitleChunks(narrationText),
+            hasInfographic: !!slide.infographicUrl
+          });
         }
-      }, startDelay);
+      });
+      
+      if (queue.length > 0) {
+        narrationQueueRef.current = queue;
+        setCurrentSlideIndex(0);
+        setProgress(0);
+        setCurrentTime(0);
+        startNarration();
+      }
     }
-  }, [currentResponse, isMuted, isPresentationReady, loadingMessageComplete, hasSpokenLoadingMessage]);
+  }, [currentResponse, isMuted, isPresentationReady]);
 
   const startNarration = async () => {
     if (isNarratingRef.current || narrationQueueRef.current.length === 0) return;
@@ -417,7 +391,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setProgress(0);
     setCurrentTime(0);
     setIsPresentationReady(false);
-    setLoadingMessageComplete(false);
     
     const question = inputText.trim();
     setInputText('');
