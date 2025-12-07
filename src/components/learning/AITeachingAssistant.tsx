@@ -3,12 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Send, Loader2, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useTeachingAssistant, TeachingResponse } from '@/hooks/useTeachingAssistant';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Mic, MicOff, Send, Loader2, Globe, ChevronLeft, ChevronRight, Languages, Eye } from 'lucide-react';
+import { useTeachingAssistant, TeachingResponse, PresentationSlide } from '@/hooks/useTeachingAssistant';
 import { useWebSpeech } from '@/hooks/useWebSpeech';
 import { TeacherAvatarPanel } from './TeacherAvatarPanel';
-import { PresentationSlide } from './PresentationSlide';
-import { SubtitleOverlay } from './SubtitleOverlay';
+import { PresentationSlide as SlideComponent } from './PresentationSlide';
+import { QuestionHistory } from './QuestionHistory';
 import { cn } from '@/lib/utils';
 
 interface AITeachingAssistantProps {
@@ -16,13 +17,15 @@ interface AITeachingAssistantProps {
   chapterId?: string;
   topicTitle?: string;
   subjectName?: string;
+  onTabActive?: () => void;
 }
 
-export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectName }: AITeachingAssistantProps) {
+export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectName, onTabActive }: AITeachingAssistantProps) {
   const [inputText, setInputText] = useState('');
-  const [language, setLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
+  const [narrationLanguage, setNarrationLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
+  const [subtitleLanguage, setSubtitleLanguage] = useState<'en-IN' | 'hi-IN'>('en-IN');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [currentSentence, setCurrentSentence] = useState('');
+  const [currentSubtitle, setCurrentSubtitle] = useState('');
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isNarrating, setIsNarrating] = useState(false);
@@ -44,6 +47,11 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const isNarratingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
 
+  // Notify parent when tab is active
+  useEffect(() => {
+    onTabActive?.();
+  }, [onTabActive]);
+
   // Keep muted ref in sync
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -62,7 +70,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       const queue: Array<{ text: string; slideIndex: number }> = [];
       
       currentResponse.presentationSlides.forEach((slide, index) => {
-        // Use slide-specific narration if available, otherwise use content
         const narrationText = slide.narration || slide.content;
         if (narrationText) {
           queue.push({ text: narrationText, slideIndex: index });
@@ -90,13 +97,14 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     while (narrationQueueRef.current.length > 0 && !isMutedRef.current) {
       const item = narrationQueueRef.current[0];
       
-      // Update slide and sentence
+      // Update slide and subtitle
       setCurrentSlideIndex(item.slideIndex);
-      setCurrentSentence(item.text);
+      // Show subtitle in selected subtitle language (always English by default)
+      setCurrentSubtitle(item.text);
       
       // Wait for speech to complete
       await new Promise<void>((resolve) => {
-        speak(item.text, language, language === 'hi-IN' ? 'female' : 'male', () => {
+        speak(item.text, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
           resolve();
         });
       });
@@ -104,14 +112,14 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       // Remove from queue after speaking
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Small pause between slides
+      // Reduced pause between slides (100ms instead of 500ms)
       if (narrationQueueRef.current.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
     // Narration complete
-    setCurrentSentence('');
+    setCurrentSubtitle('');
     setIsNarrating(false);
     isNarratingRef.current = false;
   };
@@ -130,9 +138,9 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     clearTranscript();
     clearResponse();
     setCurrentSlideIndex(0);
-    setCurrentSentence('');
+    setCurrentSubtitle('');
     
-    await askQuestion(question, topicId, chapterId, language, subjectName);
+    await askQuestion(question, topicId, chapterId, narrationLanguage, subjectName);
   };
 
   const handleVoiceToggle = () => {
@@ -140,17 +148,21 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       stopListening();
     } else {
       clearTranscript();
-      startListening(language);
+      startListening(narrationLanguage);
     }
   };
 
-  const handleLanguageToggle = () => {
-    const newLang = language === 'en-IN' ? 'hi-IN' : 'en-IN';
-    setLanguage(newLang);
+  const handleNarrationLanguageToggle = () => {
+    const newLang = narrationLanguage === 'en-IN' ? 'hi-IN' : 'en-IN';
+    setNarrationLanguage(newLang);
     stopSpeaking();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
     setIsNarrating(false);
+  };
+
+  const handleSubtitleLanguageToggle = () => {
+    setSubtitleLanguage(prev => prev === 'en-IN' ? 'hi-IN' : 'en-IN');
   };
 
   const handleMuteToggle = () => {
@@ -180,204 +192,271 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setInputText(question);
   };
 
+  const handleReplay = (slides: PresentationSlide[], narrationText: string) => {
+    // Set the response for replay
+    const replayResponse: TeachingResponse = {
+      cached: true,
+      answer: narrationText,
+      presentationSlides: slides,
+      latexFormulas: [],
+      keyPoints: [],
+      followUpQuestions: [],
+      narrationText: narrationText,
+    };
+    
+    // Clear current and set replay
+    clearResponse();
+    setCurrentSlideIndex(0);
+    
+    // Build narration queue
+    const queue: Array<{ text: string; slideIndex: number }> = [];
+    slides.forEach((slide, index) => {
+      const text = slide.narration || slide.content;
+      if (text) {
+        queue.push({ text, slideIndex: index });
+      }
+    });
+    
+    if (queue.length > 0 && !isMuted) {
+      narrationQueueRef.current = queue;
+      startNarration();
+    }
+  };
+
   const totalSlides = currentResponse?.presentationSlides?.length || 0;
   const currentSlide = currentResponse?.presentationSlides?.[currentSlideIndex];
 
   return (
-    <div className="h-[calc(100vh-200px)] flex gap-4">
-      {/* Left Panel - Presentation Display (75%) */}
-      <div className="flex-[75] flex flex-col gap-4">
-        {/* Presentation Area */}
-        <div className="flex-1 relative">
-          {isLoading ? (
-            <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
-              <CardContent className="text-center py-12">
-                <Loader2 className="h-16 w-16 animate-spin mx-auto text-primary mb-4" />
-                <p className="text-lg text-muted-foreground">
-                  {language === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : currentResponse && currentSlide ? (
-            <div className="h-full flex flex-col">
-              {/* Single Slide Display - PPT Style */}
-              <div className="flex-1 relative overflow-hidden rounded-xl">
-                <PresentationSlide
-                  slide={currentSlide}
-                  isActive={true}
-                  highlightedSentence={currentSentence}
-                  slideNumber={currentSlideIndex + 1}
-                  totalSlides={totalSlides}
-                  isStorySlide={currentSlide.isStory}
-                />
-              </div>
+    <TooltipProvider>
+      <div className="h-[calc(100vh-200px)] flex gap-4 relative">
+        {/* Question History Button */}
+        <QuestionHistory
+          topicId={topicId}
+          chapterId={chapterId}
+          onReplay={handleReplay}
+        />
 
-              {/* Slide Navigation */}
-              <div className="flex items-center justify-center gap-4 mt-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePrevSlide}
-                  disabled={currentSlideIndex === 0}
-                  className="h-10 w-10"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                
-                {/* Slide Indicators */}
-                <div className="flex items-center gap-2">
-                  {currentResponse.presentationSlides.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentSlideIndex(idx)}
-                      className={cn(
-                        "w-3 h-3 rounded-full transition-all",
-                        idx === currentSlideIndex 
-                          ? "bg-primary scale-125" 
-                          : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                      )}
-                    />
-                  ))}
+        {/* Left Panel - Presentation Display (75%) */}
+        <div className="flex-[75] flex flex-col gap-3">
+          {/* Presentation Area */}
+          <div className="flex-1 relative">
+            {isLoading ? (
+              <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+                <CardContent className="text-center py-12">
+                  <Loader2 className="h-16 w-16 animate-spin mx-auto text-primary mb-4" />
+                  <p className="text-lg text-muted-foreground">
+                    {narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : currentResponse && currentSlide ? (
+              <div className="h-full flex flex-col">
+                {/* Single Slide Display - PPT Style */}
+                <div className="flex-1 relative overflow-hidden rounded-xl">
+                  <SlideComponent
+                    slide={currentSlide}
+                    isActive={true}
+                    slideNumber={currentSlideIndex + 1}
+                    totalSlides={totalSlides}
+                    isStorySlide={currentSlide.isStory}
+                  />
                 </div>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleNextSlide}
-                  disabled={currentSlideIndex === totalSlides - 1}
-                  className="h-10 w-10"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-                
-                <span className="text-sm text-muted-foreground ml-2">
-                  {currentSlideIndex + 1} / {totalSlides}
-                </span>
-              </div>
 
-              {/* Follow-up Questions */}
-              {currentResponse.followUpQuestions && currentResponse.followUpQuestions.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                  {currentResponse.followUpQuestions.map((q, idx) => (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => handleFollowUpClick(q)}
-                    >
-                      {q}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
-              <CardContent className="text-center py-12">
-                <div className="text-7xl mb-6">👨‍🏫</div>
-                <h3 className="text-2xl font-semibold mb-3">
-                  {subjectName ? `${subjectName} AI Professor` : language === 'hi-IN' ? 'AI शिक्षक' : 'AI Teaching Assistant'}
-                </h3>
-                <p className="text-muted-foreground max-w-md text-lg">
-                  {language === 'hi-IN' 
-                    ? 'कोई भी प्रश्न पूछें और मैं आपको एक प्रेजेंटेशन के साथ समझाऊंगा।'
-                    : 'Ask any question and I will explain it with an interactive presentation.'
-                  }
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Subtitle Overlay */}
-        {showSubtitles && currentSentence && (
-          <div className="bg-background/95 backdrop-blur-sm border rounded-lg p-3 text-center">
-            <p className="text-sm text-foreground">{currentSentence}</p>
-          </div>
-        )}
-
-        {/* Question Input - Bottom of presentation */}
-        <Card className="shrink-0">
-          <CardContent className="pt-4">
-            <div className="flex gap-2">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={language === 'hi-IN' ? 'अपना प्रश्न यहाँ लिखें...' : 'Type your question here...'}
-                className="min-h-[60px] resize-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                disabled={isLoading}
-              />
-              <div className="flex flex-col gap-2">
-                {isSupported && (
+                {/* Slide Navigation */}
+                <div className="flex items-center justify-center gap-4 mt-3">
                   <Button
-                    variant={isListening ? "destructive" : "outline"}
+                    variant="outline"
                     size="icon"
-                    onClick={handleVoiceToggle}
-                    disabled={isLoading || isSpeaking}
+                    onClick={handlePrevSlide}
+                    disabled={currentSlideIndex === 0}
+                    className="h-9 w-9"
                   >
-                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <ChevronLeft className="h-4 w-4" />
                   </Button>
+                  
+                  {/* Slide Indicators */}
+                  <div className="flex items-center gap-2">
+                    {currentResponse.presentationSlides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlideIndex(idx)}
+                        className={cn(
+                          "w-2.5 h-2.5 rounded-full transition-all",
+                          idx === currentSlideIndex 
+                            ? "bg-primary scale-125" 
+                            : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNextSlide}
+                    disabled={currentSlideIndex === totalSlides - 1}
+                    className="h-9 w-9"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <span className="text-sm text-muted-foreground ml-2">
+                    {currentSlideIndex + 1} / {totalSlides}
+                  </span>
+                </div>
+
+                {/* Subtitle Bar - Compact at bottom */}
+                {showSubtitles && currentSubtitle && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="mt-2 bg-background/95 backdrop-blur-sm border rounded-lg px-4 py-2 text-center cursor-help">
+                        <p className="text-sm text-foreground line-clamp-2">
+                          {currentSubtitle}
+                        </p>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-lg p-4">
+                      <p className="text-sm">{currentSubtitle}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
-                <Button
-                  onClick={handleSend}
-                  disabled={!inputText.trim() || isLoading}
-                  size="icon"
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
+
+                {/* Follow-up Questions */}
+                {currentResponse.followUpQuestions && currentResponse.followUpQuestions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3 justify-center">
+                    {currentResponse.followUpQuestions.map((q, idx) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => handleFollowUpClick(q)}
+                      >
+                        {q}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            
-            {/* Controls Row */}
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLanguageToggle}
-                  className="text-xs"
-                >
-                  <Globe className="h-3 w-3 mr-1" />
-                  {language === 'en-IN' ? '🇬🇧 English' : '🇮🇳 हिंदी'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSubtitles(!showSubtitles)}
-                  className="text-xs"
-                >
-                  {showSubtitles ? 'Hide Subtitles' : 'Show Subtitles'}
-                </Button>
+            ) : (
+              <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+                <CardContent className="text-center py-12">
+                  <div className="text-7xl mb-6">👨‍🏫</div>
+                  <h3 className="text-2xl font-semibold mb-3">
+                    {subjectName ? `${subjectName} AI Professor` : narrationLanguage === 'hi-IN' ? 'AI शिक्षक' : 'AI Teaching Assistant'}
+                  </h3>
+                  <p className="text-muted-foreground max-w-md text-lg">
+                    {narrationLanguage === 'hi-IN' 
+                      ? 'कोई भी प्रश्न पूछें और मैं आपको एक प्रेजेंटेशन के साथ समझाऊंगा।'
+                      : 'Ask any question and I will explain it with an interactive presentation.'
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Question Input - Bottom of presentation */}
+          <Card className="shrink-0">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex gap-2">
+                <Textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={narrationLanguage === 'hi-IN' ? 'अपना प्रश्न यहाँ लिखें...' : 'Type your question here...'}
+                  className="min-h-[50px] resize-none text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  disabled={isLoading}
+                />
+                <div className="flex flex-col gap-1">
+                  {isSupported && (
+                    <Button
+                      variant={isListening ? "destructive" : "outline"}
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleVoiceToggle}
+                      disabled={isLoading || isSpeaking}
+                    >
+                      {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleSend}
+                    disabled={!inputText.trim() || isLoading}
+                    size="icon"
+                    className="h-8 w-8"
+                  >
+                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  </Button>
+                </div>
               </div>
               
-              {topicTitle && (
-                <Badge variant="secondary" className="text-xs">
-                  {topicTitle}
-                </Badge>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              {/* Controls Row */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-1">
+                  {/* Narration Language */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNarrationLanguageToggle}
+                    className="text-xs h-7 px-2"
+                    title="Narration Language"
+                  >
+                    <Globe className="h-3 w-3 mr-1" />
+                    {narrationLanguage === 'en-IN' ? '🇬🇧 EN' : '🇮🇳 हिं'}
+                  </Button>
+                  
+                  {/* Subtitle Language */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSubtitleLanguageToggle}
+                    className="text-xs h-7 px-2"
+                    title="Subtitle Language"
+                  >
+                    <Languages className="h-3 w-3 mr-1" />
+                    Sub: {subtitleLanguage === 'en-IN' ? 'EN' : 'हिं'}
+                  </Button>
+                  
+                  {/* Toggle Subtitles */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSubtitles(!showSubtitles)}
+                    className="text-xs h-7 px-2"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    {showSubtitles ? 'Hide' : 'Show'}
+                  </Button>
+                </div>
+                
+                {topicTitle && (
+                  <Badge variant="secondary" className="text-xs">
+                    {topicTitle}
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Right Panel - Teacher Avatar (25%) */}
-      <div className="flex-[25]">
-        <TeacherAvatarPanel
-          isSpeaking={isSpeaking || isNarrating}
-          isProcessing={isLoading}
-          language={language}
-          onMuteToggle={handleMuteToggle}
-          isMuted={isMuted}
-          subjectName={subjectName}
-        />
+        {/* Right Panel - Teacher Avatar (25%) */}
+        <div className="flex-[25]">
+          <TeacherAvatarPanel
+            isSpeaking={isSpeaking || isNarrating}
+            isProcessing={isLoading}
+            language={narrationLanguage}
+            onMuteToggle={handleMuteToggle}
+            isMuted={isMuted}
+            subjectName={subjectName}
+          />
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
