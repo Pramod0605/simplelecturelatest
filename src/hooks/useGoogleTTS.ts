@@ -150,19 +150,6 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       .replace(/\n+/g, '. ')
       .trim();
     
-    // Add text preprocessing for more energetic delivery
-    cleanText = cleanText
-      .replace(/\.\s+/g, '! ') // Convert periods to exclamations for energy
-      .replace(/,\s+/g, ', ... ') // Add pauses after commas
-      .replace(/:\s+/g, ': ... ') // Add pauses after colons
-      .replace(/\bNow\b/gi, 'Now,') // Add pause after "Now"
-      .replace(/\bSo\b/gi, 'So,') // Add pause after "So"
-      .replace(/\bLet me\b/gi, 'Let me,') // Add pause for emphasis
-      .replace(/\bRemember\b/gi, 'Remember,') // Add pause for emphasis
-      .replace(/\bImportant\b/gi, 'Important!') // Emphasize important
-      .replace(/!+/g, '!') // Normalize multiple exclamations
-      .replace(/\s+/g, ' ') // Normalize spaces
-      .trim();
 
     if (!cleanText) {
       console.log("No text to speak after cleaning");
