@@ -11,6 +11,7 @@ interface TeacherAvatarPanelProps {
   language: 'en-IN' | 'hi-IN';
   onMuteToggle?: () => void;
   isMuted?: boolean;
+  subjectName?: string;
 }
 
 export function TeacherAvatarPanel({ 
@@ -18,16 +19,16 @@ export function TeacherAvatarPanel({
   isProcessing,
   language,
   onMuteToggle,
-  isMuted = false
+  isMuted = false,
+  subjectName
 }: TeacherAvatarPanelProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarName, setAvatarName] = useState<string>('Teacher');
+  const [avatarName, setAvatarName] = useState<string>('Professor');
 
-  // Fetch teacher avatar from counselor_avatars or use default
+  // Fetch teacher avatar from counselor_avatars
   useEffect(() => {
     const fetchAvatar = async () => {
       try {
-        // Get a male avatar for English, female for Hindi (matching existing pattern)
         const gender = language === 'hi-IN' ? 'female' : 'male';
         
         const { data } = await supabase
@@ -51,11 +52,15 @@ export function TeacherAvatarPanel({
     fetchAvatar();
   }, [language]);
 
+  const professorTitle = subjectName 
+    ? `${subjectName} AI Professor` 
+    : language === 'hi-IN' ? 'AI प्रोफेसर' : 'AI Professor';
+
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-gradient-to-b from-primary/5 to-primary/10 rounded-lg p-6">
+    <div className="flex flex-col items-center justify-center h-full bg-gradient-to-b from-primary/5 to-primary/10 rounded-lg p-4">
       {/* Avatar Container */}
       <div className={cn(
-        "relative w-48 h-48 rounded-full overflow-hidden border-4 transition-all duration-300",
+        "relative w-32 h-32 rounded-full overflow-hidden border-4 transition-all duration-300",
         isSpeaking && "border-primary shadow-lg shadow-primary/30 scale-105",
         isProcessing && "border-yellow-500 shadow-lg shadow-yellow-500/30",
         !isSpeaking && !isProcessing && "border-muted"
@@ -71,39 +76,37 @@ export function TeacherAvatarPanel({
           />
         ) : (
           <div className="w-full h-full bg-muted flex items-center justify-center">
-            <User className="w-24 h-24 text-muted-foreground" />
+            <User className="w-16 h-16 text-muted-foreground" />
           </div>
         )}
         
-        {/* Speaking indicator ring */}
         {isSpeaking && (
           <div className="absolute inset-0 border-4 border-primary rounded-full animate-pulse" />
         )}
         
-        {/* Processing indicator */}
         {isProcessing && (
           <div className="absolute inset-0 bg-yellow-500/20 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
-      {/* Teacher Name */}
-      <h3 className="mt-4 text-lg font-semibold text-foreground">
+      {/* Teacher Info */}
+      <h3 className="mt-3 text-sm font-semibold text-foreground text-center">
         {avatarName}
       </h3>
-      <p className="text-sm text-muted-foreground">
-        {language === 'hi-IN' ? 'हिंदी शिक्षक' : 'English Teacher'}
+      <p className="text-xs text-muted-foreground text-center">
+        {professorTitle}
       </p>
 
-      {/* Audio Waveform when speaking */}
-      <div className="mt-6 w-full max-w-[200px]">
+      {/* Audio Waveform */}
+      <div className="mt-4 w-full max-w-[150px]">
         {isSpeaking ? (
           <AudioWaveform isActive={true} />
         ) : (
-          <div className="h-8 flex items-center justify-center">
+          <div className="h-6 flex items-center justify-center">
             <div className="flex gap-1">
-              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div 
                   key={i} 
                   className="w-1 h-2 bg-muted-foreground/30 rounded-full"
@@ -118,21 +121,21 @@ export function TeacherAvatarPanel({
       {onMuteToggle && (
         <Button
           variant="ghost"
-          size="icon"
-          className="mt-4"
+          size="sm"
+          className="mt-3"
           onClick={onMuteToggle}
         >
           {isMuted ? (
-            <VolumeX className="h-5 w-5 text-muted-foreground" />
+            <VolumeX className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <Volume2 className="h-5 w-5" />
+            <Volume2 className="h-4 w-4" />
           )}
         </Button>
       )}
 
       {/* Status Text */}
-      <p className="mt-4 text-xs text-muted-foreground text-center">
-        {isProcessing ? 'Thinking...' : isSpeaking ? 'Speaking...' : 'Ready to help'}
+      <p className="mt-2 text-xs text-muted-foreground text-center">
+        {isProcessing ? 'Thinking...' : isSpeaking ? 'Speaking...' : 'Ready'}
       </p>
     </div>
   );

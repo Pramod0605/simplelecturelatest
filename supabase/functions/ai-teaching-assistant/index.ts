@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,17 +15,31 @@ async function hashQuestion(text: string): Promise<string> {
   return hashArray.slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Extract PDF text content (simplified - would use proper PDF parser in production)
-async function fetchPDFContent(pdfUrl: string): Promise<string> {
-  try {
-    // For B2 private bucket, we'd need to get a signed URL first
-    // For now, return placeholder if PDF processing isn't set up
-    console.log('PDF URL to fetch:', pdfUrl);
-    return `[PDF Content from: ${pdfUrl}]`;
-  } catch (error) {
-    console.error('Error fetching PDF:', error);
-    return '';
-  }
+// Check if question is relevant to the subject
+function isQuestionRelevant(question: string, subjectName: string): boolean {
+  const lowerQuestion = question.toLowerCase();
+  const lowerSubject = subjectName.toLowerCase();
+  
+  // Subject-specific keywords
+  const subjectKeywords: Record<string, string[]> = {
+    'physics': ['force', 'motion', 'energy', 'velocity', 'acceleration', 'gravity', 'newton', 'wave', 'light', 'electricity', 'magnetism', 'quantum', 'relativity', 'momentum', 'work', 'power', 'optics', 'thermodynamics', 'physics'],
+    'chemistry': ['atom', 'molecule', 'element', 'compound', 'reaction', 'bond', 'acid', 'base', 'organic', 'inorganic', 'periodic', 'electron', 'proton', 'neutron', 'chemistry', 'chemical'],
+    'mathematics': ['equation', 'formula', 'algebra', 'geometry', 'calculus', 'derivative', 'integral', 'function', 'graph', 'number', 'theorem', 'proof', 'matrix', 'vector', 'math', 'maths', 'mathematics'],
+    'biology': ['cell', 'organism', 'dna', 'gene', 'protein', 'evolution', 'species', 'ecosystem', 'photosynthesis', 'respiration', 'biology', 'life', 'living'],
+  };
+  
+  // Check if question contains subject-related keywords
+  const keywords = subjectKeywords[lowerSubject] || [];
+  const hasRelevantKeyword = keywords.some(kw => lowerQuestion.includes(kw));
+  
+  // Also check if subject name is mentioned
+  const mentionsSubject = lowerQuestion.includes(lowerSubject);
+  
+  // Be generous - if no specific keywords found, still allow general educational questions
+  const generalEducationalTerms = ['explain', 'what is', 'how does', 'why', 'define', 'describe', 'calculate', 'solve', 'prove', 'derive'];
+  const isEducational = generalEducationalTerms.some(term => lowerQuestion.includes(term));
+  
+  return hasRelevantKeyword || mentionsSubject || isEducational || keywords.length === 0;
 }
 
 serve(async (req) => {
@@ -35,7 +48,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, topicId, chapterId, language = 'en-IN' } = await req.json();
+    const { question, topicId, chapterId, language = 'en-IN', subjectName = 'General' } = await req.json();
 
     if (!question) {
       return new Response(
@@ -48,9 +61,44 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if question is relevant to the subject
+    if (subjectName && subjectName !== 'General' && !isQuestionRelevant(question, subjectName)) {
+      const isHindi = language === 'hi-IN';
+      const notRelevantResponse = {
+        cached: false,
+        answer: isHindi 
+          ? `मैं ${subjectName} का AI प्रोफेसर हूं। यह प्रश्न ${subjectName} से संबंधित नहीं लगता। कृपया संबंधित विषय के AI प्रोफेसर से पूछें।`
+          : `I am the ${subjectName} AI Professor. This question doesn't seem to be related to ${subjectName}. Please consult the respective subject's AI Professor for this query.`,
+        presentationSlides: [{
+          title: isHindi ? 'विषय सीमा' : 'Subject Scope',
+          content: isHindi 
+            ? `मैं **${subjectName}** विषय में विशेषज्ञ हूं। आपका प्रश्न किसी अन्य विषय से संबंधित प्रतीत होता है।\n\nकृपया उपयुक्त विषय के AI प्रोफेसर से सहायता लें।`
+            : `I specialize in **${subjectName}**. Your question appears to be related to a different subject.\n\nPlease consult the appropriate subject's AI Professor for assistance.`,
+          keyPoints: [
+            isHindi ? `${subjectName} के प्रश्न पूछें` : `Ask questions about ${subjectName}`,
+            isHindi ? 'अन्य विषयों के लिए उचित AI प्रोफेसर चुनें' : 'Choose the right AI Professor for other subjects'
+          ],
+          narration: isHindi 
+            ? `नमस्ते! मैं ${subjectName} का AI प्रोफेसर हूं। यह प्रश्न मेरी विशेषज्ञता से बाहर है। कृपया संबंधित विषय के प्रोफेसर से पूछें।`
+            : `Hello! I am the ${subjectName} AI Professor. This question is outside my expertise. Please ask the relevant subject professor.`
+        }],
+        latexFormulas: [],
+        keyPoints: [],
+        followUpQuestions: [],
+        narrationText: isHindi 
+          ? `नमस्ते! मैं ${subjectName} का AI प्रोफेसर हूं।`
+          : `Hello! I am the ${subjectName} AI Professor.`,
+      };
+      
+      return new Response(
+        JSON.stringify(notRelevantResponse),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Generate question hash for cache lookup
     const questionHash = await hashQuestion(question);
-    console.log('Question hash:', questionHash, 'Topic:', topicId);
+    console.log('Question hash:', questionHash, 'Topic:', topicId, 'Subject:', subjectName);
 
     // Check cache first
     let cacheQuery = supabase
@@ -69,7 +117,6 @@ serve(async (req) => {
 
     if (cachedAnswer) {
       console.log('Cache hit! Returning cached answer');
-      // Increment usage count
       await supabase
         .from('teaching_qa_cache')
         .update({ usage_count: (cachedAnswer.usage_count || 0) + 1 })
@@ -90,62 +137,55 @@ serve(async (req) => {
 
     // Fetch context from topic/chapter
     let context = '';
-    let topicData = null;
-    let chapterData = null;
+    let detectedSubject = subjectName;
 
     if (topicId) {
       const { data: topic } = await supabase
         .from('subject_topics')
-        .select('*, chapter:subject_chapters(*)')
+        .select('*, chapter:subject_chapters(*, subject:popular_subjects(name))')
         .eq('id', topicId)
         .single();
       
-      topicData = topic;
       if (topic) {
         context += `Topic: ${topic.title}\n`;
-        if (topic.content_markdown) {
-          context += `Content: ${topic.content_markdown}\n`;
-        }
-        if (topic.notes_markdown) {
-          context += `Notes: ${topic.notes_markdown}\n`;
-        }
-        if (topic.pdf_url) {
-          const pdfContent = await fetchPDFContent(topic.pdf_url);
-          context += `PDF Content: ${pdfContent}\n`;
-        }
+        if (topic.content_markdown) context += `Content: ${topic.content_markdown}\n`;
+        if (topic.notes_markdown) context += `Notes: ${topic.notes_markdown}\n`;
         if (topic.chapter) {
           context += `Chapter: ${topic.chapter.title}\n`;
-          if (topic.chapter.pdf_url) {
-            const chapterPdf = await fetchPDFContent(topic.chapter.pdf_url);
-            context += `Chapter PDF: ${chapterPdf}\n`;
+          if (topic.chapter.subject?.name) {
+            detectedSubject = topic.chapter.subject.name;
           }
         }
       }
     } else if (chapterId) {
       const { data: chapter } = await supabase
         .from('subject_chapters')
-        .select('*')
+        .select('*, subject:popular_subjects(name)')
         .eq('id', chapterId)
         .single();
       
-      chapterData = chapter;
       if (chapter) {
         context += `Chapter: ${chapter.title}\n`;
-        if (chapter.pdf_url) {
-          const pdfContent = await fetchPDFContent(chapter.pdf_url);
-          context += `PDF Content: ${pdfContent}\n`;
+        if (chapter.subject?.name) {
+          detectedSubject = chapter.subject.name;
         }
       }
     }
 
-    // System prompt for lecture-style teaching
+    // System prompt for lecture-style teaching with per-slide narration
     const isHindi = language === 'hi-IN';
-    const systemPrompt = `You are an expert Indian teacher explaining concepts in a lecture style. ${isHindi ? 'Respond in Hindi using Devanagari script.' : 'Respond in clear Indian English.'}
+    const professorName = isHindi ? 'प्रोफेसर' : 'Professor';
+    
+    const systemPrompt = `You are ${professorName} AI, an expert Indian teacher specializing in ${detectedSubject}. You explain concepts in an engaging, lecture-style presentation format. ${isHindi ? 'Respond in Hindi using Devanagari script.' : 'Respond in clear Indian English.'}
+
+SUBJECT EXPERTISE: ${detectedSubject}
+- If the question is NOT related to ${detectedSubject}, politely redirect: "I am the ${detectedSubject} AI Professor. For questions about [other topic], please consult the respective AI Professor."
 
 TEACHING STYLE:
 - Speak slowly and clearly as if explaining to a student face-to-face
-- Use ${isHindi ? 'Hindi' : 'Indian English'} phrases naturally ("${isHindi ? 'देखो, यहाँ क्या होता है...' : 'See, what happens here is...'}", "${isHindi ? 'अब मैं यह समझाता हूं...' : 'Now, let me explain this simply...'}")
-- Break complex topics into digestible parts
+- Use natural ${isHindi ? 'Hindi' : 'Indian English'} phrases ("${isHindi ? 'देखो, यहाँ क्या होता है...' : 'See, what happens here is...'}", "${isHindi ? 'अब मैं यह समझाता हूं...' : 'Now, let me explain this simply...'}")
+- Break complex topics into digestible slides (3-5 slides)
+- Each slide should have its own narration for audio playback
 - Include practical examples and analogies
 - For formulas, write them in LaTeX format: $formula$ for inline, $$formula$$ for display
 - Highlight key terms by wrapping them in **bold**
@@ -153,26 +193,43 @@ TEACHING STYLE:
 CONTEXT FROM COURSE MATERIAL:
 ${context || 'No specific context available. Provide general educational explanation.'}
 
-OUTPUT FORMAT:
-You must respond with valid JSON in this exact structure:
+CRITICAL REQUIREMENTS:
+1. Each slide MUST have a "narration" field - the exact text to be spoken aloud for that slide
+2. The LAST slide MUST be a story/real-world example with "isStory": true
+3. Include infographics descriptions where visual aids would help understanding
+4. Keep each slide focused on ONE concept
+
+OUTPUT FORMAT (strict JSON):
 {
   "presentation_slides": [
     {
-      "title": "slide title",
-      "content": "main explanation text with **highlighted** terms and $formulas$",
-      "keyPoints": ["point 1", "point 2"],
-      "formula": "optional LaTeX formula if relevant"
+      "title": "Introduction to [Topic]",
+      "content": "Main explanation with **highlighted** terms and $formulas$",
+      "narration": "Spoken narration for this specific slide - conversational, slow, clear",
+      "keyPoints": ["Key point 1", "Key point 2"],
+      "formula": "Optional LaTeX formula",
+      "infographic": "Optional: Description of helpful diagram/chart"
+    },
+    {
+      "title": "Real-World Example",
+      "content": "A relatable story that makes this concept memorable...",
+      "narration": "Let me share a story to help you understand this better...",
+      "keyPoints": ["Takeaway from the story"],
+      "isStory": true
     }
   ],
-  "narration_text": "lecture-style explanation text that will be spoken aloud, slow and clear",
   "latex_formulas": [
     {"formula": "E = mc^2", "explanation": "Energy equals mass times speed of light squared"}
   ],
-  "key_points": ["summary point 1", "summary point 2", "summary point 3"],
-  "follow_up_questions": ["suggested follow up question 1", "suggested follow up question 2"]
+  "key_points": ["Summary point 1", "Summary point 2"],
+  "follow_up_questions": ["Follow up 1", "Follow up 2"]
 }
 
-Create 2-4 slides depending on complexity. Make the narration natural and teacher-like.`;
+STORY REQUIREMENT FOR LAST SLIDE:
+- Always end with a relatable story or real-world example
+- Make it memorable and understandable by anyone
+- Connect it to the main concept being taught
+- Examples: A student's journey, historical discovery, everyday situation`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -227,15 +284,24 @@ Create 2-4 slides depending on complexity. Make the narration natural and teache
       parsedContent = JSON.parse(content);
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', content);
-      // Fallback structure
       parsedContent = {
-        presentation_slides: [{ title: "Answer", content: content, keyPoints: [] }],
-        narration_text: content,
+        presentation_slides: [{ 
+          title: "Answer", 
+          content: content, 
+          keyPoints: [],
+          narration: content 
+        }],
         latex_formulas: [],
         key_points: [],
         follow_up_questions: []
       };
     }
+
+    // Ensure all slides have narration
+    const slides = (parsedContent.presentation_slides || []).map((slide: any, index: number) => ({
+      ...slide,
+      narration: slide.narration || slide.content || '',
+    }));
 
     // Cache the response
     const cacheData = {
@@ -243,9 +309,9 @@ Create 2-4 slides depending on complexity. Make the narration natural and teache
       chapter_id: chapterId || null,
       question_hash: questionHash,
       question_text: question,
-      answer_text: parsedContent.narration_text || content,
+      answer_text: slides.map((s: any) => s.narration).join(' '),
       answer_html: null,
-      presentation_slides: parsedContent.presentation_slides || [],
+      presentation_slides: slides,
       latex_formulas: parsedContent.latex_formulas || [],
       language: language,
     };
@@ -261,12 +327,13 @@ Create 2-4 slides depending on complexity. Make the narration natural and teache
     return new Response(
       JSON.stringify({
         cached: false,
-        answer: parsedContent.narration_text || content,
-        presentationSlides: parsedContent.presentation_slides || [],
+        answer: slides.map((s: any) => s.narration).join(' '),
+        presentationSlides: slides,
         latexFormulas: parsedContent.latex_formulas || [],
         keyPoints: parsedContent.key_points || [],
         followUpQuestions: parsedContent.follow_up_questions || [],
-        narrationText: parsedContent.narration_text || content,
+        narrationText: slides.map((s: any) => s.narration).join(' '),
+        subjectName: detectedSubject,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
