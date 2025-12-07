@@ -159,11 +159,11 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     // Stop any currently playing audio
     stopSpeaking();
 
-    // Split into chunks if text is too long (OpenAI TTS limit is 4096 chars)
+    // Split into chunks if text is too long
     const chunks = splitTextIntoChunks(cleanText, 3800);
     
     if (chunks.length > 1) {
-      console.log(`🔊 OpenAI TTS: Splitting text into ${chunks.length} chunks`);
+      console.log(`🔊 TTS: Splitting text into ${chunks.length} chunks`);
     }
 
     setIsLoading(true);
@@ -175,43 +175,65 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         const chunk = chunks[i];
         const isLastChunk = i === chunks.length - 1;
         
-        console.log(`🔊 OpenAI TTS: Speaking chunk ${i + 1}/${chunks.length} in ${languageCode}, gender: ${gender}, length: ${chunk.length}`);
+        console.log(`🔊 Sarvam TTS: Speaking chunk ${i + 1}/${chunks.length} in ${languageCode}, gender: ${gender}, length: ${chunk.length}`);
 
-        const { data, error: functionError } = await supabase.functions.invoke('google-tts', {
-          body: {
-            text: chunk,
-            languageCode,
-            gender,
-          },
-        });
+        // Try Sarvam AI first (authentic Indian voices)
+        let data: { audioContent?: string; error?: string; details?: string } | null = null;
+        let usedSarvam = false;
 
-        // Check for quota/rate limit errors - fallback to Web Speech
-        if (functionError || data?.error) {
-          const errMsg = functionError?.message || data?.error || '';
-          const errDetails = data?.details || '';
-          const fullError = `${errMsg} ${errDetails}`.toLowerCase();
-          
-          // Check for quota, rate limit, or TTS synthesis failure
-          if (fullError.includes('quota') || fullError.includes('429') || 
-              fullError.includes('insufficient') || errMsg.includes('TTS synthesis failed')) {
-            console.warn('⚠️ OpenAI TTS quota exceeded, falling back to Web Speech API');
-            toast({
-              title: "Using Browser Voice",
-              description: "OpenAI TTS unavailable. Using browser's speech synthesis.",
-            });
-            setIsLoading(false);
-            speakWithWebSpeech(cleanText, onComplete);
-            return;
+        try {
+          const sarvamResponse = await supabase.functions.invoke('sarvam-tts', {
+            body: { text: chunk, languageCode, gender },
+          });
+
+          if (!sarvamResponse.error && sarvamResponse.data?.audioContent) {
+            data = sarvamResponse.data;
+            usedSarvam = true;
+            console.log('✅ Using Sarvam AI TTS');
+          } else {
+            console.warn('⚠️ Sarvam TTS failed, trying OpenAI:', sarvamResponse.error?.message || sarvamResponse.data?.error);
           }
-          throw new Error(errMsg || 'TTS function error');
+        } catch (sarvamErr) {
+          console.warn('⚠️ Sarvam TTS error, trying OpenAI:', sarvamErr);
+        }
+
+        // Fallback to OpenAI TTS if Sarvam fails
+        if (!data?.audioContent) {
+          console.log('🔊 Trying OpenAI TTS fallback...');
+          const openaiResponse = await supabase.functions.invoke('google-tts', {
+            body: { text: chunk, languageCode, gender },
+          });
+
+          if (openaiResponse.error || openaiResponse.data?.error) {
+            const errMsg = openaiResponse.error?.message || openaiResponse.data?.error || '';
+            const errDetails = openaiResponse.data?.details || '';
+            const fullError = `${errMsg} ${errDetails}`.toLowerCase();
+            
+            // Check for quota, rate limit errors
+            if (fullError.includes('quota') || fullError.includes('429') || 
+                fullError.includes('insufficient') || errMsg.includes('TTS synthesis failed')) {
+              console.warn('⚠️ All TTS APIs unavailable, falling back to Web Speech');
+              toast({
+                title: "Using Browser Voice",
+                description: "TTS services unavailable. Using browser's speech synthesis.",
+              });
+              setIsLoading(false);
+              speakWithWebSpeech(cleanText, onComplete);
+              return;
+            }
+            throw new Error(errMsg || 'TTS function error');
+          }
+          
+          data = openaiResponse.data;
         }
 
         if (!data?.audioContent) {
           throw new Error('No audio content received');
         }
 
-        // Create audio from base64
-        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
+        // Create audio from base64 - Sarvam returns WAV, OpenAI returns MP3
+        const mimeType = usedSarvam ? 'audio/wav' : 'audio/mp3';
+        const audioBlob = base64ToBlob(data.audioContent, mimeType);
         const audioUrl = URL.createObjectURL(audioBlob);
         
         const audio = new Audio(audioUrl);
@@ -220,20 +242,20 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         // Wait for this chunk to finish playing
         await new Promise<void>((resolve, reject) => {
           audio.onplay = () => {
-            console.log(`▶️ OpenAI TTS: Audio chunk ${i + 1} playing`);
+            console.log(`▶️ TTS: Audio chunk ${i + 1} playing`);
             setIsSpeaking(true);
             setIsLoading(false);
           };
 
           audio.onended = () => {
-            console.log(`⏹️ OpenAI TTS: Audio chunk ${i + 1} ended`);
+            console.log(`⏹️ TTS: Audio chunk ${i + 1} ended`);
             URL.revokeObjectURL(audioUrl);
             audioRef.current = null;
             resolve();
           };
 
           audio.onerror = (e) => {
-            console.error(`❌ OpenAI TTS: Audio chunk ${i + 1} error`, e);
+            console.error(`❌ TTS: Audio chunk ${i + 1} error`, e);
             URL.revokeObjectURL(audioUrl);
             audioRef.current = null;
             reject(new Error('Audio playback failed'));
@@ -254,7 +276,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown TTS error';
-      console.error("❌ OpenAI TTS error:", errorMessage);
+      console.error("❌ TTS error:", errorMessage);
       
       // Fallback to Web Speech API
       console.warn('⚠️ Falling back to Web Speech API');
@@ -263,7 +285,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       
       toast({
         title: "Using Browser Voice",
-        description: "OpenAI TTS unavailable. Using browser's speech synthesis.",
+        description: "TTS services unavailable. Using browser's speech synthesis.",
       });
       
       speakWithWebSpeech(cleanText, onComplete);
