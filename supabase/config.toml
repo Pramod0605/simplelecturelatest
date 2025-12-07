@@ -116,3 +116,6 @@ verify_jwt = true
 
 [functions.generate-story-video]
 verify_jwt = true
+
+[functions.sarvam-tts]
+verify_jwt = false

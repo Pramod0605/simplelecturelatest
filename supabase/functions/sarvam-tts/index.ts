@@ -1,0 +1,121 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Map language codes to Sarvam speaker names
+function getSpeakerForLanguageAndGender(languageCode: string, gender: string): string {
+  // Sarvam voices: meera (female), abhilash (male), anushka (female)
+  if (gender === 'female') {
+    return 'meera';
+  }
+  return 'abhilash';
+}
+
+// Map our language codes to Sarvam's supported codes
+function mapLanguageCode(langCode: string): string {
+  const mapping: Record<string, string> = {
+    'en-IN': 'en-IN',
+    'hi-IN': 'hi-IN',
+    'kn-IN': 'kn-IN',
+    'ta-IN': 'ta-IN',
+    'te-IN': 'te-IN',
+    'ml-IN': 'ml-IN',
+    'mr-IN': 'mr-IN',
+    'bn-IN': 'bn-IN',
+    'gu-IN': 'gu-IN',
+    'pa-IN': 'pa-IN',
+    'od-IN': 'od-IN',
+  };
+  return mapping[langCode] || 'en-IN';
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { text, languageCode = 'en-IN', gender = 'male' } = await req.json();
+
+    if (!text || text.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No text provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const apiKey = Deno.env.get('SARVAM_API_KEY');
+    if (!apiKey) {
+      console.error('SARVAM_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'SARVAM_API_KEY not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const speaker = getSpeakerForLanguageAndGender(languageCode, gender);
+    const sarvamLangCode = mapLanguageCode(languageCode);
+
+    console.log(`🔊 Sarvam TTS: text="${text.substring(0, 50)}...", lang=${sarvamLangCode}, speaker=${speaker}`);
+
+    const response = await fetch('https://api.sarvam.ai/text-to-speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'API-Subscription-Key': apiKey,
+      },
+      body: JSON.stringify({
+        inputs: [text],
+        target_language_code: sarvamLangCode,
+        speaker: speaker,
+        pitch: 0,
+        pace: 0.9,
+        loudness: 1.5,
+        speech_sample_rate: 22050,
+        enable_preprocessing: true,
+        model: 'bulbul:v2',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Sarvam API error:', response.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Sarvam TTS failed', details: errorText }),
+        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const result = await response.json();
+    
+    // Sarvam returns audios array with base64 encoded audio
+    if (!result.audios || result.audios.length === 0) {
+      console.error('No audio in Sarvam response');
+      return new Response(
+        JSON.stringify({ error: 'No audio generated' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('✅ Sarvam TTS success');
+
+    return new Response(
+      JSON.stringify({
+        audioContent: result.audios[0],
+        languageCode: sarvamLangCode,
+        voice: speaker,
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Sarvam TTS error:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
