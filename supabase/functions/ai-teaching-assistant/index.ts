@@ -42,6 +42,24 @@ function isQuestionRelevant(question: string, subjectName: string): boolean {
   return hasRelevantKeyword || mentionsSubject || isEducational || keywords.length === 0;
 }
 
+// Clean JSON response - handle markdown code blocks
+function cleanJsonResponse(content: string): string {
+  let cleaned = content.trim();
+  
+  // Remove markdown code block wrappers
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3);
+  }
+  
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  
+  return cleaned.trim();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -153,7 +171,7 @@ SUBJECT EXPERTISE: ${detectedSubject}
 TEACHING STYLE:
 - Speak SLOWLY and CLEARLY as if explaining to a student face-to-face
 - Use natural ${isHindi ? 'Hindi' : 'Indian English'} phrases ("${isHindi ? 'देखो, यहाँ क्या होता है...' : 'See, what happens here is...'}", "${isHindi ? 'अब मैं यह समझाता हूं...' : 'Now, let me explain this simply...'}")
-- Create 5-7 slides for a complete explanation
+- Create EXACTLY 6 slides for a complete explanation
 - Each slide MUST have detailed narration (150-250 words per slide) for audio playback
 - Include practical examples and analogies in every concept slide
 - For formulas, write them in LaTeX format: $formula$ for inline, $$formula$$ for display
@@ -162,63 +180,76 @@ TEACHING STYLE:
 CONTEXT FROM COURSE MATERIAL:
 ${context || 'No specific context available. Provide general educational explanation.'}
 
-CRITICAL REQUIREMENTS (MUST FOLLOW):
-1. Each slide MUST have a "narration" field with 150-250 words - the exact text to be spoken aloud
-2. Include "infographic" description in at least 2 slides - describe a helpful diagram/chart/visual
-3. The SECOND-TO-LAST slide MUST be a story/real-world example with "isStory": true and "infographic" describing a scene
-4. The LAST slide MUST be "Tips & Tricks to Remember" with "isTips": true - include mnemonics and memory tricks
-5. Keep narration simple, slow-paced, with pauses indicated by commas
+MANDATORY 6-SLIDE STRUCTURE (FOLLOW EXACTLY):
 
-MANDATORY SLIDE STRUCTURE (5-7 slides total):
-1. Introduction/What is [Topic]? - Define the concept with infographic
-2-3. Explanation slides - Deep dive with examples, formulas, infographics
-4. Real-World Story/Example slide (isStory: true, infographic: "scene description")
-5. Tips & Tricks to Remember (isTips: true)
+SLIDE 1 - Introduction:
+- title: "Introduction to [Topic]"
+- content: Brief definition
+- keyPoints: 3 key terms to understand
+- narration: 150-200 words explaining what and why
+- infographic: "Diagram showing [topic overview visual]"
 
-OUTPUT FORMAT (strict JSON):
+SLIDE 2 - Core Concept:
+- title: "[Main Concept]"
+- content: Explanation with formula if applicable
+- keyPoints: 3 important points
+- formula: "LaTeX formula if applicable"
+- narration: 150-200 words deep explanation
+- infographic: "Chart/diagram showing [concept visual]"
+
+SLIDE 3 - Example/Application:
+- title: "Understanding Through Example"
+- content: Practical example with step-by-step
+- keyPoints: Key steps or points
+- narration: 150-200 words working through example
+- infographic: "Illustration showing [example visual]"
+
+SLIDE 4 - Advanced Points:
+- title: "Important Details"
+- content: Additional important information
+- keyPoints: 3-4 detailed points
+- narration: 150-200 words covering nuances
+- infographic: "Visual showing [detailed diagram]"
+
+SLIDE 5 - Real-World Story (MANDATORY):
+- title: "A Story to Remember"
+- content: Relatable real-world story or analogy
+- keyPoints: ["Key takeaway from story"]
+- narration: 200-250 words engaging story with emotional connection
+- isStory: true
+- infographic: "Scene illustration: [describe characters, setting, action in the story]"
+
+SLIDE 6 - Tips & Tricks (MANDATORY):
+- title: "Tips & Tricks to Remember"
+- content: Memory tricks, mnemonics, quick recall methods
+- keyPoints: ["Mnemonic 1", "Memory trick 2", "Quick formula tip"]
+- narration: 150-200 words with practical memory techniques
+- isTips: true
+
+OUTPUT FORMAT (STRICT JSON - no markdown code blocks):
 {
   "presentation_slides": [
     {
-      "title": "Introduction to [Topic]",
-      "content": "Brief content with **highlighted** terms",
-      "narration": "Detailed spoken narration (150-250 words). Speak slowly. Use pauses. Explain each point carefully.",
-      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
-      "formula": "Optional LaTeX formula like $E = mc^2$",
-      "infographic": "Description of educational diagram: Show a [type of visual] illustrating [concept] with labels for [parts]"
-    },
-    {
-      "title": "A Story to Remember",
-      "content": "A relatable real-world story...",
-      "narration": "Let me share a story to help you remember this concept... [150-250 word story with emotional connection]",
-      "keyPoints": ["Takeaway from the story"],
-      "isStory": true,
-      "infographic": "Scene showing: [visual description of the story scene with characters and setting]"
-    },
-    {
-      "title": "Tips & Tricks to Remember",
-      "content": "Memory tricks and mnemonics",
-      "narration": "Here are some simple tricks to remember everything we learned today... [include mnemonics, acronyms, visual associations]",
-      "keyPoints": ["Mnemonic 1", "Quick formula trick", "Visual memory technique"],
-      "isTips": true
+      "title": "string",
+      "content": "string with **bold** terms",
+      "narration": "150-250 word spoken text",
+      "keyPoints": ["point1", "point2", "point3"],
+      "formula": "optional LaTeX",
+      "infographic": "description for image generation",
+      "isStory": false,
+      "isTips": false
     }
   ],
-  "latex_formulas": [
-    {"formula": "E = mc^2", "explanation": "Energy equals mass times speed of light squared"}
-  ],
-  "key_points": ["Summary point 1", "Summary point 2"],
-  "follow_up_questions": ["Follow up 1", "Follow up 2"]
+  "latex_formulas": [{"formula": "E=mc^2", "explanation": "explanation"}],
+  "key_points": ["summary1", "summary2"],
+  "follow_up_questions": ["question1", "question2"]
 }
 
-INFOGRAPHIC REQUIREMENTS:
-- Every concept slide should have an infographic description
-- Story slide MUST have an infographic describing the scene
-- Describe visuals that would help students understand: diagrams, flowcharts, illustrations, scenes
-
-NARRATION REQUIREMENTS:
-- Each narration must be 150-250 words
-- Use simple language a 10th grader can understand
-- Include natural pauses with commas
-- Speak as if explaining to a student face-to-face`;
+CRITICAL: 
+- EVERY slide MUST have an "infographic" field with a detailed visual description
+- Slide 5 MUST have "isStory": true
+- Slide 6 MUST have "isTips": true
+- Return ONLY valid JSON, no markdown code blocks`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -226,6 +257,7 @@ NARRATION REQUIREMENTS:
     }
 
     // Call Lovable AI for response
+    console.log('Calling AI for presentation generation...');
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -262,23 +294,29 @@ NARRATION REQUIREMENTS:
     }
 
     const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
+    const rawContent = aiResponse.choices?.[0]?.message?.content;
 
-    if (!content) {
+    if (!rawContent) {
       throw new Error("No response from AI");
     }
 
+    console.log('Raw AI response length:', rawContent.length);
+
+    // Clean and parse JSON response
     let parsedContent;
     try {
-      parsedContent = JSON.parse(content);
+      const cleanedContent = cleanJsonResponse(rawContent);
+      parsedContent = JSON.parse(cleanedContent);
+      console.log('Successfully parsed AI response with', parsedContent.presentation_slides?.length || 0, 'slides');
     } catch (e) {
-      console.error('Failed to parse AI response as JSON:', content);
+      console.error('Failed to parse AI response as JSON:', e);
+      console.error('Raw content preview:', rawContent.substring(0, 500));
       parsedContent = {
         presentation_slides: [{ 
           title: "Answer", 
-          content: content, 
+          content: rawContent, 
           keyPoints: [],
-          narration: content 
+          narration: rawContent 
         }],
         latex_formulas: [],
         key_points: [],
@@ -286,20 +324,69 @@ NARRATION REQUIREMENTS:
       };
     }
 
-    // Ensure all slides have narration
-    const slides = (parsedContent.presentation_slides || []).map((slide: any, index: number) => ({
+    // Ensure all slides have narration and validate structure
+    let slides = (parsedContent.presentation_slides || []).map((slide: any, index: number) => ({
       ...slide,
       narration: slide.narration || slide.content || '',
+      keyPoints: slide.keyPoints || [],
+      infographic: slide.infographic || null,
     }));
 
-    // Generate infographics for slides that need them using Gemini image model
-    console.log(`Processing ${slides.length} slides for infographics...`);
+    console.log(`Processing ${slides.length} slides...`);
+
+    // Validate and add missing story/tips slides if needed
+    const hasStorySlide = slides.some((s: any) => s.isStory === true);
+    const hasTipsSlide = slides.some((s: any) => s.isTips === true);
+
+    if (!hasStorySlide) {
+      console.log('Adding missing story slide...');
+      slides.push({
+        title: isHindi ? "याद रखने के लिए एक कहानी" : "A Story to Remember",
+        content: isHindi 
+          ? "इस अवधारणा को समझने के लिए एक सरल उदाहरण सोचें..."
+          : "Think of a simple real-world example to understand this concept...",
+        narration: isHindi
+          ? "देखो, इस अवधारणा को याद रखने के लिए, एक सरल कहानी सोचो। जब हम रोजमर्रा की जिंदगी में इस सिद्धांत को देखते हैं, तो यह समझना बहुत आसान हो जाता है। याद रखो, हर बड़ी खोज एक साधारण प्रश्न से शुरू हुई।"
+          : "See, to remember this concept, think of a simple story. When we observe this principle in everyday life, it becomes much easier to understand. Remember, every great discovery started with a simple question. The key is to connect what we learn in textbooks with what we see around us every day.",
+        keyPoints: [isHindi ? "व्यावहारिक उदाहरण" : "Practical application"],
+        isStory: true,
+        infographic: "Illustration showing a student having an 'aha moment' while observing the concept in real life"
+      });
+    }
+
+    if (!hasTipsSlide) {
+      console.log('Adding missing tips slide...');
+      slides.push({
+        title: isHindi ? "याद रखने के टिप्स" : "Tips & Tricks to Remember",
+        content: isHindi
+          ? "इन आसान तरीकों से याद करें..."
+          : "Use these simple tricks to remember...",
+        narration: isHindi
+          ? "अब मैं तुम्हें कुछ आसान तरीके बताता हूं जिनसे तुम यह सब याद रख सकते हो। पहला, एक छोटा सा फॉर्मूला याद करो। दूसरा, हमेशा चित्र बनाकर सोचो। तीसरा, रोज थोड़ा-थोड़ा अभ्यास करो।"
+          : "Now let me share some simple tricks to help you remember all this. First, memorize a short formula or mnemonic. Second, always visualize the concept with a diagram. Third, practice a little bit every day. These three simple steps will make sure you never forget what we learned today.",
+        keyPoints: [
+          isHindi ? "संक्षिप्त सूत्र याद करें" : "Remember key formulas",
+          isHindi ? "चित्र बनाकर सोचें" : "Visualize with diagrams", 
+          isHindi ? "रोज अभ्यास करें" : "Practice daily"
+        ],
+        isTips: true,
+        infographic: "Visual showing memory techniques: flashcards, mind maps, and practice schedule"
+      });
+    }
+
+    // Count slides with infographic descriptions
+    const slidesWithInfographicDesc = slides.filter((s: any) => s.infographic && s.infographic.length > 10);
+    console.log(`${slidesWithInfographicDesc.length} slides have infographic descriptions`);
+
+    // Generate infographics for ALL slides that have descriptions
+    console.log(`Generating infographics for ${slidesWithInfographicDesc.length} slides...`);
+    
     const slidesWithInfographics = await Promise.all(
       slides.map(async (slide: any, idx: number) => {
-        if (slide.infographic) {
-          console.log(`Generating infographic for slide ${idx + 1}: ${slide.infographic.substring(0, 50)}...`);
+        if (slide.infographic && slide.infographic.length > 10) {
+          console.log(`[Slide ${idx + 1}] Generating infographic: "${slide.infographic.substring(0, 60)}..."`);
           try {
-            // Use the image generation model correctly
+            // Use correct model with modalities parameter
             const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -307,64 +394,89 @@ NARRATION REQUIREMENTS:
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-2.5-flash-image",
+                model: "google/gemini-2.5-flash-image-preview",
+                modalities: ["image", "text"],
                 messages: [
                   {
                     role: "user",
-                    content: `Create a clear, educational diagram or infographic showing: ${slide.infographic}. 
-                    Style: Clean, professional educational illustration with:
-                    - Clear labels in English
-                    - Simple color coding
-                    - Easy to understand at a glance
-                    - Suitable for students
-                    - White or light background for clarity`
+                    content: `Create a clear, educational infographic or diagram for students.
+
+Topic: ${slide.title}
+Visual Description: ${slide.infographic}
+
+Requirements:
+- Clean, professional educational illustration
+- Clear labels in English
+- Simple color coding (blue, green, orange for contrast)
+- Easy to understand at a glance
+- White or light background
+- Suitable for 10th-12th grade students
+- No text-heavy elements, focus on visuals`
                   }
                 ],
               }),
             });
 
-            console.log(`Infographic API response status for slide ${idx + 1}:`, imageResponse.status);
+            console.log(`[Slide ${idx + 1}] Image API response status:`, imageResponse.status);
             
             if (imageResponse.ok) {
               const imageData = await imageResponse.json();
-              console.log(`Infographic response for slide ${idx + 1}:`, JSON.stringify(imageData).substring(0, 500));
               
-              // Try multiple paths to find the image URL
-              let generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
-                                   imageData.choices?.[0]?.message?.content?.[0]?.image_url?.url ||
-                                   imageData.data?.[0]?.url ||
-                                   imageData.images?.[0]?.url;
+              // Extract image from response - check all possible paths
+              let generatedImage = null;
               
-              // If content is an array with image data
-              const msgContent = imageData.choices?.[0]?.message?.content;
-              if (Array.isArray(msgContent)) {
-                const imageContent = msgContent.find((c: any) => c.type === 'image' || c.type === 'image_url');
-                if (imageContent) {
-                  generatedImage = imageContent.image_url?.url || imageContent.url || imageContent.data;
+              // Path 1: images array in message
+              if (imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
+                generatedImage = imageData.choices[0].message.images[0].image_url.url;
+                console.log(`[Slide ${idx + 1}] Found image in message.images`);
+              }
+              // Path 2: content array with image_url type
+              else if (Array.isArray(imageData.choices?.[0]?.message?.content)) {
+                const imageContent = imageData.choices[0].message.content.find(
+                  (c: any) => c.type === 'image' || c.type === 'image_url'
+                );
+                if (imageContent?.image_url?.url) {
+                  generatedImage = imageContent.image_url.url;
+                  console.log(`[Slide ${idx + 1}] Found image in content array`);
                 }
+              }
+              // Path 3: direct data array
+              else if (imageData.data?.[0]?.url) {
+                generatedImage = imageData.data[0].url;
+                console.log(`[Slide ${idx + 1}] Found image in data array`);
               }
               
               if (generatedImage) {
-                console.log(`✅ Infographic generated for slide ${idx + 1}`);
+                console.log(`[Slide ${idx + 1}] ✅ Infographic generated successfully`);
                 return { ...slide, infographicUrl: generatedImage };
               } else {
-                console.log(`No image URL found in response structure for slide ${idx + 1}`);
+                console.log(`[Slide ${idx + 1}] ⚠️ No image URL in response. Keys:`, Object.keys(imageData));
+                if (imageData.choices?.[0]?.message) {
+                  console.log(`[Slide ${idx + 1}] Message keys:`, Object.keys(imageData.choices[0].message));
+                }
               }
             } else {
               const errorText = await imageResponse.text();
-              console.error(`Infographic API error for slide ${idx + 1}:`, imageResponse.status, errorText.substring(0, 200));
+              console.error(`[Slide ${idx + 1}] ❌ Image API error:`, imageResponse.status, errorText.substring(0, 300));
             }
           } catch (imgError) {
-            console.error(`Infographic generation error for slide ${idx + 1}:`, imgError);
+            console.error(`[Slide ${idx + 1}] ❌ Infographic generation exception:`, imgError);
           }
+        } else {
+          console.log(`[Slide ${idx + 1}] Skipping - no infographic description`);
         }
         return slide;
       })
     );
 
+    // Log final slide status
+    const generatedCount = slidesWithInfographics.filter((s: any) => s.infographicUrl).length;
+    console.log(`Infographic generation complete: ${generatedCount}/${slides.length} slides have images`);
+
     // Generate video for story slide if it exists
     const storySlide = slidesWithInfographics.find((s: any) => s.isStory);
     if (storySlide) {
+      console.log('Generating video for story slide...');
       try {
         const videoResponse = await fetch(`${supabaseUrl}/functions/v1/generate-story-video`, {
           method: "POST",
@@ -387,6 +499,7 @@ NARRATION REQUIREMENTS:
                 ...slidesWithInfographics[storyIndex],
                 videoUrl: videoData.videoUrl
               };
+              console.log('✅ Story video generated');
             }
           }
         }
@@ -415,6 +528,8 @@ NARRATION REQUIREMENTS:
     if (cacheError) {
       console.error('Cache insert error:', cacheError);
     }
+
+    console.log('Returning response with', slidesWithInfographics.length, 'slides');
 
     return new Response(
       JSON.stringify({
