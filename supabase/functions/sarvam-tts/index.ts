@@ -129,7 +129,7 @@ serve(async (req) => {
           inputs: [chunk],
           target_language_code: sarvamLangCode,
           speaker: speaker,
-          pitch: 1.3, // More energetic, livelier voice
+          pitch: 0.2, // Slightly higher pitch for energetic tone (max 1)
           pace: 0.7, // Slower for better comprehension
           loudness: 1.5,
           speech_sample_rate: 22050,
