@@ -32,8 +32,8 @@ function mapLanguageCode(langCode: string): string {
   return mapping[langCode] || 'en-IN';
 }
 
-// Split text into chunks of max 450 characters (leaving margin), breaking at sentence/word boundaries
-function splitTextIntoChunks(text: string, maxLength: number = 450): string[] {
+// Split text into chunks of max 400 characters to be safer with API limits
+function splitTextIntoChunks(text: string, maxLength: number = 400): string[] {
   const chunks: string[] = [];
   let remaining = text.trim();
 
@@ -136,6 +136,7 @@ serve(async (req) => {
           speaker: speaker,
           speech_sample_rate: 22050,
           model: 'bulbul:v2',
+          pace: 0.85, // Slower pace for student comprehension
         }),
       });
 
@@ -158,8 +159,9 @@ serve(async (req) => {
               inputs: [chunk],
               target_language_code: sarvamLangCode,
               speaker: speaker,
-          speech_sample_rate: 22050,
+              speech_sample_rate: 22050,
               model: 'bulbul:v2',
+              pace: 0.85, // Slower pace for student comprehension
             }),
           });
           

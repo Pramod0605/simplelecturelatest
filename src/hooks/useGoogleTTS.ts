@@ -100,8 +100,8 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.75; // Slower for clarity
-    utterance.pitch = 1.15; // Energetic but not too high
+    utterance.rate = 0.65; // Much slower for student comprehension
+    utterance.pitch = 1.0; // Normal pitch
     
     // Try to find an Indian English voice
     const voices = window.speechSynthesis.getVoices();
