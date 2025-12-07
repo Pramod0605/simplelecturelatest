@@ -32,6 +32,56 @@ function mapLanguageCode(langCode: string): string {
   return mapping[langCode] || 'en-IN';
 }
 
+// Split text into chunks of max 450 characters (leaving margin), breaking at sentence/word boundaries
+function splitTextIntoChunks(text: string, maxLength: number = 450): string[] {
+  const chunks: string[] = [];
+  let remaining = text.trim();
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Find best break point (sentence end, then comma, then space)
+    let breakPoint = -1;
+    const searchRange = remaining.substring(0, maxLength);
+    
+    // Try sentence endings first
+    const sentenceEnd = Math.max(
+      searchRange.lastIndexOf('. '),
+      searchRange.lastIndexOf('! '),
+      searchRange.lastIndexOf('? ')
+    );
+    if (sentenceEnd > maxLength * 0.5) {
+      breakPoint = sentenceEnd + 1;
+    }
+    
+    // Try comma if no sentence end
+    if (breakPoint === -1) {
+      const commaPoint = searchRange.lastIndexOf(', ');
+      if (commaPoint > maxLength * 0.5) {
+        breakPoint = commaPoint + 1;
+      }
+    }
+    
+    // Fall back to last space
+    if (breakPoint === -1) {
+      const spacePoint = searchRange.lastIndexOf(' ');
+      if (spacePoint > 0) {
+        breakPoint = spacePoint;
+      } else {
+        breakPoint = maxLength; // Hard cut if no space found
+      }
+    }
+
+    chunks.push(remaining.substring(0, breakPoint).trim());
+    remaining = remaining.substring(breakPoint).trim();
+  }
+
+  return chunks.filter(c => c.length > 0);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -59,52 +109,64 @@ serve(async (req) => {
     const speaker = getSpeakerForLanguageAndGender(languageCode, gender);
     const sarvamLangCode = mapLanguageCode(languageCode);
 
-    console.log(`🔊 Sarvam TTS: text="${text.substring(0, 50)}...", lang=${sarvamLangCode}, speaker=${speaker}`);
+    // Split text into chunks to respect 500 char limit
+    const chunks = splitTextIntoChunks(text);
+    console.log(`🔊 Sarvam TTS: ${chunks.length} chunks, lang=${sarvamLangCode}, speaker=${speaker}`);
 
-    const response = await fetch('https://api.sarvam.ai/text-to-speech', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'API-Subscription-Key': apiKey,
-      },
-      body: JSON.stringify({
-        inputs: [text],
-        target_language_code: sarvamLangCode,
-        speaker: speaker,
-        pitch: 0,
-        pace: 0.9,
-        loudness: 1.5,
-        speech_sample_rate: 22050,
-        enable_preprocessing: true,
-        model: 'bulbul:v2',
-      }),
-    });
+    const audioChunks: string[] = [];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Sarvam API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: 'Sarvam TTS failed', details: errorText }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
+
+      const response = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-Subscription-Key': apiKey,
+        },
+        body: JSON.stringify({
+          inputs: [chunk],
+          target_language_code: sarvamLangCode,
+          speaker: speaker,
+          pitch: 0,
+          pace: 0.9,
+          loudness: 1.5,
+          speech_sample_rate: 22050,
+          enable_preprocessing: true,
+          model: 'bulbul:v2',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Sarvam API error on chunk ${i + 1}:`, response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: 'Sarvam TTS failed', details: errorText }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const result = await response.json();
+      
+      if (!result.audios || result.audios.length === 0) {
+        console.error(`No audio in Sarvam response for chunk ${i + 1}`);
+        return new Response(
+          JSON.stringify({ error: 'No audio generated' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      audioChunks.push(result.audios[0]);
     }
 
-    const result = await response.json();
-    
-    // Sarvam returns audios array with base64 encoded audio
-    if (!result.audios || result.audios.length === 0) {
-      console.error('No audio in Sarvam response');
-      return new Response(
-        JSON.stringify({ error: 'No audio generated' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('✅ Sarvam TTS success');
+    console.log(`✅ Sarvam TTS success: ${audioChunks.length} audio chunks`);
 
     return new Response(
       JSON.stringify({
-        audioContent: result.audios[0],
+        audioContent: audioChunks.length === 1 ? audioChunks[0] : audioChunks,
+        isChunked: audioChunks.length > 1,
+        chunkCount: audioChunks.length,
         languageCode: sarvamLangCode,
         voice: speaker,
       }),
