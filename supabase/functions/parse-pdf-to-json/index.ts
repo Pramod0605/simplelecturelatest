@@ -17,6 +17,55 @@ interface DatalabResponse {
   };
 }
 
+// Helper function to get B2 signed download URL
+async function getB2DownloadUrl(filePath: string): Promise<string> {
+  const B2_KEY_ID = Deno.env.get("B2_KEY_ID");
+  const B2_APP_KEY = Deno.env.get("B2_APP_KEY");
+  const B2_BUCKET_NAME = Deno.env.get("B2_BUCKET_NAME") || "Simplelecture";
+  
+  if (!B2_KEY_ID || !B2_APP_KEY) {
+    throw new Error("B2 credentials not configured");
+  }
+  
+  // Authorize with B2
+  const authResponse = await fetch("https://api.backblazeb2.com/b2api/v2/b2_authorize_account", {
+    method: "GET",
+    headers: {
+      Authorization: "Basic " + btoa(`${B2_KEY_ID}:${B2_APP_KEY}`),
+    },
+  });
+  
+  if (!authResponse.ok) {
+    throw new Error("Failed to authorize with B2");
+  }
+  
+  const authData = await authResponse.json();
+  const { authorizationToken, apiUrl, downloadUrl } = authData;
+  
+  // Get download authorization
+  const downloadAuthResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_download_authorization`, {
+    method: "POST",
+    headers: {
+      Authorization: authorizationToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      bucketId: Deno.env.get("B2_BUCKET_ID"),
+      fileNamePrefix: filePath,
+      validDurationInSeconds: 3600,
+    }),
+  });
+  
+  if (!downloadAuthResponse.ok) {
+    throw new Error("Failed to get B2 download authorization");
+  }
+  
+  const downloadAuthData = await downloadAuthResponse.json();
+  const signedUrl = `${downloadUrl}/file/${B2_BUCKET_NAME}/${filePath}?Authorization=${downloadAuthData.authorizationToken}`;
+  
+  return signedUrl;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,7 +79,7 @@ serve(async (req) => {
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const pdfUrl = formData.get("pdf_url") as string | null;
+    let pdfUrl = formData.get("pdf_url") as string | null;
 
     if (!file && !pdfUrl) {
       return new Response(
@@ -41,7 +90,14 @@ serve(async (req) => {
 
     console.log("Starting PDF parsing with Datalab Marker API...");
     console.log("File:", file?.name, "Size:", file?.size);
-    console.log("PDF URL:", pdfUrl);
+    console.log("PDF URL (raw):", pdfUrl);
+
+    // If pdfUrl is a relative B2 path (not starting with http), get signed URL
+    if (pdfUrl && !pdfUrl.startsWith("http")) {
+      console.log("Converting B2 path to signed URL...");
+      pdfUrl = await getB2DownloadUrl(pdfUrl);
+      console.log("Signed URL obtained");
+    }
 
     // Prepare the request to Datalab Marker API
     const datalabFormData = new FormData();
@@ -49,12 +105,12 @@ serve(async (req) => {
     if (file) {
       datalabFormData.append("file", file, file.name);
     } else if (pdfUrl) {
-      datalabFormData.append("url", pdfUrl);
+      datalabFormData.append("file_url", pdfUrl);
     }
 
     // Configure output options
     datalabFormData.append("output_format", "json");
-    datalabFormData.append("use_llm", "true"); // Use LLM for better accuracy
+    datalabFormData.append("use_llm", "true");
     datalabFormData.append("force_ocr", "false");
     datalabFormData.append("paginate_output", "false");
 
