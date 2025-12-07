@@ -173,9 +173,9 @@ export default function Learning() {
                                   <Circle className="h-4 w-4 mr-2" />
                                 )}
                                 <span className="flex-1 text-left truncate">{topic.title}</span>
-                                {topic.estimated_duration && (
+                                {topic.estimated_duration_minutes && (
                                   <span className="text-xs text-muted-foreground ml-2">
-                                    {topic.estimated_duration}m
+                                    {topic.estimated_duration_minutes}m
                                   </span>
                                 )}
                               </Button>
