@@ -188,11 +188,16 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         // Check for quota/rate limit errors - fallback to Web Speech
         if (functionError || data?.error) {
           const errMsg = functionError?.message || data?.error || '';
-          if (errMsg.includes('quota') || errMsg.includes('429') || errMsg.includes('insufficient')) {
+          const errDetails = data?.details || '';
+          const fullError = `${errMsg} ${errDetails}`.toLowerCase();
+          
+          // Check for quota, rate limit, or TTS synthesis failure
+          if (fullError.includes('quota') || fullError.includes('429') || 
+              fullError.includes('insufficient') || errMsg.includes('TTS synthesis failed')) {
             console.warn('⚠️ OpenAI TTS quota exceeded, falling back to Web Speech API');
             toast({
               title: "Using Browser Voice",
-              description: "OpenAI TTS quota exceeded. Using browser's speech synthesis.",
+              description: "OpenAI TTS unavailable. Using browser's speech synthesis.",
             });
             setIsLoading(false);
             speakWithWebSpeech(cleanText, onComplete);
