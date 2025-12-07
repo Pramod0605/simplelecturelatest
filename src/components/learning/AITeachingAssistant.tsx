@@ -332,14 +332,15 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
         
-        // Pre-cache audio for next 2 slides while waiting (background, non-blocking)
-        const upcomingSlides = narrationQueueRef.current.slice(0, 2);
-        upcomingSlides.forEach(slide => {
-          console.log(`🔄 Pre-caching audio for upcoming slide ${slide.slideIndex + 1}...`);
-          precacheAudio(slide.text, narrationLanguage, 'male').catch(() => {
+        // Pre-cache audio for next slide only (goes through global queue to prevent rate limiting)
+        const nextSlide = narrationQueueRef.current[0];
+        if (nextSlide) {
+          console.log(`🔄 Pre-caching audio for slide ${nextSlide.slideIndex + 1}...`);
+          // Don't await - let it queue up in background, the queue will serialize it
+          precacheAudio(nextSlide.text, narrationLanguage, 'male').catch(() => {
             // Ignore pre-cache errors - best effort only
           });
-        });
+        }
         
         await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
         

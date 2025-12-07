@@ -20,7 +20,7 @@ export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
 // Global request queue to prevent rate limiting - serializes ALL TTS requests
 let lastTTSRequestTime = 0;
-const MIN_REQUEST_GAP = 4000; // 4 seconds minimum between TTS API calls
+const MIN_REQUEST_GAP = 6000; // 6 seconds minimum between TTS API calls (aggressive for Sarvam rate limits)
 
 // Global request queue - ensures only ONE request at a time across ALL components
 let requestQueue: Promise<any> = Promise.resolve();
