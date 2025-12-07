@@ -306,8 +306,18 @@ CRITICAL:
     let parsedContent;
     try {
       const cleanedContent = cleanJsonResponse(rawContent);
+      console.log('Cleaned content preview:', cleanedContent.substring(0, 200));
       parsedContent = JSON.parse(cleanedContent);
       console.log('Successfully parsed AI response with', parsedContent.presentation_slides?.length || 0, 'slides');
+      
+      // Log first slide structure for debugging
+      if (parsedContent.presentation_slides?.[0]) {
+        const firstSlide = parsedContent.presentation_slides[0];
+        console.log('First slide keys:', Object.keys(firstSlide).join(', '));
+        console.log('First slide title:', firstSlide.title);
+        console.log('First slide has keyPoints:', Array.isArray(firstSlide.keyPoints) ? firstSlide.keyPoints.length : 'no');
+        console.log('First slide has key_points:', Array.isArray(firstSlide.key_points) ? firstSlide.key_points.length : 'no');
+      }
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', e);
       console.error('Raw content preview:', rawContent.substring(0, 500));
@@ -315,7 +325,7 @@ CRITICAL:
         presentation_slides: [{ 
           title: "Answer", 
           content: rawContent, 
-          keyPoints: [],
+          keyPoints: ["Key concept", "Important point"],
           narration: rawContent 
         }],
         latex_formulas: [],
@@ -324,15 +334,25 @@ CRITICAL:
       };
     }
 
-    // Ensure all slides have narration and validate structure
+    // Ensure all slides have narration and validate structure - handle BOTH camelCase and snake_case
     let slides = (parsedContent.presentation_slides || []).map((slide: any, index: number) => ({
-      ...slide,
+      title: slide.title || `Slide ${index + 1}`,
+      content: slide.content || '',
       narration: slide.narration || slide.content || '',
-      keyPoints: slide.keyPoints || [],
+      // Handle both keyPoints (camelCase) and key_points (snake_case) from AI
+      keyPoints: slide.keyPoints || slide.key_points || [],
+      formula: slide.formula || null,
       infographic: slide.infographic || null,
+      isStory: slide.isStory === true || slide.is_story === true,
+      isTips: slide.isTips === true || slide.is_tips === true,
     }));
 
     console.log(`Processing ${slides.length} slides...`);
+    
+    // Log each slide structure for debugging
+    slides.forEach((slide: any, idx: number) => {
+      console.log(`Slide ${idx + 1}: "${slide.title}" - ${slide.keyPoints?.length || 0} keyPoints, infographic: ${slide.infographic ? 'yes' : 'no'}`);
+    });
 
     // Validate and add missing story/tips slides if needed
     const hasStorySlide = slides.some((s: any) => s.isStory === true);
