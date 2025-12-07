@@ -258,7 +258,14 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       
       // Fallback to Web Speech API
       console.warn('⚠️ Falling back to Web Speech API');
+      setIsLoading(false);
       setError(null);
+      
+      toast({
+        title: "Using Browser Voice",
+        description: "OpenAI TTS unavailable. Using browser's speech synthesis.",
+      });
+      
       speakWithWebSpeech(cleanText, onComplete);
     }
   }, [stopSpeaking, toast, speakWithWebSpeech]);
