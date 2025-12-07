@@ -1,0 +1,101 @@
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export interface PresentationSlide {
+  title: string;
+  content: string;
+  keyPoints?: string[];
+  formula?: string;
+}
+
+export interface LatexFormula {
+  formula: string;
+  explanation: string;
+}
+
+export interface TeachingResponse {
+  cached: boolean;
+  answer: string;
+  presentationSlides: PresentationSlide[];
+  latexFormulas: LatexFormula[];
+  keyPoints?: string[];
+  followUpQuestions?: string[];
+  narrationText: string;
+}
+
+export function useTeachingAssistant() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState<TeachingResponse | null>(null);
+  const { toast } = useToast();
+
+  const askQuestion = useCallback(async (
+    question: string,
+    topicId?: string,
+    chapterId?: string,
+    language: string = 'en-IN'
+  ): Promise<TeachingResponse | null> => {
+    if (!question.trim()) {
+      toast({
+        title: "Question Required",
+        description: "Please enter a question to ask the AI tutor.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-teaching-assistant', {
+        body: { question, topicId, chapterId, language }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const response: TeachingResponse = {
+        cached: data.cached || false,
+        answer: data.answer || '',
+        presentationSlides: data.presentationSlides || [],
+        latexFormulas: data.latexFormulas || [],
+        keyPoints: data.keyPoints || [],
+        followUpQuestions: data.followUpQuestions || [],
+        narrationText: data.narrationText || data.answer || '',
+      };
+
+      setCurrentResponse(response);
+      
+      if (response.cached) {
+        console.log('Response served from cache');
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Teaching assistant error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to get response from AI tutor",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  const clearResponse = useCallback(() => {
+    setCurrentResponse(null);
+  }, []);
+
+  return {
+    isLoading,
+    currentResponse,
+    askQuestion,
+    clearResponse,
+  };
+}

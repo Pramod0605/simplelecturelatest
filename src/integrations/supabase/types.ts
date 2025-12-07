@@ -3169,6 +3169,78 @@ export type Database = {
           },
         ]
       }
+      teaching_qa_cache: {
+        Row: {
+          answer_html: string | null
+          answer_text: string
+          audio_narration_url: string | null
+          avg_satisfaction: number | null
+          chapter_id: string | null
+          created_at: string | null
+          diagrams_urls: Json | null
+          id: string
+          language: string | null
+          latex_formulas: Json | null
+          presentation_slides: Json | null
+          question_hash: string
+          question_text: string
+          topic_id: string | null
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          answer_html?: string | null
+          answer_text: string
+          audio_narration_url?: string | null
+          avg_satisfaction?: number | null
+          chapter_id?: string | null
+          created_at?: string | null
+          diagrams_urls?: Json | null
+          id?: string
+          language?: string | null
+          latex_formulas?: Json | null
+          presentation_slides?: Json | null
+          question_hash: string
+          question_text: string
+          topic_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          answer_html?: string | null
+          answer_text?: string
+          audio_narration_url?: string | null
+          avg_satisfaction?: number | null
+          chapter_id?: string | null
+          created_at?: string | null
+          diagrams_urls?: Json | null
+          id?: string
+          language?: string | null
+          latex_formulas?: Json | null
+          presentation_slides?: Json | null
+          question_hash?: string
+          question_text?: string
+          topic_id?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_qa_cache_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_qa_cache_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_submissions: {
         Row: {
           answers: Json
