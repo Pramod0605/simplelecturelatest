@@ -303,15 +303,87 @@ STORY REQUIREMENT FOR LAST SLIDE:
       narration: slide.narration || slide.content || '',
     }));
 
+    // Generate infographics for slides that need them
+    const slidesWithInfographics = await Promise.all(
+      slides.map(async (slide: any) => {
+        if (slide.infographic) {
+          try {
+            // Generate actual infographic using Lovable AI image generation
+            const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-image-preview",
+                messages: [
+                  {
+                    role: "user",
+                    content: `Create a simple, clear educational infographic: ${slide.infographic}. Make it suitable for students, with clear labels and easy-to-understand visuals.`
+                  }
+                ],
+                modalities: ["image", "text"]
+              }),
+            });
+
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              const generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+              if (generatedImage) {
+                return { ...slide, infographicUrl: generatedImage };
+              }
+            }
+          } catch (imgError) {
+            console.error('Infographic generation error:', imgError);
+          }
+        }
+        return slide;
+      })
+    );
+
+    // Generate video for story slide if it exists
+    const storySlide = slidesWithInfographics.find((s: any) => s.isStory);
+    if (storySlide) {
+      try {
+        const videoResponse = await fetch(`${supabaseUrl}/functions/v1/generate-story-video`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            storyText: storySlide.narration || storySlide.content,
+            prompt: `Educational animation about: ${storySlide.title}. ${storySlide.content?.substring(0, 100)}`
+          }),
+        });
+
+        if (videoResponse.ok) {
+          const videoData = await videoResponse.json();
+          if (videoData.success && videoData.videoUrl) {
+            const storyIndex = slidesWithInfographics.findIndex((s: any) => s.isStory);
+            if (storyIndex !== -1) {
+              slidesWithInfographics[storyIndex] = {
+                ...slidesWithInfographics[storyIndex],
+                videoUrl: videoData.videoUrl
+              };
+            }
+          }
+        }
+      } catch (videoError) {
+        console.error('Video generation error:', videoError);
+      }
+    }
+
     // Cache the response
     const cacheData = {
       topic_id: topicId || null,
       chapter_id: chapterId || null,
       question_hash: questionHash,
       question_text: question,
-      answer_text: slides.map((s: any) => s.narration).join(' '),
+      answer_text: slidesWithInfographics.map((s: any) => s.narration).join(' '),
       answer_html: null,
-      presentation_slides: slides,
+      presentation_slides: slidesWithInfographics,
       latex_formulas: parsedContent.latex_formulas || [],
       language: language,
     };
@@ -327,12 +399,12 @@ STORY REQUIREMENT FOR LAST SLIDE:
     return new Response(
       JSON.stringify({
         cached: false,
-        answer: slides.map((s: any) => s.narration).join(' '),
-        presentationSlides: slides,
+        answer: slidesWithInfographics.map((s: any) => s.narration).join(' '),
+        presentationSlides: slidesWithInfographics,
         latexFormulas: parsedContent.latex_formulas || [],
         keyPoints: parsedContent.key_points || [],
         followUpQuestions: parsedContent.follow_up_questions || [],
-        narrationText: slides.map((s: any) => s.narration).join(' '),
+        narrationText: slidesWithInfographics.map((s: any) => s.narration).join(' '),
         subjectName: detectedSubject,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -10,6 +10,7 @@ export interface PresentationSlide {
   narration?: string;
   isStory?: boolean;
   infographic?: string;
+  videoUrl?: string;
 }
 
 export interface LatexFormula {
@@ -98,10 +99,34 @@ export function useTeachingAssistant() {
     setCurrentResponse(null);
   }, []);
 
+  const fetchHistory = useCallback(async (topicId?: string, chapterId?: string) => {
+    try {
+      let query = supabase
+        .from('teaching_qa_cache')
+        .select('id, question_text, answer_text, presentation_slides, created_at, language')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (topicId) {
+        query = query.eq('topic_id', topicId);
+      } else if (chapterId) {
+        query = query.eq('chapter_id', chapterId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      return [];
+    }
+  }, []);
+
   return {
     isLoading,
     currentResponse,
     askQuestion,
     clearResponse,
+    fetchHistory,
   };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
@@ -25,6 +25,7 @@ export default function Learning() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState("videos");
 
   const { data: learningData, isLoading: courseLoading } = useLearningCourse(courseId);
   const { data: chapters, isLoading: chaptersLoading } = useSubjectChapters(selectedSubjectId || undefined);
@@ -35,6 +36,14 @@ export default function Learning() {
       setSelectedSubjectId(learningData.subjects[0].id);
     }
   }, [learningData?.subjects, selectedSubjectId]);
+
+  // Auto-collapse sidebar when AI Assistant tab is selected
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    if (value === "ai-assistant") {
+      setSidebarCollapsed(true);
+    }
+  }, []);
 
   // Handle access control
   if (courseLoading) {
@@ -232,7 +241,7 @@ export default function Learning() {
 
           <main className="flex-1 overflow-y-auto p-6">
             {selectedTopic ? (
-              <Tabs defaultValue="videos" className="space-y-4">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-7">
                   <TabsTrigger value="videos">Videos</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
@@ -256,7 +265,8 @@ export default function Learning() {
                   <AITeachingAssistant 
                     topicId={selectedTopic.id} 
                     chapterId={selectedTopic.chapter_id}
-                    topicTitle={selectedTopic.title} 
+                    topicTitle={selectedTopic.title}
+                    subjectName={selectedSubject?.name}
                   />
                 </TabsContent>
 
