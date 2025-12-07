@@ -34,10 +34,15 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
   const { toast } = useToast();
 
   const stopSpeaking = useCallback(() => {
+    // Stop OpenAI TTS audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current = null;
+    }
+    // Stop Web Speech API
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
   }, []);
@@ -82,6 +87,50 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     
     return chunks;
   };
+
+  // Fallback to Web Speech API when OpenAI fails
+  const speakWithWebSpeech = useCallback((text: string, onComplete?: () => void) => {
+    if (!('speechSynthesis' in window)) {
+      console.warn('Web Speech API not supported');
+      onComplete?.();
+      return;
+    }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    
+    // Try to find an Indian English voice
+    const voices = window.speechSynthesis.getVoices();
+    const indianVoice = voices.find(v => v.lang.includes('en-IN')) || 
+                        voices.find(v => v.lang.includes('en'));
+    if (indianVoice) {
+      utterance.voice = indianVoice;
+    }
+
+    utterance.onstart = () => {
+      console.log('🔊 Web Speech: Started speaking');
+      setIsSpeaking(true);
+      setIsLoading(false);
+    };
+
+    utterance.onend = () => {
+      console.log('⏹️ Web Speech: Finished speaking');
+      setIsSpeaking(false);
+      onComplete?.();
+    };
+
+    utterance.onerror = () => {
+      console.error('❌ Web Speech: Error');
+      setIsSpeaking(false);
+      onComplete?.();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
 
   const speak = useCallback(async (
     text: string,
@@ -136,8 +185,20 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
           },
         });
 
-        if (functionError) {
-          throw new Error(functionError.message || 'TTS function error');
+        // Check for quota/rate limit errors - fallback to Web Speech
+        if (functionError || data?.error) {
+          const errMsg = functionError?.message || data?.error || '';
+          if (errMsg.includes('quota') || errMsg.includes('429') || errMsg.includes('insufficient')) {
+            console.warn('⚠️ OpenAI TTS quota exceeded, falling back to Web Speech API');
+            toast({
+              title: "Using Browser Voice",
+              description: "OpenAI TTS quota exceeded. Using browser's speech synthesis.",
+            });
+            setIsLoading(false);
+            speakWithWebSpeech(cleanText, onComplete);
+            return;
+          }
+          throw new Error(errMsg || 'TTS function error');
         }
 
         if (!data?.audioContent) {
@@ -189,19 +250,13 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown TTS error';
       console.error("❌ OpenAI TTS error:", errorMessage);
-      setError(errorMessage);
-      setIsLoading(false);
-      setIsSpeaking(false);
       
-      toast({
-        title: "Voice Error",
-        description: "Could not generate speech. Using fallback.",
-        variant: "destructive",
-      });
-      
-      onComplete?.();
+      // Fallback to Web Speech API
+      console.warn('⚠️ Falling back to Web Speech API');
+      setError(null);
+      speakWithWebSpeech(cleanText, onComplete);
     }
-  }, [stopSpeaking, toast]);
+  }, [stopSpeaking, toast, speakWithWebSpeech]);
 
   return {
     speak,
