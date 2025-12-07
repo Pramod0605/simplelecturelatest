@@ -7,7 +7,6 @@ const corsHeaders = {
 
 // Map language codes to Sarvam speaker names
 function getSpeakerForLanguageAndGender(languageCode: string, gender: string): string {
-  // Sarvam voices: meera (female), abhilash (male), anushka (female)
   if (gender === 'female') {
     return 'meera';
   }
@@ -43,11 +42,9 @@ function splitTextIntoChunks(text: string, maxLength: number = 400): string[] {
       break;
     }
 
-    // Find best break point (sentence end, then comma, then space)
     let breakPoint = -1;
     const searchRange = remaining.substring(0, maxLength);
     
-    // Try sentence endings first
     const sentenceEnd = Math.max(
       searchRange.lastIndexOf('. '),
       searchRange.lastIndexOf('! '),
@@ -57,7 +54,6 @@ function splitTextIntoChunks(text: string, maxLength: number = 400): string[] {
       breakPoint = sentenceEnd + 1;
     }
     
-    // Try comma if no sentence end
     if (breakPoint === -1) {
       const commaPoint = searchRange.lastIndexOf(', ');
       if (commaPoint > maxLength * 0.5) {
@@ -65,13 +61,12 @@ function splitTextIntoChunks(text: string, maxLength: number = 400): string[] {
       }
     }
     
-    // Fall back to last space
     if (breakPoint === -1) {
       const spacePoint = searchRange.lastIndexOf(' ');
       if (spacePoint > 0) {
         breakPoint = spacePoint;
       } else {
-        breakPoint = maxLength; // Hard cut if no space found
+        breakPoint = maxLength;
       }
     }
 
@@ -80,6 +75,68 @@ function splitTextIntoChunks(text: string, maxLength: number = 400): string[] {
   }
 
   return chunks.filter(c => c.length > 0);
+}
+
+// Helper to make a single TTS request with retry logic
+async function makeTTSRequest(
+  chunk: string, 
+  sarvamLangCode: string, 
+  speaker: string, 
+  apiKey: string,
+  maxRetries: number = 3
+): Promise<{ success: boolean; audio?: string; error?: string }> {
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const delay = attempt * 2000; // 2s, 4s, 6s
+      console.log(`  Retry ${attempt}/${maxRetries}, waiting ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    try {
+      const response = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-Subscription-Key': apiKey,
+        },
+        body: JSON.stringify({
+          inputs: [chunk],
+          target_language_code: sarvamLangCode,
+          speaker: speaker,
+          speech_sample_rate: 22050,
+          model: 'bulbul:v2',
+          pace: 0.85,
+        }),
+      });
+
+      if (response.status === 429) {
+        console.log(`  Rate limited on attempt ${attempt + 1}, will retry...`);
+        continue; // Retry on rate limit
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Sarvam API error:`, response.status, errorText);
+        return { success: false, error: errorText };
+      }
+
+      const result = await response.json();
+      
+      if (result.audios && result.audios.length > 0) {
+        return { success: true, audio: result.audios[0] };
+      } else {
+        return { success: false, error: 'No audio in response' };
+      }
+    } catch (err) {
+      console.error(`Request error on attempt ${attempt + 1}:`, err);
+      if (attempt === maxRetries - 1) {
+        return { success: false, error: err instanceof Error ? err.message : 'Request failed' };
+      }
+    }
+  }
+
+  return { success: false, error: 'Max retries exceeded due to rate limiting' };
 }
 
 serve(async (req) => {
@@ -109,7 +166,6 @@ serve(async (req) => {
     const speaker = getSpeakerForLanguageAndGender(languageCode, gender);
     const sarvamLangCode = mapLanguageCode(languageCode);
 
-    // Split text into chunks to respect 500 char limit
     const chunks = splitTextIntoChunks(text);
     console.log(`🔊 Sarvam TTS: ${chunks.length} chunks, lang=${sarvamLangCode}, speaker=${speaker}`);
 
@@ -119,78 +175,22 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
-      // Add delay between chunks to avoid rate limiting (except for first chunk)
+      // Add delay between chunks to avoid rate limiting
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
-      const response = await fetch('https://api.sarvam.ai/text-to-speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'API-Subscription-Key': apiKey,
-        },
-        body: JSON.stringify({
-          inputs: [chunk],
-          target_language_code: sarvamLangCode,
-          speaker: speaker,
-          speech_sample_rate: 22050,
-          model: 'bulbul:v2',
-          pace: 0.85, // Slower pace for student comprehension
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Sarvam API error on chunk ${i + 1}:`, response.status, errorText);
-        
-        // On rate limit, wait and retry once
-        if (response.status === 429) {
-          console.log(`  Rate limited, waiting 2s and retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retryResponse = await fetch('https://api.sarvam.ai/text-to-speech', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'API-Subscription-Key': apiKey,
-            },
-            body: JSON.stringify({
-              inputs: [chunk],
-              target_language_code: sarvamLangCode,
-              speaker: speaker,
-              speech_sample_rate: 22050,
-              model: 'bulbul:v2',
-              pace: 0.85, // Slower pace for student comprehension
-            }),
-          });
-          
-          if (retryResponse.ok) {
-            const retryResult = await retryResponse.json();
-            if (retryResult.audios && retryResult.audios.length > 0) {
-              audioChunks.push(retryResult.audios[0]);
-              continue;
-            }
-          }
-        }
-        
-        return new Response(
-          JSON.stringify({ error: 'Sarvam TTS failed', details: errorText }),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const result = await response.json();
+      const result = await makeTTSRequest(chunk, sarvamLangCode, speaker, apiKey);
       
-      if (!result.audios || result.audios.length === 0) {
-        console.error(`No audio in Sarvam response for chunk ${i + 1}`);
+      if (!result.success) {
+        // Return error but with 503 so frontend knows to fallback
         return new Response(
-          JSON.stringify({ error: 'No audio generated' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Sarvam TTS failed', details: result.error, fallback: true }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      audioChunks.push(result.audios[0]);
+      audioChunks.push(result.audio!);
     }
 
     console.log(`✅ Sarvam TTS success: ${audioChunks.length} audio chunks`);
@@ -209,7 +209,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Sarvam TTS error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error', fallback: true }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
