@@ -176,9 +176,9 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
-      // Add delay between chunks to avoid rate limiting - increased to 2.5s
+      // Add delay between chunks to avoid rate limiting - reduced to 500ms with retry logic
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       const result = await makeTTSRequest(chunk, sarvamLangCode, speaker, apiKey);
