@@ -203,15 +203,17 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
           console.warn('⚠️ Sarvam TTS error, trying Web Speech:', sarvamErr);
         }
 
-        // If Sarvam fails, fall back to Web Speech API directly (skip OpenAI - quota exceeded)
+        // If Sarvam fails, complete silently - NO fallback to Web Speech
         if (audioContents.length === 0) {
-          console.warn('⚠️ Sarvam TTS unavailable, using Web Speech API');
+          console.warn('⚠️ Sarvam TTS unavailable - skipping audio (no fallback)');
           toast({
-            title: "Using Browser Voice",
-            description: "Indian voice unavailable. Using browser's speech synthesis.",
+            title: "Voice Unavailable",
+            description: "Voice narration is temporarily unavailable.",
+            variant: "default"
           });
           setIsLoading(false);
-          speakWithWebSpeech(cleanText, onComplete);
+          setIsSpeaking(false);
+          onComplete?.();
           return;
         }
 
@@ -272,17 +274,19 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
       const errorMessage = err instanceof Error ? err.message : 'Unknown TTS error';
       console.error("❌ TTS error:", errorMessage);
       
-      // Fallback to Web Speech API
-      console.warn('⚠️ Falling back to Web Speech API');
+      // No fallback - just complete silently
+      console.warn('⚠️ TTS failed - completing without audio');
       setIsLoading(false);
+      setIsSpeaking(false);
       setError(null);
       
       toast({
-        title: "Using Browser Voice",
-        description: "TTS services unavailable. Using browser's speech synthesis.",
+        title: "Voice Unavailable",
+        description: "Voice narration failed. Continuing in reading mode.",
+        variant: "default"
       });
       
-      speakWithWebSpeech(cleanText, onComplete);
+      onComplete?.();
     }
   }, [stopSpeaking, toast, speakWithWebSpeech]);
 

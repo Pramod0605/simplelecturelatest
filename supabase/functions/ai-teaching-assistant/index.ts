@@ -42,7 +42,7 @@ function isQuestionRelevant(question: string, subjectName: string): boolean {
   return hasRelevantKeyword || mentionsSubject || isEducational || keywords.length === 0;
 }
 
-// Clean JSON response - handle markdown code blocks
+// Clean JSON response - handle markdown code blocks and escape issues
 function cleanJsonResponse(content: string): string {
   let cleaned = content.trim();
   
@@ -57,7 +57,81 @@ function cleanJsonResponse(content: string): string {
     cleaned = cleaned.slice(0, -3);
   }
   
+  // Try to find JSON object boundaries
+  const startIdx = cleaned.indexOf('{');
+  const endIdx = cleaned.lastIndexOf('}');
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    cleaned = cleaned.slice(startIdx, endIdx + 1);
+  }
+  
   return cleaned.trim();
+}
+
+// Robust JSON parsing with multiple strategies
+function parseAIResponseRobust(rawContent: string): any {
+  // Strategy 1: Direct parse after cleaning
+  try {
+    const cleaned = cleanJsonResponse(rawContent);
+    return JSON.parse(cleaned);
+  } catch (e1) {
+    console.log('Strategy 1 (direct parse) failed:', (e1 as Error).message);
+  }
+  
+  // Strategy 2: Fix common escape issues
+  try {
+    let sanitized = cleanJsonResponse(rawContent);
+    // Fix unescaped newlines in string values
+    sanitized = sanitized.replace(/\n/g, '\\n');
+    sanitized = sanitized.replace(/\r/g, '\\r');
+    sanitized = sanitized.replace(/\t/g, '\\t');
+    return JSON.parse(sanitized);
+  } catch (e2) {
+    console.log('Strategy 2 (escape fix) failed:', (e2 as Error).message);
+  }
+  
+  // Strategy 3: Remove control characters
+  try {
+    let sanitized = cleanJsonResponse(rawContent);
+    // Remove all control characters except \n \r \t which we'll escape
+    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    // Now escape the remaining whitespace chars
+    sanitized = sanitized.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+    return JSON.parse(sanitized);
+  } catch (e3) {
+    console.log('Strategy 3 (control char removal) failed:', (e3 as Error).message);
+  }
+  
+  // Strategy 4: Extract presentation_slides array using regex
+  try {
+    const slidesMatch = rawContent.match(/"presentation_slides"\s*:\s*\[([\s\S]*?)\](?=\s*,?\s*["}\]])/);
+    if (slidesMatch) {
+      // Try to extract individual slide objects
+      const slidesContent = slidesMatch[1];
+      const slideObjects: any[] = [];
+      
+      // Match each slide object
+      const slideMatches = slidesContent.matchAll(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+      for (const match of slideMatches) {
+        try {
+          const slideText = match[0].replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+          slideObjects.push(JSON.parse(slideText));
+        } catch (slideErr) {
+          console.log('Could not parse individual slide');
+        }
+      }
+      
+      if (slideObjects.length > 0) {
+        console.log(`Strategy 4 extracted ${slideObjects.length} slides via regex`);
+        return { presentation_slides: slideObjects };
+      }
+    }
+  } catch (e4) {
+    console.log('Strategy 4 (regex extraction) failed:', (e4 as Error).message);
+  }
+  
+  // All strategies failed
+  console.error('All JSON parsing strategies failed');
+  return null;
 }
 
 serve(async (req) => {
@@ -302,36 +376,41 @@ CRITICAL:
 
     console.log('Raw AI response length:', rawContent.length);
 
-    // Clean and parse JSON response
-    let parsedContent;
-    try {
-      const cleanedContent = cleanJsonResponse(rawContent);
-      console.log('Cleaned content preview:', cleanedContent.substring(0, 200));
-      parsedContent = JSON.parse(cleanedContent);
-      console.log('Successfully parsed AI response with', parsedContent.presentation_slides?.length || 0, 'slides');
-      
-      // Log first slide structure for debugging
-      if (parsedContent.presentation_slides?.[0]) {
-        const firstSlide = parsedContent.presentation_slides[0];
-        console.log('First slide keys:', Object.keys(firstSlide).join(', '));
-        console.log('First slide title:', firstSlide.title);
-        console.log('First slide has keyPoints:', Array.isArray(firstSlide.keyPoints) ? firstSlide.keyPoints.length : 'no');
-        console.log('First slide has key_points:', Array.isArray(firstSlide.key_points) ? firstSlide.key_points.length : 'no');
-      }
-    } catch (e) {
-      console.error('Failed to parse AI response as JSON:', e);
+    // Clean and parse JSON response with robust parsing
+    let parsedContent = parseAIResponseRobust(rawContent);
+    
+    if (!parsedContent || !parsedContent.presentation_slides || parsedContent.presentation_slides.length === 0) {
+      console.error('❌ JSON parsing completely failed - returning error response');
       console.error('Raw content preview:', rawContent.substring(0, 500));
-      parsedContent = {
-        presentation_slides: [{ 
-          title: "Answer", 
-          content: rawContent, 
-          keyPoints: ["Key concept", "Important point"],
-          narration: rawContent 
-        }],
-        latex_formulas: [],
-        key_points: [],
-        follow_up_questions: []
-      };
+      
+      // Return a proper error response instead of dumping raw JSON
+      return new Response(
+        JSON.stringify({
+          error: "Failed to generate presentation. Please try again.",
+          cached: false,
+          presentationSlides: [{
+            title: isHindi ? "त्रुटि" : "Error",
+            content: isHindi ? "प्रस्तुति बनाने में समस्या हुई।" : "There was a problem creating the presentation.",
+            keyPoints: [isHindi ? "कृपया पुनः प्रयास करें" : "Please try again"],
+            narration: isHindi ? "क्षमा करें, प्रस्तुति बनाने में कुछ समस्या हुई। कृपया दोबारा प्रश्न पूछें।" : "Sorry, there was an issue creating your presentation. Please ask your question again."
+          }],
+          latexFormulas: [],
+          keyPoints: [],
+          followUpQuestions: [],
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log('✅ Successfully parsed AI response with', parsedContent.presentation_slides?.length || 0, 'slides');
+    
+    // Log first slide structure for debugging
+    if (parsedContent.presentation_slides?.[0]) {
+      const firstSlide = parsedContent.presentation_slides[0];
+      console.log('First slide keys:', Object.keys(firstSlide).join(', '));
+      console.log('First slide title:', firstSlide.title);
+      console.log('First slide has keyPoints:', Array.isArray(firstSlide.keyPoints) ? firstSlide.keyPoints.length : 'no');
+      console.log('First slide has key_points:', Array.isArray(firstSlide.key_points) ? firstSlide.key_points.length : 'no');
     }
 
     // Ensure all slides have narration and validate structure - handle BOTH camelCase and snake_case
