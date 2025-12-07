@@ -50,28 +50,37 @@ export const useEnrolledCoursesWithCategories = () => {
       if (error) throw error;
       if (!enrollments || enrollments.length === 0) return [];
 
-      // Get course IDs for category lookup
+      // Get course IDs for bulk queries
       const courseIds = enrollments.map(e => e.course_id);
 
-      // Fetch course categories
-      const { data: courseCategories } = await supabase
-        .from('course_categories')
-        .select(`
-          course_id,
-          category_id,
-          categories (
-            id,
-            name,
-            slug,
-            parent_id,
-            level
-          )
-        `)
-        .in('course_id', courseIds);
+      // Bulk fetch course categories, chapters, and progress in parallel
+      const [categoriesResult, chaptersResult] = await Promise.all([
+        supabase
+          .from('course_categories')
+          .select(`
+            course_id,
+            category_id,
+            categories (
+              id,
+              name,
+              slug,
+              parent_id,
+              level
+            )
+          `)
+          .in('course_id', courseIds),
+        supabase
+          .from('chapters')
+          .select('id, course_id')
+          .in('course_id', courseIds)
+      ]);
+
+      const courseCategories = categoriesResult.data || [];
+      const allChapters = chaptersResult.data || [];
 
       // Build category mapping
       const categoriesByCourse: Record<string, any> = {};
-      courseCategories?.forEach(cc => {
+      courseCategories.forEach(cc => {
         const cat = cc.categories as any;
         if (cat && !categoriesByCourse[cc.course_id]) {
           categoriesByCourse[cc.course_id] = cat;
@@ -83,41 +92,60 @@ export const useEnrolledCoursesWithCategories = () => {
         .filter((cat: any) => cat.parent_id)
         .map((cat: any) => cat.parent_id);
 
-      const { data: parentCategories } = await supabase
-        .from('categories')
-        .select('id, name, slug')
-        .in('id', parentIds);
+      // Build chapter IDs list for bulk progress fetch
+      const allChapterIds = allChapters.map(c => c.id);
 
+      // Fetch parent categories and student progress in parallel
+      const [parentCategoriesResult, progressResult] = await Promise.all([
+        parentIds.length > 0
+          ? supabase
+              .from('categories')
+              .select('id, name, slug')
+              .in('id', parentIds)
+          : Promise.resolve({ data: [] }),
+        allChapterIds.length > 0
+          ? supabase
+              .from('student_progress')
+              .select('chapter_id, is_completed')
+              .eq('student_id', user.id)
+              .in('chapter_id', allChapterIds)
+          : Promise.resolve({ data: [] })
+      ]);
+
+      // Build parent category map
       const parentMap: Record<string, any> = {};
-      parentCategories?.forEach(p => {
+      (parentCategoriesResult.data || []).forEach(p => {
         parentMap[p.id] = p;
       });
 
-      // Calculate progress for each course
-      const coursesWithProgress: EnrolledCourse[] = await Promise.all(
-        enrollments.map(async (enrollment) => {
+      // Build chapters by course map
+      const chaptersByCourse: Record<string, string[]> = {};
+      allChapters.forEach(ch => {
+        if (!chaptersByCourse[ch.course_id]) {
+          chaptersByCourse[ch.course_id] = [];
+        }
+        chaptersByCourse[ch.course_id].push(ch.id);
+      });
+
+      // Build completed chapters set
+      const completedChapters = new Set(
+        (progressResult.data || [])
+          .filter(p => p.is_completed)
+          .map(p => p.chapter_id)
+      );
+
+      // Calculate progress for each course using in-memory data
+      const coursesWithProgress: EnrolledCourse[] = enrollments
+        .map((enrollment) => {
           const course = enrollment.courses as any;
           if (!course) return null;
 
-          // Get chapters for this course
-          const { data: chapters } = await supabase
-            .from('chapters')
-            .select('id')
-            .eq('course_id', course.id);
-
-          const chapterIds = chapters?.map(c => c.id) || [];
-          
-          // Get student progress
+          // Calculate progress from cached data
+          const courseChapterIds = chaptersByCourse[course.id] || [];
           let progress = 0;
-          if (chapterIds.length > 0) {
-            const { data: progressData } = await supabase
-              .from('student_progress')
-              .select('is_completed')
-              .eq('student_id', user.id)
-              .in('chapter_id', chapterIds);
-
-            const completed = progressData?.filter(p => p.is_completed).length || 0;
-            progress = chapterIds.length > 0 ? Math.round((completed / chapterIds.length) * 100) : 0;
+          if (courseChapterIds.length > 0) {
+            const completed = courseChapterIds.filter(id => completedChapters.has(id)).length;
+            progress = Math.round((completed / courseChapterIds.length) * 100);
           }
 
           const category = categoriesByCourse[course.id];
@@ -139,10 +167,11 @@ export const useEnrolledCoursesWithCategories = () => {
             parentCategoryName: parentCategory?.name || category?.name || null,
           };
         })
-      );
+        .filter(Boolean) as EnrolledCourse[];
 
-      return coursesWithProgress.filter(Boolean) as EnrolledCourse[];
+      return coursesWithProgress;
     },
+    staleTime: 60000, // Cache for 1 minute
   });
 };
 

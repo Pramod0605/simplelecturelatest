@@ -111,11 +111,15 @@ const MyCourses = () => {
         </div>
 
         <div className="container mx-auto px-4 pb-12">
-          {/* Courses Count */}
-          <div className="mb-6">
-            <span className="text-sm text-muted-foreground">
-              {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} enrolled
-            </span>
+          {/* Courses Count - only show when loaded */}
+          <div className="mb-6 h-5">
+            {isLoading ? (
+              <span className="text-sm text-muted-foreground">Loading your courses...</span>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} enrolled
+              </span>
+            )}
           </div>
 
           {/* Loading State */}
