@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.google-tts]
 verify_jwt = false
+
+[functions.ai-teaching-assistant]
+verify_jwt = true

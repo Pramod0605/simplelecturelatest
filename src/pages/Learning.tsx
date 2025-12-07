@@ -12,7 +12,7 @@ import { NotesViewer } from "@/components/learning/NotesViewer";
 import { AssignmentViewer } from "@/components/learning/AssignmentViewer";
 import { DPTTest } from "@/components/learning/DPTTest";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
-import { AIAssistant } from "@/components/learning/AIAssistant";
+import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
 import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
@@ -253,7 +253,11 @@ export default function Learning() {
                 </TabsContent>
 
                 <TabsContent value="ai-assistant">
-                  <AIAssistant topicId={selectedTopic.id} courseContext={selectedTopic.title} />
+                  <AITeachingAssistant 
+                    topicId={selectedTopic.id} 
+                    chapterId={selectedTopic.chapter_id}
+                    topicTitle={selectedTopic.title} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="podcast">
