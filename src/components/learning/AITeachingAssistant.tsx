@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Mic, MicOff, Send, Loader2, ChevronLeft, ChevronRight, Play, Maximize2, Minimize2, X } from 'lucide-react';
 import { useTeachingAssistant, TeachingResponse, PresentationSlide } from '@/hooks/useTeachingAssistant';
 import { useWebSpeech } from '@/hooks/useWebSpeech';
+import { useGoogleTTS } from '@/hooks/useGoogleTTS';
 import { TeacherAvatarPanel } from './TeacherAvatarPanel';
 import { PresentationSlide as SlideComponent } from './PresentationSlide';
 import { FloatingAvatar } from './FloatingAvatar';
@@ -70,6 +71,9 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     clearTranscript,
     isSupported 
   } = useWebSpeech();
+  
+  // Use Google TTS hook for audio pre-caching
+  const { precacheAudio } = useGoogleTTS();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }>>([]);
@@ -324,10 +328,20 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Longer pause before next slide to prevent TTS rate limiting
+      // Longer pause before next slide to prevent TTS rate limiting - 3 seconds
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Increased from 400ms
+        
+        // Pre-cache audio for next 2 slides while waiting (background, non-blocking)
+        const upcomingSlides = narrationQueueRef.current.slice(0, 2);
+        upcomingSlides.forEach(slide => {
+          console.log(`🔄 Pre-caching audio for upcoming slide ${slide.slideIndex + 1}...`);
+          precacheAudio(slide.text, narrationLanguage, 'male').catch(() => {
+            // Ignore pre-cache errors - best effort only
+          });
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
         
         // Check pause again after delay
         if (isPausedRef.current) {
