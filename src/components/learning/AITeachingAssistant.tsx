@@ -95,7 +95,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     }
   }, [isLoading, hasSpokenLoadingMessage, isMuted, narrationLanguage, speak]);
 
-  // Handle narration when response is received - build queue from per-slide narration
+  // Handle narration when response is received - START IMMEDIATELY
   useEffect(() => {
     if (currentResponse?.presentationSlides && !isMuted && !isNarratingRef.current) {
       // Stop loading message if playing
@@ -118,8 +118,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       if (queue.length > 0) {
         narrationQueueRef.current = queue;
         setCurrentSlideIndex(0);
-        // Start narration after showing slide for 3 seconds (reading time)
-        setTimeout(() => startNarration(), 3000);
+        // Start narration IMMEDIATELY - no delay
+        startNarration();
       }
     }
   }, [currentResponse, isMuted]);
@@ -137,58 +137,64 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     while (narrationQueueRef.current.length > 0 && !isMutedRef.current) {
       const item = narrationQueueRef.current[0];
       
-      // Update slide
+      // Update slide and reset infographic
       setCurrentSlideIndex(item.slideIndex);
       setInfographicPhase('hidden');
       
       // Calculate estimated narration duration for percentage-based timing
-      // At 0.75x speed, ~90 words per minute = ~1.5 words per second
+      // At 0.75x speed, ~90 words per minute
       const wordCount = item.text.split(/\s+/).length;
-      const wordsPerMinute = 90; // Slower speech at 0.75x
+      const wordsPerMinute = 90;
       const estimatedDurationMs = (wordCount / wordsPerMinute) * 60 * 1000;
       
-      // Phase timing: 40% slide reading, 40% infographic, 20% return to slide
-      const phase1Duration = Math.max(2000, estimatedDurationMs * 0.4); // Min 2s for slide reading
-      const phase2Duration = Math.max(2000, estimatedDurationMs * 0.4); // Min 2s for infographic
-      const phase3Duration = Math.max(1000, estimatedDurationMs * 0.2); // Min 1s for return
+      // Phase timing: 40% slide view, 40% infographic zoom, 20% return
+      const phase1Duration = Math.max(3000, estimatedDurationMs * 0.4); // 40% for slide (min 3s)
+      const phase2Duration = Math.max(3000, estimatedDurationMs * 0.4); // 40% for infographic (min 3s)
+      const phase3Duration = Math.max(1500, estimatedDurationMs * 0.2); // 20% return (min 1.5s)
       
-      // Start dynamic subtitle cycling
+      // Subtitle timing
       let chunkIndex = 0;
       const totalChunks = item.subtitleChunks.length;
-      const timePerChunk = Math.max(2500, (phase1Duration + phase2Duration + phase3Duration) / totalChunks);
+      const totalDuration = phase1Duration + phase2Duration + phase3Duration;
+      const timePerChunk = Math.max(2000, totalDuration / totalChunks);
       
-      // PHASE 1: Show slide for reading (40% of narration time)
+      // Set initial subtitle
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
-      await new Promise(resolve => setTimeout(resolve, phase1Duration));
       
-      // Start subtitle cycling
+      // Start subtitle cycling immediately
       subtitleIntervalRef.current = setInterval(() => {
         chunkIndex = (chunkIndex + 1) % totalChunks;
         setCurrentSubtitle(item.subtitleChunks[chunkIndex] || '');
       }, timePerChunk);
       
-      // Start narration
+      // Start narration IMMEDIATELY
       const speechPromise = new Promise<void>((resolve) => {
         speak(item.text, narrationLanguage, narrationLanguage === 'hi-IN' ? 'female' : 'male', () => {
           resolve();
         });
       });
       
-      // PHASE 2: Zoom infographic after brief delay (40% of narration time)
+      // PHASE 1: Slide visible for 40% of narration
+      await new Promise(resolve => setTimeout(resolve, phase1Duration));
+      
+      // PHASE 2: Zoom infographic for 40% of narration (synced with speech)
       if (item.hasInfographic) {
-        infographicTimerRef.current = setTimeout(() => {
-          setInfographicPhase('zooming');
-          setTimeout(() => setInfographicPhase('zoomed'), 700);
-        }, 500); // Start zoom shortly after speech begins
+        setInfographicPhase('zooming');
+        await new Promise(resolve => setTimeout(resolve, 400)); // Quick zoom animation
+        setInfographicPhase('zoomed');
+        await new Promise(resolve => setTimeout(resolve, phase2Duration - 400));
         
-        // Schedule return to slide after phase2 duration
-        setTimeout(() => {
-          setInfographicPhase('returning');
-          setTimeout(() => setInfographicPhase('hidden'), 500);
-        }, phase2Duration);
+        // PHASE 3: Return to slide for 20%
+        setInfographicPhase('returning');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setInfographicPhase('hidden');
+        await new Promise(resolve => setTimeout(resolve, phase3Duration - 300));
+      } else {
+        // No infographic - just wait for remaining time
+        await new Promise(resolve => setTimeout(resolve, phase2Duration + phase3Duration));
       }
       
-      // Wait for speech to complete
+      // Wait for speech to complete if still playing
       await speechPromise;
       
       // Clear subtitle interval
@@ -197,26 +203,17 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         subtitleIntervalRef.current = null;
       }
       
-      // Clear infographic timer
-      if (infographicTimerRef.current) {
-        clearTimeout(infographicTimerRef.current);
-        infographicTimerRef.current = null;
-      }
-      
       // Ensure infographic is hidden
       setInfographicPhase('hidden');
       
-      // PHASE 3: Return to slide mode (20% of narration time) before next slide
-      await new Promise(resolve => setTimeout(resolve, phase3Duration));
-      
-      // Remove from queue after speaking
+      // Remove from queue
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Brief pause between slides
+      // Brief pause before next slide
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
+        await new Promise(resolve => setTimeout(resolve, 500));
         setCurrentSlideIndex(narrationQueueRef.current[0].slideIndex);
-        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
@@ -415,7 +412,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
 
   return (
     <TooltipProvider>
-      <div className="h-[calc(100vh-200px)] flex gap-4 relative">
+      <div className="h-[calc(100vh-160px)] flex gap-3 relative">
         {/* Question History Button */}
         <QuestionHistory
           topicId={topicId}
@@ -423,10 +420,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
           onReplay={handleReplay}
         />
 
-        {/* Left Panel - Presentation Display (75%) */}
-        <div className="flex-[75] flex flex-col gap-3">
-          {/* Presentation Area */}
-          <div className="flex-1 relative">
+        {/* Left Panel - Presentation Display (80%) - Bigger */}
+        <div className="flex-[80] flex flex-col gap-2">
+          {/* Presentation Area - Takes most space */}
+          <div className="flex-1 relative min-h-0">
             {isLoading ? (
               <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
                 <CardContent className="text-center py-12">
@@ -442,7 +439,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
             ) : activeResponse && currentSlide ? (
               <div className="h-full flex flex-col">
                 {/* Single Slide Display - PPT Style */}
-                <div className="flex-1 relative overflow-hidden rounded-xl">
+                <div className="flex-1 relative overflow-hidden rounded-xl min-h-0">
                   <SlideComponent
                     slide={currentSlide}
                     isActive={true}
@@ -456,91 +453,70 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                   />
                 </div>
 
-                {/* Slide Navigation with Replay Buttons */}
-                <div className="flex items-center justify-center gap-4 mt-3">
+                {/* Slide Navigation - Compact */}
+                <div className="flex items-center justify-center gap-3 py-2">
                   <Button
-                    variant="outline"
-                    size="icon"
+                    variant="ghost"
+                    size="sm"
                     onClick={handlePrevSlide}
                     disabled={currentSlideIndex === 0}
-                    className="h-9 w-9"
+                    className="h-7 w-7 p-0"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   
-                  {/* Slide Indicators with Replay on Hover */}
-                  <div className="flex items-center gap-2">
+                  {/* Slide Indicators */}
+                  <div className="flex items-center gap-1.5">
                     {activeResponse.presentationSlides.map((_, idx) => (
                       <Tooltip key={idx}>
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => {
                               setCurrentSlideIndex(idx);
-                              if (!isNarrating) {
-                                handleReplaySlide(idx);
-                              }
+                              if (!isNarrating) handleReplaySlide(idx);
                             }}
                             className={cn(
-                              "w-3 h-3 rounded-full transition-all hover:scale-125",
+                              "w-2.5 h-2.5 rounded-full transition-all hover:scale-125",
                               idx === currentSlideIndex 
-                                ? "bg-primary scale-125" 
+                                ? "bg-primary scale-110" 
                                 : "bg-muted-foreground/30 hover:bg-primary/50"
                             )}
                           />
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          <div className="flex items-center gap-1">
-                            <Play className="h-3 w-3" />
-                            Play Slide {idx + 1}
-                          </div>
+                        <TooltipContent side="top" className="text-xs py-1">
+                          <Play className="h-3 w-3 inline mr-1" />
+                          Slide {idx + 1}
                         </TooltipContent>
                       </Tooltip>
                     ))}
                   </div>
                   
                   <Button
-                    variant="outline"
-                    size="icon"
+                    variant="ghost"
+                    size="sm"
                     onClick={handleNextSlide}
                     disabled={currentSlideIndex === totalSlides - 1}
-                    className="h-9 w-9"
+                    className="h-7 w-7 p-0"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                   
-                  <span className="text-sm text-muted-foreground ml-2">
-                    {currentSlideIndex + 1} / {totalSlides}
+                  <span className="text-xs text-muted-foreground">
+                    {currentSlideIndex + 1}/{totalSlides}
                   </span>
                 </div>
-
-                {/* Follow-up Questions */}
-                {activeResponse.followUpQuestions && activeResponse.followUpQuestions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3 justify-center">
-                    {activeResponse.followUpQuestions.map((q, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => handleFollowUpClick(q)}
-                      >
-                        {q}
-                      </Button>
-                    ))}
-                  </div>
-                )}
               </div>
             ) : (
               <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
                 <CardContent className="text-center py-12">
-                  <div className="text-7xl mb-6">👨‍🏫</div>
-                  <h3 className="text-2xl font-semibold mb-3">
+                  <div className="text-6xl mb-4">👨‍🏫</div>
+                  <h3 className="text-xl font-semibold mb-2">
                     {subjectName ? `${subjectName} AI Professor` : narrationLanguage === 'hi-IN' ? 'AI शिक्षक' : 'AI Teaching Assistant'}
                   </h3>
-                  <p className="text-muted-foreground max-w-md text-lg">
+                  <p className="text-muted-foreground max-w-md">
                     {narrationLanguage === 'hi-IN' 
                       ? 'कोई भी प्रश्न पूछें और मैं आपको एक प्रेजेंटेशन के साथ समझाऊंगा।'
-                      : 'Ask any question and I will explain it with an interactive presentation.'
+                      : 'Ask any question and I will explain with an interactive presentation.'
                     }
                   </p>
                 </CardContent>
@@ -548,97 +524,70 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
             )}
           </div>
 
-          {/* Question Input - Bottom of presentation */}
-          <Card className="shrink-0">
-            <CardContent className="pt-3 pb-3">
-              <div className="flex gap-2">
-                <Textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={narrationLanguage === 'hi-IN' ? 'अपना प्रश्न यहाँ लिखें...' : 'Type your question here...'}
-                  className="min-h-[50px] resize-none text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  disabled={isLoading}
-                />
-                <div className="flex flex-col gap-1">
-                  {isSupported && (
-                    <Button
-                      variant={isListening ? "destructive" : "outline"}
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={handleVoiceToggle}
-                      disabled={isLoading || isSpeaking}
-                    >
-                      {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handleSend}
-                    disabled={!inputText.trim() || isLoading}
-                    size="icon"
-                    className="h-8 w-8"
-                  >
-                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
+          {/* Compact Question Input - Minimal footprint */}
+          <div className="shrink-0 bg-background/80 backdrop-blur-sm border rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={narrationLanguage === 'hi-IN' ? 'प्रश्न पूछें...' : 'Ask a question...'}
+                className="min-h-[36px] max-h-[36px] resize-none text-sm py-2 border-0 shadow-none focus-visible:ring-0"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={isLoading}
+              />
               
-              {/* Controls Row */}
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-1">
-                  {/* Narration Language */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNarrationLanguageToggle}
-                    className="text-xs h-7 px-2"
-                    title="Narration Language"
-                  >
-                    <Globe className="h-3 w-3 mr-1" />
-                    {narrationLanguage === 'en-IN' ? '🇬🇧 EN' : '🇮🇳 हिं'}
-                  </Button>
-                  
-                  {/* Subtitle Language */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSubtitleLanguageToggle}
-                    className="text-xs h-7 px-2"
-                    title="Subtitle Language"
-                  >
-                    <Languages className="h-3 w-3 mr-1" />
-                    Sub: {subtitleLanguage === 'en-IN' ? 'EN' : 'हिं'}
-                  </Button>
-                  
-                  {/* Toggle Subtitles */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowSubtitles(!showSubtitles)}
-                    className="text-xs h-7 px-2"
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    {showSubtitles ? 'Hide' : 'Show'}
-                  </Button>
-                </div>
+              {/* Controls inline */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNarrationLanguageToggle}
+                  className="h-7 px-2 text-xs"
+                >
+                  {narrationLanguage === 'en-IN' ? '🇬🇧' : '🇮🇳'}
+                </Button>
                 
-                {topicTitle && (
-                  <Badge variant="secondary" className="text-xs">
-                    {topicTitle}
-                  </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSubtitles(!showSubtitles)}
+                  className="h-7 px-2 text-xs"
+                >
+                  <Eye className={cn("h-3 w-3", !showSubtitles && "opacity-50")} />
+                </Button>
+                
+                {isSupported && (
+                  <Button
+                    variant={isListening ? "destructive" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleVoiceToggle}
+                    disabled={isLoading || isSpeaking}
+                  >
+                    {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                  </Button>
                 )}
+                
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputText.trim() || isLoading}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                >
+                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* Right Panel - Teacher Avatar (25%) */}
-        <div className="flex-[25] min-w-[200px]">
+        {/* Right Panel - Teacher Avatar (20%) - Smaller */}
+        <div className="flex-[20] min-w-[180px]">
           <TeacherAvatarPanel
             isSpeaking={isSpeaking || isNarrating}
             isProcessing={isLoading}
