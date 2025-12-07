@@ -42,6 +42,47 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     setIsSpeaking(false);
   }, []);
 
+  // Helper function to split text into chunks under max length
+  const splitTextIntoChunks = (text: string, maxLength: number = 3800): string[] => {
+    if (text.length <= maxLength) return [text];
+    
+    const chunks: string[] = [];
+    let remaining = text;
+    
+    while (remaining.length > 0) {
+      if (remaining.length <= maxLength) {
+        chunks.push(remaining);
+        break;
+      }
+      
+      // Find a good break point (sentence end, comma, or space)
+      let breakPoint = maxLength;
+      
+      // Try to find sentence end
+      const sentenceEnd = remaining.lastIndexOf('. ', maxLength);
+      if (sentenceEnd > maxLength * 0.5) {
+        breakPoint = sentenceEnd + 1;
+      } else {
+        // Try comma
+        const commaEnd = remaining.lastIndexOf(', ', maxLength);
+        if (commaEnd > maxLength * 0.5) {
+          breakPoint = commaEnd + 1;
+        } else {
+          // Try space
+          const spaceEnd = remaining.lastIndexOf(' ', maxLength);
+          if (spaceEnd > maxLength * 0.3) {
+            breakPoint = spaceEnd;
+          }
+        }
+      }
+      
+      chunks.push(remaining.substring(0, breakPoint).trim());
+      remaining = remaining.substring(breakPoint).trim();
+    }
+    
+    return chunks;
+  };
+
   const speak = useCallback(async (
     text: string,
     languageCode: SupportedLanguage = 'en-IN',
@@ -69,60 +110,81 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     // Stop any currently playing audio
     stopSpeaking();
 
+    // Split into chunks if text is too long (OpenAI TTS limit is 4096 chars)
+    const chunks = splitTextIntoChunks(cleanText, 3800);
+    
+    if (chunks.length > 1) {
+      console.log(`🔊 OpenAI TTS: Splitting text into ${chunks.length} chunks`);
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log(`🔊 OpenAI TTS: Speaking in ${languageCode}, gender: ${gender}, text length: ${cleanText.length}`);
+      // Process each chunk sequentially
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const isLastChunk = i === chunks.length - 1;
+        
+        console.log(`🔊 OpenAI TTS: Speaking chunk ${i + 1}/${chunks.length} in ${languageCode}, gender: ${gender}, length: ${chunk.length}`);
 
-      const { data, error: functionError } = await supabase.functions.invoke('google-tts', {
-        body: {
-          text: cleanText,
-          languageCode,
-          gender,
-        },
-      });
+        const { data, error: functionError } = await supabase.functions.invoke('google-tts', {
+          body: {
+            text: chunk,
+            languageCode,
+            gender,
+          },
+        });
 
-      if (functionError) {
-        throw new Error(functionError.message || 'TTS function error');
+        if (functionError) {
+          throw new Error(functionError.message || 'TTS function error');
+        }
+
+        if (!data?.audioContent) {
+          throw new Error('No audio content received');
+        }
+
+        // Create audio from base64
+        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        // Wait for this chunk to finish playing
+        await new Promise<void>((resolve, reject) => {
+          audio.onplay = () => {
+            console.log(`▶️ OpenAI TTS: Audio chunk ${i + 1} playing`);
+            setIsSpeaking(true);
+            setIsLoading(false);
+          };
+
+          audio.onended = () => {
+            console.log(`⏹️ OpenAI TTS: Audio chunk ${i + 1} ended`);
+            URL.revokeObjectURL(audioUrl);
+            audioRef.current = null;
+            resolve();
+          };
+
+          audio.onerror = (e) => {
+            console.error(`❌ OpenAI TTS: Audio chunk ${i + 1} error`, e);
+            URL.revokeObjectURL(audioUrl);
+            audioRef.current = null;
+            reject(new Error('Audio playback failed'));
+          };
+
+          audio.play().catch(reject);
+        });
+
+        // Small pause between chunks for natural flow
+        if (!isLastChunk) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
       }
 
-      if (!data?.audioContent) {
-        throw new Error('No audio content received');
-      }
-
-      // Create audio from base64
-      const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onplay = () => {
-        console.log("▶️ OpenAI TTS: Audio playing");
-        setIsSpeaking(true);
-        setIsLoading(false);
-      };
-
-      audio.onended = () => {
-        console.log("⏹️ OpenAI TTS: Audio ended");
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        onComplete?.();
-      };
-
-      audio.onerror = (e) => {
-        console.error("❌ OpenAI TTS: Audio error", e);
-        setIsSpeaking(false);
-        setIsLoading(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        setError('Audio playback failed');
-        onComplete?.();
-      };
-
-      await audio.play();
+      // All chunks complete
+      setIsSpeaking(false);
+      onComplete?.();
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown TTS error';
