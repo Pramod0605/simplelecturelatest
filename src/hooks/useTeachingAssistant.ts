@@ -66,15 +66,34 @@ export function useTeachingAssistant() {
         throw new Error(data.error);
       }
 
+      console.log('[useTeachingAssistant] Raw response:', JSON.stringify(data).substring(0, 1000));
+      console.log('[useTeachingAssistant] presentationSlides count:', data.presentationSlides?.length);
+      
+      // Normalize slide structure - ensure all fields are properly mapped
+      const normalizedSlides: PresentationSlide[] = (data.presentationSlides || []).map((slide: any) => ({
+        title: slide.title || 'Untitled Slide',
+        content: slide.content || '',
+        keyPoints: slide.keyPoints || slide.key_points || [],
+        formula: slide.formula || null,
+        narration: slide.narration || slide.content || '',
+        isStory: slide.isStory === true || slide.is_story === true,
+        isTips: slide.isTips === true || slide.is_tips === true,
+        infographic: slide.infographic || null,
+        infographicUrl: slide.infographicUrl || slide.infographic_url || null,
+        videoUrl: slide.videoUrl || slide.video_url || null,
+      }));
+      
+      console.log('[useTeachingAssistant] First normalized slide:', JSON.stringify(normalizedSlides[0], null, 2));
+
       const response: TeachingResponse = {
         cached: data.cached || false,
         answer: data.answer || '',
-        presentationSlides: data.presentationSlides || [],
-        latexFormulas: data.latexFormulas || [],
-        keyPoints: data.keyPoints || [],
-        followUpQuestions: data.followUpQuestions || [],
-        narrationText: data.narrationText || data.answer || '',
-        subjectName: data.subjectName,
+        presentationSlides: normalizedSlides,
+        latexFormulas: data.latexFormulas || data.latex_formulas || [],
+        keyPoints: data.keyPoints || data.key_points || [],
+        followUpQuestions: data.followUpQuestions || data.follow_up_questions || [],
+        narrationText: data.narrationText || data.narration_text || data.answer || '',
+        subjectName: data.subjectName || data.subject_name,
       };
 
       setCurrentResponse(response);

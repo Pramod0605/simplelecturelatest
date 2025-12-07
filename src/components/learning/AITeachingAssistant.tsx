@@ -138,6 +138,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       .map(s => s.infographicUrl)
       .filter((url): url is string => !!url);
     
+    console.log('[AITeachingAssistant] Preloading', imageUrls.length, 'images');
+    
     if (imageUrls.length === 0) {
       return Promise.resolve();
     }
@@ -145,8 +147,14 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     const loadPromises = imageUrls.map(url => {
       return new Promise<void>((resolve) => {
         const img = new Image();
-        img.onload = () => resolve();
-        img.onerror = () => resolve(); // Don't block on errors
+        img.onload = () => {
+          console.log('[AITeachingAssistant] Image loaded:', url.substring(0, 50));
+          resolve();
+        };
+        img.onerror = () => {
+          console.log('[AITeachingAssistant] Image error:', url.substring(0, 50));
+          resolve(); // Don't block on errors
+        };
         img.src = url;
       });
     });
@@ -161,15 +169,18 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   // Prepare presentation when response is received
   useEffect(() => {
     if (currentResponse?.presentationSlides && currentResponse.presentationSlides.length > 0) {
+      console.log('[AITeachingAssistant] Response received with', currentResponse.presentationSlides.length, 'slides');
+      console.log('[AITeachingAssistant] First slide:', JSON.stringify(currentResponse.presentationSlides[0], null, 2).substring(0, 500));
+      
       setIsPresentationReady(false);
       
       // Preload images, then mark ready
       preloadImages(currentResponse.presentationSlides).then(() => {
+        console.log('[AITeachingAssistant] Images preloaded, marking presentation ready');
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
-          setTimeout(() => {
-            setIsPresentationReady(true);
-          }, 100);
+          setIsPresentationReady(true);
+          console.log('[AITeachingAssistant] isPresentationReady set to true');
         });
       });
     }
