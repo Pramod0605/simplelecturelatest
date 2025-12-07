@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
+import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft, Sparkles, Loader2, FileJson } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
 import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
@@ -37,6 +37,7 @@ import { SubjectQuestionsTab } from "@/components/admin/SubjectQuestionsTab";
 import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTab";
 import { SubjectInstructorsTab } from "@/components/admin/SubjectInstructorsTab";
 import { SubjectCoursesTab } from "@/components/admin/SubjectCoursesTab";
+import { SubjectDocumentsTab } from "@/components/admin/SubjectDocumentsTab";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -184,10 +185,14 @@ export default function SubjectForm() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Basic Info
+          </TabsTrigger>
+          <TabsTrigger value="documents" disabled={!isEdit} className="gap-2">
+            <FileJson className="h-4 w-4" />
+            Documents
           </TabsTrigger>
           <TabsTrigger value="instructors" disabled={!isEdit} className="gap-2">
             <Users className="h-4 w-4" />
@@ -207,7 +212,7 @@ export default function SubjectForm() {
           </TabsTrigger>
           <TabsTrigger value="previous-year" disabled={!isEdit} className="gap-2">
             <FileText className="h-4 w-4" />
-            Previous Year Papers
+            Previous Year
           </TabsTrigger>
         </TabsList>
 
@@ -472,6 +477,24 @@ export default function SubjectForm() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 Save the subject first to manage previous year papers
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 7: Documents (JSON/PDF) */}
+        <TabsContent value="documents">
+          {isEdit && id ? (
+            <SubjectDocumentsTab 
+              subjectId={id} 
+              subjectName={subject?.name || ""} 
+              currentJson={(subject as any)?.content_json}
+              currentPdfUrl={(subject as any)?.json_source_pdf_url}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Save the subject first to manage documents
               </CardContent>
             </Card>
           )}

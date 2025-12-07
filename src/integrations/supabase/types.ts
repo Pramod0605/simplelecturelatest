@@ -2060,11 +2060,13 @@ export type Database = {
       popular_subjects: {
         Row: {
           category_id: string
+          content_json: Json | null
           created_at: string | null
           description: string | null
           display_order: number | null
           id: string
           is_active: boolean | null
+          json_source_pdf_url: string | null
           name: string
           slug: string
           thumbnail_url: string | null
@@ -2072,11 +2074,13 @@ export type Database = {
         }
         Insert: {
           category_id: string
+          content_json?: Json | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          json_source_pdf_url?: string | null
           name: string
           slug: string
           thumbnail_url?: string | null
@@ -2084,11 +2088,13 @@ export type Database = {
         }
         Update: {
           category_id?: string
+          content_json?: Json | null
           created_at?: string | null
           description?: string | null
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          json_source_pdf_url?: string | null
           name?: string
           slug?: string
           thumbnail_url?: string | null
@@ -2885,6 +2891,7 @@ export type Database = {
           ai_generated_podcast_url: string | null
           ai_generated_video_url: string | null
           chapter_number: number
+          content_json: Json | null
           created_at: string | null
           description: string | null
           id: string
@@ -2901,6 +2908,7 @@ export type Database = {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
           chapter_number: number
+          content_json?: Json | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2917,6 +2925,7 @@ export type Database = {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
           chapter_number?: number
+          content_json?: Json | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2985,6 +2994,7 @@ export type Database = {
           ai_generated_podcast_url: string | null
           ai_generated_video_url: string | null
           chapter_id: string
+          content_json: Json | null
           content_markdown: string | null
           created_at: string | null
           estimated_duration_minutes: number | null
@@ -3003,6 +3013,7 @@ export type Database = {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
           chapter_id: string
+          content_json?: Json | null
           content_markdown?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
@@ -3021,6 +3032,7 @@ export type Database = {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
           chapter_id?: string
+          content_json?: Json | null
           content_markdown?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
@@ -3049,6 +3061,7 @@ export type Database = {
         Row: {
           ai_generated_podcast_url: string | null
           ai_generated_video_url: string | null
+          content_json: Json | null
           content_markdown: string | null
           created_at: string | null
           description: string | null
@@ -3066,6 +3079,7 @@ export type Database = {
         Insert: {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
+          content_json?: Json | null
           content_markdown?: string | null
           created_at?: string | null
           description?: string | null
@@ -3083,6 +3097,7 @@ export type Database = {
         Update: {
           ai_generated_podcast_url?: string | null
           ai_generated_video_url?: string | null
+          content_json?: Json | null
           content_markdown?: string | null
           created_at?: string | null
           description?: string | null

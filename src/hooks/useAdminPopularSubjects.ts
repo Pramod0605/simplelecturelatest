@@ -12,6 +12,9 @@ export interface PopularSubject {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  content_json?: any;
+  json_source_pdf_url?: string;
+  thumbnail_url?: string;
 }
 
 export const useAdminPopularSubjects = () => {

@@ -119,3 +119,6 @@ verify_jwt = true
 
 [functions.sarvam-tts]
 verify_jwt = false
+
+[functions.parse-pdf-to-json]
+verify_jwt = true
