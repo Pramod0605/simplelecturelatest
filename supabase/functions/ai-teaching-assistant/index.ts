@@ -196,14 +196,14 @@ serve(async (req) => {
     console.log('Skipping cache - generating fresh presentation');
 
 
-    // Fetch context from topic/chapter
+    // Fetch context from topic/chapter including JSON content
     let context = '';
     let detectedSubject = subjectName;
 
     if (topicId) {
       const { data: topic } = await supabase
         .from('subject_topics')
-        .select('*, chapter:subject_chapters(*, subject:popular_subjects(name))')
+        .select('*, content_json, chapter:subject_chapters(*, content_json, subject:popular_subjects(name, content_json))')
         .eq('id', topicId)
         .single();
       
@@ -211,17 +211,39 @@ serve(async (req) => {
         context += `Topic: ${topic.title}\n`;
         if (topic.content_markdown) context += `Content: ${topic.content_markdown}\n`;
         if (topic.notes_markdown) context += `Notes: ${topic.notes_markdown}\n`;
+        
+        // Include JSON content from topic if available
+        if (topic.content_json) {
+          context += `\n--- PARSED DOCUMENT CONTENT (Topic) ---\n`;
+          context += JSON.stringify(topic.content_json, null, 2).substring(0, 10000);
+          context += `\n--- END PARSED CONTENT ---\n`;
+        }
+        
         if (topic.chapter) {
           context += `Chapter: ${topic.chapter.title}\n`;
           if (topic.chapter.subject?.name) {
             detectedSubject = topic.chapter.subject.name;
+          }
+          
+          // Include JSON content from chapter if available
+          if (topic.chapter.content_json) {
+            context += `\n--- PARSED DOCUMENT CONTENT (Chapter) ---\n`;
+            context += JSON.stringify(topic.chapter.content_json, null, 2).substring(0, 10000);
+            context += `\n--- END PARSED CONTENT ---\n`;
+          }
+          
+          // Include JSON content from subject if available
+          if (topic.chapter.subject?.content_json) {
+            context += `\n--- PARSED DOCUMENT CONTENT (Subject) ---\n`;
+            context += JSON.stringify(topic.chapter.subject.content_json, null, 2).substring(0, 10000);
+            context += `\n--- END PARSED CONTENT ---\n`;
           }
         }
       }
     } else if (chapterId) {
       const { data: chapter } = await supabase
         .from('subject_chapters')
-        .select('*, subject:popular_subjects(name)')
+        .select('*, content_json, subject:popular_subjects(name, content_json)')
         .eq('id', chapterId)
         .single();
       
@@ -229,6 +251,20 @@ serve(async (req) => {
         context += `Chapter: ${chapter.title}\n`;
         if (chapter.subject?.name) {
           detectedSubject = chapter.subject.name;
+        }
+        
+        // Include JSON content from chapter if available
+        if (chapter.content_json) {
+          context += `\n--- PARSED DOCUMENT CONTENT (Chapter) ---\n`;
+          context += JSON.stringify(chapter.content_json, null, 2).substring(0, 10000);
+          context += `\n--- END PARSED CONTENT ---\n`;
+        }
+        
+        // Include JSON content from subject if available
+        if (chapter.subject?.content_json) {
+          context += `\n--- PARSED DOCUMENT CONTENT (Subject) ---\n`;
+          context += JSON.stringify(chapter.subject.content_json, null, 2).substring(0, 10000);
+          context += `\n--- END PARSED CONTENT ---\n`;
         }
       }
     }
