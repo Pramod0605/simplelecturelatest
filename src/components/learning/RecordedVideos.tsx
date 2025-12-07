@@ -1,138 +1,196 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, CheckCircle, Clock } from "lucide-react";
-import { getVideosByTopic } from "@/data/mockLearning";
-import type { MockVideo } from "@/data/mockLearning";
+import { Play, CheckCircle, Clock, Video } from "lucide-react";
+import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface RecordedVideosProps {
   topicId: string;
 }
 
 export const RecordedVideos = ({ topicId }: RecordedVideosProps) => {
-  const videos = getVideosByTopic(topicId);
-  const [selectedVideo, setSelectedVideo] = useState<MockVideo | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const { data: videos, isLoading } = useTopicVideos(topicId);
+  const [selectedVideo, setSelectedVideo] = useState<TopicVideo | null>(null);
+  const [filterLanguage, setFilterLanguage] = useState<string>("all");
 
-  const categories = ["all", ...new Set(videos.map(v => v.category))];
-  const filteredVideos = filterCategory === "all" 
-    ? videos 
-    : videos.filter(v => v.category === filterCategory);
+  // Get unique languages from videos
+  const availableLanguages = videos 
+    ? [...new Set(videos.map(v => v.language))]
+    : [];
 
-  const handleVideoComplete = () => {
-    // Mark video as completed
-    if (selectedVideo) {
-      setSelectedVideo({ ...selectedVideo, completed: true });
+  const filteredVideos = filterLanguage === "all" 
+    ? videos || []
+    : (videos || []).filter(v => v.language === filterLanguage);
+
+  // Get embed URL based on platform
+  const getEmbedUrl = (video: TopicVideo) => {
+    if (video.video_platform === "youtube") {
+      return `https://www.youtube.com/embed/${video.video_id}?autoplay=1`;
+    } else if (video.video_platform === "vimeo") {
+      return `https://player.vimeo.com/video/${video.video_id}?autoplay=1`;
     }
+    return "";
   };
+
+  // Get language label
+  const getLanguageLabel = (langValue: string) => {
+    const lang = INDIAN_LANGUAGES.find(l => l.value === langValue);
+    return lang?.label || langValue;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-48 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!videos || videos.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8">
+            <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Videos Available</h3>
+            <p className="text-muted-foreground">
+              Videos for this topic will be added soon.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat === "all" ? "All Videos" : cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Language Filter */}
+      {availableLanguages.length > 1 && (
+        <div className="flex items-center gap-2">
+          <Select value={filterLanguage} onValueChange={setFilterLanguage}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by language" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Languages</SelectItem>
+              {availableLanguages.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {getLanguageLabel(lang)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Video Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredVideos.map((video) => (
           <Card
             key={video.id}
-            className="cursor-pointer hover:border-primary transition-colors"
+            className="cursor-pointer hover:border-primary transition-colors overflow-hidden"
             onClick={() => setSelectedVideo(video)}
           >
             <CardHeader className="p-0">
-              <div className="relative aspect-video bg-muted rounded-t-lg overflow-hidden">
-                <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <div className="relative aspect-video bg-muted overflow-hidden">
+                {/* Thumbnail based on platform */}
+                {video.video_platform === "youtube" ? (
+                  <img
+                    src={`https://img.youtube.com/vi/${video.video_id}/hqdefault.jpg`}
+                    alt={video.video_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : video.video_platform === "vimeo" ? (
+                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                    <Video className="h-12 w-12 text-primary/50" />
+                  </div>
+                ) : (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <Video className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                
+                {/* Play overlay */}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                   <div className="bg-primary rounded-full p-4">
                     <Play className="h-6 w-6 text-primary-foreground" />
                   </div>
                 </div>
-                {video.completed && (
-                  <Badge className="absolute top-2 right-2 bg-green-500">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Completed
-                  </Badge>
-                )}
-                <Badge variant="secondary" className="absolute bottom-2 right-2">
-                  {video.duration}
+
+                {/* Platform badge */}
+                <Badge 
+                  variant="secondary" 
+                  className="absolute top-2 left-2 capitalize"
+                >
+                  {video.video_platform}
+                </Badge>
+
+                {/* Language badge */}
+                <Badge 
+                  className="absolute top-2 right-2 bg-primary/90"
+                >
+                  {getLanguageLabel(video.language)}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <h3 className="font-semibold mb-1">{video.title}</h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{video.instructor}</span>
-                <span>•</span>
-                <Badge variant="outline">{video.category}</Badge>
-              </div>
+              <h3 className="font-semibold mb-1 line-clamp-2">{video.video_name}</h3>
+              {video.description && (
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {video.description}
+                </p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {filteredVideos.length === 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No videos available for this topic.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Video Player Dialog */}
       <Dialog open={!!selectedVideo} onOpenChange={() => setSelectedVideo(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{selectedVideo?.title}</DialogTitle>
+        <DialogContent className="max-w-5xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>{selectedVideo?.video_name}</DialogTitle>
           </DialogHeader>
           {selectedVideo && (
-            <div className="space-y-4">
-              <div className="aspect-video">
+            <div className="space-y-4 p-4 pt-2">
+              <div className="aspect-video rounded-lg overflow-hidden bg-black">
                 <iframe
-                  src={selectedVideo.videoUrl}
-                  className="w-full h-full rounded-lg"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  src={getEmbedUrl(selectedVideo)}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                   allowFullScreen
                 />
               </div>
               
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>{selectedVideo.duration}</span>
-                    <span>•</span>
-                    <span>{selectedVideo.instructor}</span>
-                  </div>
-                  <Badge>{selectedVideo.category}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="capitalize">
+                    {selectedVideo.video_platform}
+                  </Badge>
+                  <Badge>
+                    {getLanguageLabel(selectedVideo.language)}
+                  </Badge>
                 </div>
-                {!selectedVideo.completed && (
-                  <Button onClick={handleVideoComplete}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Complete
-                  </Button>
-                )}
+                <Button variant="outline" onClick={() => setSelectedVideo(null)}>
+                  Close
+                </Button>
               </div>
 
-              {/* Related videos would go here */}
+              {selectedVideo.description && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedVideo.description}
+                </p>
+              )}
             </div>
           )}
         </DialogContent>
