@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 interface TeacherAvatarPanelProps {
   isSpeaking: boolean;
   isProcessing: boolean;
-  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN';
+  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN';
   onMuteToggle?: () => void;
   isMuted?: boolean;
   subjectName?: string;

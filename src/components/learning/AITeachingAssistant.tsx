@@ -41,7 +41,7 @@ function formatTime(seconds: number): string {
 
 export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectName, onTabActive }: AITeachingAssistantProps) {
   const [inputText, setInputText] = useState('');
-  const [narrationLanguage, setNarrationLanguage] = useState<'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN'>('en-IN');
+  const [narrationLanguage, setNarrationLanguage] = useState<'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN'>('en-IN');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSubtitle, setCurrentSubtitle] = useState('');
   const [isMuted, setIsMuted] = useState(false);
@@ -343,7 +343,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     }
   };
 
-  const handleLanguageChange = (lang: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN') => {
+  const handleLanguageChange = (lang: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN') => {
     setNarrationLanguage(lang);
     stopSpeaking();
     clearTimers();
@@ -518,7 +518,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         ref={containerRef}
         className={cn(
           "flex flex-col bg-background relative",
-          isFullScreen ? "fixed inset-0 z-50" : "h-[calc(100vh-160px)]"
+          isFullScreen ? "fixed inset-0 z-50" : "h-[calc(100vh-80px)]"
         )}
       >
         {/* Question History Button */}
@@ -563,7 +563,6 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                       infographicPhase={infographicPhase}
                       onReplaySlide={() => handleReplaySlide(currentSlideIndex)}
                       isFullScreen={isFullScreen}
-                      narrationText={currentSlide.narration || currentSlide.content}
                     />
                     
                     {/* Floating Avatar in Fullscreen */}

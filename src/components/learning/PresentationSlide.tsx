@@ -30,7 +30,6 @@ interface PresentationSlideProps {
   infographicPhase?: 'hidden' | 'zooming' | 'zoomed' | 'returning';
   onReplaySlide?: () => void;
   isFullScreen?: boolean;
-  narrationText?: string;
 }
 
 const slideGradients = [
@@ -52,7 +51,6 @@ export function PresentationSlide({
   infographicPhase = 'hidden',
   onReplaySlide,
   isFullScreen = false,
-  narrationText,
 }: PresentationSlideProps) {
   const [videoLoading, setVideoLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -75,12 +73,12 @@ export function PresentationSlide({
           infographicPhase === 'zooming' && "animate-in fade-in zoom-in-95 duration-500",
           infographicPhase === 'returning' && "animate-out fade-out zoom-out-95 duration-300"
         )}>
-          {/* Large Infographic - Fills the space */}
-          <div className="relative flex-1 w-full flex items-center justify-center">
+          {/* Large Infographic - Constrained to prevent overflow */}
+          <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden">
             <img 
               src={slide.infographicUrl} 
               alt="Visual diagram" 
-              className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+              className="max-w-[80%] max-h-[80%] object-contain rounded-xl shadow-2xl"
             />
           </div>
           
@@ -240,9 +238,9 @@ export function PresentationSlide({
               </div>
             )}
 
-            {/* Infographic Thumbnail */}
+            {/* Infographic Thumbnail - constrained to 60% height */}
             {slide.infographicUrl && !showZoomedInfographic && (
-              <div className="bg-background/60 backdrop-blur-sm p-3 rounded-xl border shadow-sm flex-1 min-h-0 flex flex-col">
+              <div className="bg-background/60 backdrop-blur-sm p-3 rounded-xl border shadow-sm flex-1 min-h-0 max-h-[60%] flex flex-col overflow-hidden">
                 <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide flex items-center gap-1 shrink-0">
                   <ImageIcon className="h-3 w-3" />
                   Visual Diagram
@@ -264,21 +262,6 @@ export function PresentationSlide({
                     onError={() => setImageLoaded(true)}
                   />
                 </div>
-              </div>
-            )}
-
-            {/* Narration Text Display */}
-            {narrationText && !showZoomedInfographic && (
-              <div className="bg-background/80 backdrop-blur-sm p-4 rounded-xl border flex-1 min-h-0 overflow-auto">
-                <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide shrink-0">
-                  Narration
-                </p>
-                <p className={cn(
-                  "text-muted-foreground leading-relaxed",
-                  isFullScreen ? "text-base" : "text-sm"
-                )}>
-                  {narrationText}
-                </p>
               </div>
             )}
 

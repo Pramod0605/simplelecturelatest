@@ -6,7 +6,7 @@ import { User, Volume2, VolumeX } from 'lucide-react';
 interface FloatingAvatarProps {
   isSpeaking: boolean;
   isProcessing: boolean;
-  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN';
+  language: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN';
   onMuteToggle?: () => void;
   isMuted?: boolean;
 }
