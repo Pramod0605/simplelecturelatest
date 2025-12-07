@@ -178,7 +178,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
         console.log(`🔊 Sarvam TTS: Speaking chunk ${i + 1}/${chunks.length} in ${languageCode}, gender: ${gender}, length: ${chunk.length}`);
 
         // Try Sarvam AI first (authentic Indian voices)
-        let data: { audioContent?: string; error?: string; details?: string } | null = null;
+        let audioContents: string[] = [];
         let usedSarvam = false;
 
         try {
@@ -187,82 +187,75 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
           });
 
           if (!sarvamResponse.error && sarvamResponse.data?.audioContent) {
-            data = sarvamResponse.data;
+            // Handle both single and chunked audio responses
+            if (sarvamResponse.data.isChunked && Array.isArray(sarvamResponse.data.audioContent)) {
+              audioContents = sarvamResponse.data.audioContent;
+            } else {
+              audioContents = [sarvamResponse.data.audioContent];
+            }
             usedSarvam = true;
-            console.log('✅ Using Sarvam AI TTS');
+            console.log(`✅ Using Sarvam AI TTS (${audioContents.length} audio segments)`);
           } else {
-            console.warn('⚠️ Sarvam TTS failed, trying OpenAI:', sarvamResponse.error?.message || sarvamResponse.data?.error);
+            console.warn('⚠️ Sarvam TTS failed, trying Web Speech:', sarvamResponse.error?.message || sarvamResponse.data?.error);
           }
         } catch (sarvamErr) {
-          console.warn('⚠️ Sarvam TTS error, trying OpenAI:', sarvamErr);
+          console.warn('⚠️ Sarvam TTS error, trying Web Speech:', sarvamErr);
         }
 
-        // Fallback to OpenAI TTS if Sarvam fails
-        if (!data?.audioContent) {
-          console.log('🔊 Trying OpenAI TTS fallback...');
-          const openaiResponse = await supabase.functions.invoke('google-tts', {
-            body: { text: chunk, languageCode, gender },
+        // If Sarvam fails, fall back to Web Speech API directly (skip OpenAI - quota exceeded)
+        if (audioContents.length === 0) {
+          console.warn('⚠️ Sarvam TTS unavailable, using Web Speech API');
+          toast({
+            title: "Using Browser Voice",
+            description: "Indian voice unavailable. Using browser's speech synthesis.",
+          });
+          setIsLoading(false);
+          speakWithWebSpeech(cleanText, onComplete);
+          return;
+        }
+
+        // Play all audio segments sequentially
+        for (let j = 0; j < audioContents.length; j++) {
+          const audioContent = audioContents[j];
+          
+          // Create audio from base64 - Sarvam returns WAV
+          const mimeType = 'audio/wav';
+          const audioBlob = base64ToBlob(audioContent, mimeType);
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+
+          // Wait for this segment to finish playing
+          await new Promise<void>((resolve, reject) => {
+            audio.onplay = () => {
+              console.log(`▶️ TTS: Audio segment ${j + 1}/${audioContents.length} playing`);
+              setIsSpeaking(true);
+              setIsLoading(false);
+            };
+
+            audio.onended = () => {
+              console.log(`⏹️ TTS: Audio segment ${j + 1}/${audioContents.length} ended`);
+              URL.revokeObjectURL(audioUrl);
+              audioRef.current = null;
+              resolve();
+            };
+
+            audio.onerror = (e) => {
+              console.error(`❌ TTS: Audio segment ${j + 1} error`, e);
+              URL.revokeObjectURL(audioUrl);
+              audioRef.current = null;
+              reject(new Error('Audio playback failed'));
+            };
+
+            audio.play().catch(reject);
           });
 
-          if (openaiResponse.error || openaiResponse.data?.error) {
-            const errMsg = openaiResponse.error?.message || openaiResponse.data?.error || '';
-            const errDetails = openaiResponse.data?.details || '';
-            const fullError = `${errMsg} ${errDetails}`.toLowerCase();
-            
-            // Check for quota, rate limit errors
-            if (fullError.includes('quota') || fullError.includes('429') || 
-                fullError.includes('insufficient') || errMsg.includes('TTS synthesis failed')) {
-              console.warn('⚠️ All TTS APIs unavailable, falling back to Web Speech');
-              toast({
-                title: "Using Browser Voice",
-                description: "TTS services unavailable. Using browser's speech synthesis.",
-              });
-              setIsLoading(false);
-              speakWithWebSpeech(cleanText, onComplete);
-              return;
-            }
-            throw new Error(errMsg || 'TTS function error');
+          // Small pause between segments for natural flow
+          if (j < audioContents.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
-          
-          data = openaiResponse.data;
         }
-
-        if (!data?.audioContent) {
-          throw new Error('No audio content received');
-        }
-
-        // Create audio from base64 - Sarvam returns WAV, OpenAI returns MP3
-        const mimeType = usedSarvam ? 'audio/wav' : 'audio/mp3';
-        const audioBlob = base64ToBlob(data.audioContent, mimeType);
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-
-        // Wait for this chunk to finish playing
-        await new Promise<void>((resolve, reject) => {
-          audio.onplay = () => {
-            console.log(`▶️ TTS: Audio chunk ${i + 1} playing`);
-            setIsSpeaking(true);
-            setIsLoading(false);
-          };
-
-          audio.onended = () => {
-            console.log(`⏹️ TTS: Audio chunk ${i + 1} ended`);
-            URL.revokeObjectURL(audioUrl);
-            audioRef.current = null;
-            resolve();
-          };
-
-          audio.onerror = (e) => {
-            console.error(`❌ TTS: Audio chunk ${i + 1} error`, e);
-            URL.revokeObjectURL(audioUrl);
-            audioRef.current = null;
-            reject(new Error('Audio playback failed'));
-          };
-
-          audio.play().catch(reject);
-        });
 
         // Small pause between chunks for natural flow
         if (!isLastChunk) {
