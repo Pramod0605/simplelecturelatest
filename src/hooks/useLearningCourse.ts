@@ -124,7 +124,7 @@ export const useSubjectChapters = (subjectId?: string) => {
 
       const { data: allTopics } = await supabase
         .from("subject_topics")
-        .select("id, title, topic_number, estimated_duration_minutes, content_markdown, chapter_id")
+        .select("id, title, topic_number, estimated_duration_minutes, content_markdown, chapter_id, video_id, video_platform")
         .in("chapter_id", chapterIds)
         .order("topic_number");
 
