@@ -230,7 +230,12 @@ export default function Learning() {
                 </TabsList>
 
                 <TabsContent value="videos">
-                  <RecordedVideos topicId={selectedTopic.id} />
+                  <RecordedVideos 
+                    topicId={selectedTopic.id}
+                    topicVideoId={selectedTopic.video_id}
+                    topicVideoPlatform={selectedTopic.video_platform}
+                    topicTitle={selectedTopic.title}
+                  />
                 </TabsContent>
 
                 <TabsContent value="ai-assistant">

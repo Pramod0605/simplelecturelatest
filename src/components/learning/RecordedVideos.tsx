@@ -1,31 +1,61 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, CheckCircle, Clock, Video } from "lucide-react";
+import { Play, Video } from "lucide-react";
 import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface RecordedVideosProps {
   topicId: string;
+  // Direct video from subject_topics table
+  topicVideoId?: string;
+  topicVideoPlatform?: string;
+  topicTitle?: string;
 }
 
-export const RecordedVideos = ({ topicId }: RecordedVideosProps) => {
-  const { data: videos, isLoading } = useTopicVideos(topicId);
+export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topicTitle }: RecordedVideosProps) => {
+  const { data: additionalVideos, isLoading } = useTopicVideos(topicId);
   const [selectedVideo, setSelectedVideo] = useState<TopicVideo | null>(null);
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
 
+  // Combine the direct topic video with additional videos from topic_videos table
+  const allVideos = useMemo(() => {
+    const videos: TopicVideo[] = [];
+    
+    // Add direct video from subject_topics if exists
+    if (topicVideoId && topicVideoPlatform) {
+      videos.push({
+        id: `topic-direct-${topicId}`,
+        topic_id: topicId,
+        video_name: topicTitle || "Topic Video",
+        language: "en",
+        video_platform: topicVideoPlatform as "youtube" | "vimeo",
+        video_id: topicVideoId,
+        description: null,
+        display_order: 0,
+        is_active: true,
+        created_at: null,
+        updated_at: null,
+      });
+    }
+    
+    // Add additional videos from topic_videos table
+    if (additionalVideos?.length) {
+      videos.push(...additionalVideos);
+    }
+    
+    return videos;
+  }, [topicId, topicVideoId, topicVideoPlatform, topicTitle, additionalVideos]);
+
   // Get unique languages from videos
-  const availableLanguages = videos 
-    ? [...new Set(videos.map(v => v.language))]
-    : [];
+  const availableLanguages = [...new Set(allVideos.map(v => v.language))];
 
   const filteredVideos = filterLanguage === "all" 
-    ? videos || []
-    : (videos || []).filter(v => v.language === filterLanguage);
+    ? allVideos
+    : allVideos.filter(v => v.language === filterLanguage);
 
   // Get embed URL based on platform
   const getEmbedUrl = (video: TopicVideo) => {
@@ -43,12 +73,12 @@ export const RecordedVideos = ({ topicId }: RecordedVideosProps) => {
     return lang?.label || langValue;
   };
 
-  if (isLoading) {
+  if (isLoading && !topicVideoId) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2].map(i => (
             <Skeleton key={i} className="h-48 w-full" />
           ))}
         </div>
@@ -56,7 +86,7 @@ export const RecordedVideos = ({ topicId }: RecordedVideosProps) => {
     );
   }
 
-  if (!videos || videos.length === 0) {
+  if (allVideos.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
