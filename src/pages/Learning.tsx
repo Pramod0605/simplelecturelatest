@@ -137,12 +137,12 @@ export default function Learning() {
         />
         
         <div className="flex flex-1 overflow-hidden relative">
-          {/* Collapsed state icon button */}
+          {/* Expand button when collapsed - top left position */}
           {sidebarCollapsed && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="absolute left-2 bottom-4 z-10 bg-card border shadow-sm hover:bg-accent"
+              className="absolute left-2 top-2 z-10 bg-card shadow-md hover:bg-accent"
               onClick={() => setSidebarCollapsed(false)}
               title="Expand sidebar"
             >
@@ -151,11 +151,23 @@ export default function Learning() {
           )}
 
           <aside className={cn(
-            "border-r bg-card overflow-y-auto transition-all duration-300 relative flex flex-col",
+            "border-r bg-card overflow-y-auto transition-all duration-300 flex flex-col",
             sidebarCollapsed ? "w-0 overflow-hidden" : "w-80"
           )}>
             <div className="p-4 flex-1">
-              <h2 className="text-xl font-bold mb-4">{selectedSubject?.name || "Select Subject"}</h2>
+              {/* Header with title and collapse button */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">{selectedSubject?.name || "Select Subject"}</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-accent h-8 w-8"
+                  onClick={() => setSidebarCollapsed(true)}
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </div>
               
               {chaptersLoading ? (
                 <div className="space-y-3">
@@ -215,19 +227,6 @@ export default function Learning() {
                   </p>
                 </div>
               )}
-            </div>
-            
-            {/* Collapse button at bottom */}
-            <div className="p-2 border-t">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-accent"
-                onClick={() => setSidebarCollapsed(true)}
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
             </div>
           </aside>
 
