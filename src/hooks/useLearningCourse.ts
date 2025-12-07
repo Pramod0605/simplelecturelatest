@@ -1,15 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+
+// Hook to wait for auth state to be ready
+export const useAuthReady = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check for existing session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+      setIsReady(true);
+    });
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserId(session?.user?.id ?? null);
+      setIsReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return { isReady, userId };
+};
 
 export const useLearningCourse = (courseId?: string) => {
+  const { isReady, userId } = useAuthReady();
+
   return useQuery({
-    queryKey: ["learning-course", courseId],
+    queryKey: ["learning-course", courseId, userId],
     queryFn: async () => {
       if (!courseId) return null;
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Use cached session instead of making network request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         return { course: null, subjects: [], isEnrolled: false, error: "not_authenticated" };
       }
 
@@ -18,7 +45,7 @@ export const useLearningCourse = (courseId?: string) => {
         .from("enrollments")
         .select("id")
         .eq("course_id", courseId)
-        .eq("student_id", user.id)
+        .eq("student_id", session.user.id)
         .eq("is_active", true)
         .maybeSingle();
 
@@ -30,33 +57,29 @@ export const useLearningCourse = (courseId?: string) => {
         return { course: null, subjects: [], isEnrolled: false, error: "not_enrolled" };
       }
 
-      // Fetch course details
-      const { data: course, error: courseError } = await supabase
-        .from("courses")
-        .select("id, name, slug, thumbnail_url")
-        .eq("id", courseId)
-        .single();
+      // Fetch course details and subjects in parallel
+      const [courseResult, subjectsResult] = await Promise.all([
+        supabase
+          .from("courses")
+          .select("id, name, slug, thumbnail_url")
+          .eq("id", courseId)
+          .single(),
+        supabase
+          .from("course_subjects")
+          .select(`
+            id,
+            display_order,
+            subject:popular_subjects(id, name, slug, thumbnail_url)
+          `)
+          .eq("course_id", courseId)
+          .order("display_order")
+      ]);
 
-      if (courseError || !course) {
+      if (courseResult.error || !courseResult.data) {
         return { course: null, subjects: [], isEnrolled: false, error: "course_not_found" };
       }
 
-      // Fetch course subjects
-      const { data: courseSubjects, error: subjectsError } = await supabase
-        .from("course_subjects")
-        .select(`
-          id,
-          display_order,
-          subject:popular_subjects(id, name, slug, thumbnail_url)
-        `)
-        .eq("course_id", courseId)
-        .order("display_order");
-
-      if (subjectsError) {
-        console.error("Subjects fetch error:", subjectsError);
-      }
-
-      const subjects = (courseSubjects || [])
+      const subjects = (subjectsResult.data || [])
         .filter(cs => cs.subject)
         .map(cs => ({
           id: cs.subject.id,
@@ -65,9 +88,10 @@ export const useLearningCourse = (courseId?: string) => {
           thumbnail_url: cs.subject.thumbnail_url,
         }));
 
-      return { course, subjects, isEnrolled: true, error: null };
+      return { course: courseResult.data, subjects, isEnrolled: true, error: null };
     },
-    enabled: !!courseId,
+    enabled: !!courseId && isReady,
+    staleTime: 60000, // Cache for 1 minute
   });
 };
 
@@ -93,25 +117,33 @@ export const useSubjectChapters = (subjectId?: string) => {
         return [];
       }
 
-      // Fetch topics for each chapter
-      const chaptersWithTopics = await Promise.all(
-        (chapters || []).map(async (chapter) => {
-          const { data: topics } = await supabase
-            .from("subject_topics")
-            .select("id, title, topic_number, estimated_duration, content_markdown")
-            .eq("chapter_id", chapter.id)
-            .order("topic_number");
+      // Fetch all topics for all chapters in one query
+      const chapterIds = (chapters || []).map(c => c.id);
+      
+      if (chapterIds.length === 0) return [];
 
-          return {
-            ...chapter,
-            topics: topics || [],
-            progress: 0, // TODO: Calculate from student_progress
-          };
-        })
-      );
+      const { data: allTopics } = await supabase
+        .from("subject_topics")
+        .select("id, title, topic_number, estimated_duration_minutes, content_markdown, chapter_id")
+        .in("chapter_id", chapterIds)
+        .order("topic_number");
 
-      return chaptersWithTopics;
+      // Group topics by chapter
+      const topicsByChapter: Record<string, any[]> = {};
+      (allTopics || []).forEach(topic => {
+        if (!topicsByChapter[topic.chapter_id]) {
+          topicsByChapter[topic.chapter_id] = [];
+        }
+        topicsByChapter[topic.chapter_id].push(topic);
+      });
+
+      return (chapters || []).map(chapter => ({
+        ...chapter,
+        topics: topicsByChapter[chapter.id] || [],
+        progress: 0,
+      }));
     },
     enabled: !!subjectId,
+    staleTime: 60000, // Cache for 1 minute
   });
 };
