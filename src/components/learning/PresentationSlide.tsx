@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, BookOpen, Lightbulb, Image, Loader2 } from 'lucide-react';
+import { CheckCircle, BookOpen, Lightbulb, Image, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PresentationSlideProps {
@@ -15,6 +15,7 @@ interface PresentationSlideProps {
     formula?: string;
     narration?: string;
     isStory?: boolean;
+    isTips?: boolean;
     infographic?: string;
     infographicUrl?: string;
     videoUrl?: string;
@@ -24,6 +25,7 @@ interface PresentationSlideProps {
   totalSlides?: number;
   isStorySlide?: boolean;
   currentSubtitle?: string;
+  isNarrating?: boolean;
 }
 
 // Gradient backgrounds for different slides
@@ -42,23 +44,61 @@ export function PresentationSlide({
   totalSlides = 1,
   isStorySlide = false,
   currentSubtitle,
+  isNarrating = false,
 }: PresentationSlideProps) {
   const [videoLoading, setVideoLoading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showZoomedInfographic, setShowZoomedInfographic] = useState(false);
   const gradientIndex = (slideNumber - 1) % slideGradients.length;
   const gradient = slideGradients[gradientIndex];
 
+  // Control infographic zoom based on narration
+  useEffect(() => {
+    if (isNarrating && slide.infographicUrl) {
+      setShowZoomedInfographic(true);
+    } else {
+      // Delay hiding to allow smooth transition
+      const timer = setTimeout(() => setShowZoomedInfographic(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isNarrating, slide.infographicUrl]);
+
+  const isTipsSlide = slide.isTips;
+
   return (
     <div className={cn(
-      "h-full w-full rounded-xl overflow-hidden transition-all duration-500",
+      "h-full w-full rounded-xl overflow-hidden transition-all duration-500 relative",
       `bg-gradient-to-br ${gradient}`,
       isActive && "shadow-2xl"
     )}>
+      {/* Zoomed Infographic Overlay - Shows during narration */}
+      {showZoomedInfographic && slide.infographicUrl && (
+        <div className={cn(
+          "absolute inset-0 z-20 bg-background/95 backdrop-blur-md flex items-center justify-center p-8",
+          "animate-in fade-in zoom-in-95 duration-500"
+        )}>
+          <div className="relative max-w-2xl w-full">
+            <img 
+              src={slide.infographicUrl} 
+              alt={slide.infographic || "Infographic"} 
+              className="w-full max-h-[60vh] object-contain rounded-xl shadow-2xl"
+            />
+            <p className="text-center text-sm text-muted-foreground mt-4 italic">
+              {slide.infographic}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="h-full flex flex-col p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            {isStorySlide ? (
+            {isTipsSlide ? (
+              <div className="p-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+              </div>
+            ) : isStorySlide ? (
               <div className="p-2 bg-amber-500/20 rounded-lg">
                 <Lightbulb className="h-5 w-5 text-amber-600" />
               </div>
@@ -76,8 +116,8 @@ export function PresentationSlide({
           </Badge>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-auto">
+        {/* Main Content Area - Takes most space */}
+        <div className="flex-1 overflow-auto mb-4">
           {/* Video for Story Slides */}
           {isStorySlide && slide.videoUrl && (
             <div className="mb-4 rounded-lg overflow-hidden bg-black aspect-video relative">
@@ -104,7 +144,7 @@ export function PresentationSlide({
             {/* Content Column (2/3) */}
             <div className={cn(
               "lg:col-span-2 space-y-3",
-              !slide.formula && !slide.keyPoints?.length && !slide.infographicUrl && "lg:col-span-3"
+              !slide.formula && !slide.infographicUrl && "lg:col-span-3"
             )}>
               {/* Main Content */}
               <div className={cn(
@@ -119,15 +159,6 @@ export function PresentationSlide({
                   {slide.content}
                 </ReactMarkdown>
               </div>
-
-              {/* Current Subtitle Display - Moved to slide area */}
-              {currentSubtitle && (
-                <div className="p-3 bg-background/80 backdrop-blur-sm rounded-lg border border-primary/20 shadow-sm">
-                  <p className="text-sm text-foreground/90 italic leading-relaxed">
-                    "{currentSubtitle.length > 200 ? currentSubtitle.substring(0, 200) + '...' : currentSubtitle}"
-                  </p>
-                </div>
-              )}
 
               {/* Infographic Description (only if no image URL) */}
               {slide.infographic && !slide.infographicUrl && (
@@ -147,15 +178,15 @@ export function PresentationSlide({
               )}
             </div>
 
-            {/* Sidebar - Infographic Image, Formula & Key Points (1/3) */}
-            {(slide.formula || (slide.keyPoints && slide.keyPoints.length > 0) || slide.infographicUrl) && (
+            {/* Sidebar - Infographic Image (small thumbnail) & Formula (1/3) */}
+            {(slide.formula || slide.infographicUrl) && !showZoomedInfographic && (
               <div className="space-y-3">
-                {/* Infographic Image - Prominently Displayed */}
+                {/* Infographic Image - Small Thumbnail */}
                 {slide.infographicUrl && (
                   <div className="bg-background/80 backdrop-blur-sm p-3 rounded-xl border shadow-sm">
                     <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide flex items-center gap-1">
                       <Image className="h-3 w-3" />
-                      Visual Diagram
+                      Diagram
                     </p>
                     <div className="relative rounded-lg overflow-hidden bg-muted/30">
                       {!imageLoaded && (
@@ -167,18 +198,13 @@ export function PresentationSlide({
                         src={slide.infographicUrl} 
                         alt={slide.infographic || "Infographic"} 
                         className={cn(
-                          "w-full max-h-48 object-contain rounded-lg transition-opacity duration-300",
+                          "w-full max-h-32 object-contain rounded-lg transition-opacity duration-300",
                           imageLoaded ? "opacity-100" : "opacity-0"
                         )}
                         onLoad={() => setImageLoaded(true)}
                         onError={() => setImageLoaded(true)}
                       />
                     </div>
-                    {slide.infographic && (
-                      <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">
-                        {slide.infographic}
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -198,31 +224,49 @@ export function PresentationSlide({
                     </div>
                   </div>
                 )}
-
-                {/* Key Points */}
-                {slide.keyPoints && slide.keyPoints.length > 0 && (
-                  <div className="bg-background/80 backdrop-blur-sm p-4 rounded-xl border shadow-sm">
-                    <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
-                      Key Points
-                    </p>
-                    <ul className="space-y-1.5">
-                      {slide.keyPoints.map((point, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs">
-                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                          <span className="text-foreground/90">{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </div>
 
+        {/* Bottom Area - Key Points as horizontal badges */}
+        {slide.keyPoints && slide.keyPoints.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {slide.keyPoints.map((point, idx) => (
+              <Badge 
+                key={idx} 
+                variant="outline" 
+                className="text-xs py-1 px-2 bg-background/50 border-primary/20"
+              >
+                <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                {point}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Subtitle Bar - Fixed at bottom, 2 lines max, dynamic */}
+        {currentSubtitle && (
+          <div className="bg-background/95 backdrop-blur-sm border-t border-primary/20 rounded-lg px-4 py-3 mt-auto">
+            <p className="text-sm text-foreground leading-relaxed line-clamp-2 text-center font-medium">
+              {currentSubtitle}
+            </p>
+          </div>
+        )}
+
+        {/* Tips & Tricks Special Footer */}
+        {isTipsSlide && (
+          <div className="mt-2 p-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg border border-purple-500/20">
+            <p className="text-xs text-purple-700 dark:text-purple-400 flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="font-medium">Memory tricks to help you remember!</span>
+            </p>
+          </div>
+        )}
+
         {/* Story Slide Special Footer */}
-        {isStorySlide && (
-          <div className="mt-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+        {isStorySlide && !isTipsSlide && (
+          <div className="mt-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
             <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
               <Lightbulb className="h-3.5 w-3.5" />
               <span className="font-medium">Real-world example to help you remember!</span>

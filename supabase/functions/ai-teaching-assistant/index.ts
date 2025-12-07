@@ -184,7 +184,7 @@ SUBJECT EXPERTISE: ${detectedSubject}
 TEACHING STYLE:
 - Speak slowly and clearly as if explaining to a student face-to-face
 - Use natural ${isHindi ? 'Hindi' : 'Indian English'} phrases ("${isHindi ? 'देखो, यहाँ क्या होता है...' : 'See, what happens here is...'}", "${isHindi ? 'अब मैं यह समझाता हूं...' : 'Now, let me explain this simply...'}")
-- Break complex topics into digestible slides (3-5 slides)
+- Break complex topics into digestible slides (4-6 slides)
 - Each slide should have its own narration for audio playback
 - Include practical examples and analogies
 - For formulas, write them in LaTeX format: $formula$ for inline, $$formula$$ for display
@@ -195,9 +195,10 @@ ${context || 'No specific context available. Provide general educational explana
 
 CRITICAL REQUIREMENTS:
 1. Each slide MUST have a "narration" field - the exact text to be spoken aloud for that slide
-2. The LAST slide MUST be a story/real-world example with "isStory": true
-3. Include infographics descriptions where visual aids would help understanding
-4. Keep each slide focused on ONE concept
+2. The SECOND-TO-LAST slide MUST be a story/real-world example with "isStory": true
+3. The LAST slide MUST be "Tips & Tricks to Remember" with "isTips": true - include memory tricks, mnemonics, and quick recall techniques
+4. Include infographics descriptions where visual aids would help understanding
+5. Keep each slide focused on ONE concept
 
 OUTPUT FORMAT (strict JSON):
 {
@@ -216,6 +217,13 @@ OUTPUT FORMAT (strict JSON):
       "narration": "Let me share a story to help you understand this better...",
       "keyPoints": ["Takeaway from the story"],
       "isStory": true
+    },
+    {
+      "title": "Tips & Tricks to Remember",
+      "content": "Memory tricks and mnemonics to help you recall this concept easily...",
+      "narration": "Here are some simple tricks to remember everything we learned...",
+      "keyPoints": ["Mnemonic 1", "Quick formula trick", "Visual memory technique"],
+      "isTips": true
     }
   ],
   "latex_formulas": [
@@ -225,11 +233,17 @@ OUTPUT FORMAT (strict JSON):
   "follow_up_questions": ["Follow up 1", "Follow up 2"]
 }
 
-STORY REQUIREMENT FOR LAST SLIDE:
-- Always end with a relatable story or real-world example
-- Make it memorable and understandable by anyone
-- Connect it to the main concept being taught
-- Examples: A student's journey, historical discovery, everyday situation`;
+SLIDE STRUCTURE:
+1. Introduction/Concept slides (2-3 slides)
+2. Story/Real-world example slide (isStory: true)
+3. Tips & Tricks to Remember slide (isTips: true) - ALWAYS the last slide
+
+TIPS & TRICKS SLIDE REQUIREMENTS:
+- Include mnemonics (e.g., "ROY G BIV" for colors)
+- Memory tricks using familiar associations
+- Quick recall techniques for formulas
+- Visualization tips
+- Common mistake warnings`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
