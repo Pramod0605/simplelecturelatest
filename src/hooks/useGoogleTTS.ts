@@ -308,20 +308,42 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
           }
         }
 
-        // If Sarvam fails, complete silently (no OpenAI fallback per user request)
+        // If Sarvam fails, use Web Speech API as fallback
         if (audioContents.length === 0) {
-          console.warn('⚠️ All TTS providers unavailable - skipping audio');
-          if (!stoppedRef.current) {
-            toast({
-              title: "Voice Unavailable",
-              description: "Voice narration is temporarily unavailable.",
-              variant: "default"
-            });
+          console.warn('⚠️ Sarvam TTS unavailable - using Web Speech API fallback');
+          
+          // Use Web Speech for this chunk
+          await new Promise<void>((resolve) => {
+            if (!('speechSynthesis' in window)) {
+              console.warn('Web Speech API not supported');
+              resolve();
+              return;
+            }
+            
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.rate = 0.75;
+            utterance.pitch = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const indianVoice = voices.find(v => v.lang.includes('en-IN')) || 
+                                voices.find(v => v.lang.includes('en'));
+            if (indianVoice) utterance.voice = indianVoice;
+            
+            utterance.onstart = () => {
+              setIsSpeaking(true);
+              setIsLoading(false);
+            };
+            utterance.onend = () => resolve();
+            utterance.onerror = () => resolve();
+            
+            window.speechSynthesis.speak(utterance);
+          });
+          
+          if (!isLastChunk) {
+            await new Promise(resolve => setTimeout(resolve, 150));
           }
-          setIsLoading(false);
-          setIsSpeaking(false);
-          onComplete?.();
-          return;
+          continue; // Move to next chunk
         }
 
         // Check if stopped before playing
