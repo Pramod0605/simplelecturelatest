@@ -1111,6 +1111,8 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         pdfUrl={chapterForm.pdf_url}
                         entityType="chapter"
                         entityName={chapterForm.title || "New Chapter"}
+                        subjectId={subjectId}
+                        chapterId={editingChapter?.id}
                       />
 
                       <div className="space-y-2">
@@ -1467,6 +1469,9 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
               pdfUrl={topicForm.pdf_url}
               entityType="topic"
               entityName={topicForm.title || "New Topic"}
+              subjectId={subjectId}
+              chapterId={selectedChapter || undefined}
+              topicId={editingTopic?.id}
             />
           </div>
           <DialogFooter>
@@ -1836,6 +1841,7 @@ function ChapterItem({
                         parentCategoryName={parentCategoryName}
                         subCategoryName={subCategoryName}
                         chapterName={chapter.title}
+                        chapterId={chapter.id}
                       />
                     </CardContent>
                   </Card>
