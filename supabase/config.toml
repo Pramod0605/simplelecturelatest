@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.parse-pdf-to-json]
 verify_jwt = true
+
+[functions.extract-json-to-questions]
+verify_jwt = true

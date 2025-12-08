@@ -52,6 +52,7 @@ interface SubtopicsSectionProps {
   parentCategoryName: string;
   subCategoryName: string;
   chapterName: string;
+  chapterId: string;
 }
 
 export function SubjectSubtopicsSection({ 
@@ -62,7 +63,8 @@ export function SubjectSubtopicsSection({
   categoryId,
   parentCategoryName,
   subCategoryName,
-  chapterName
+  chapterName,
+  chapterId
 }: SubtopicsSectionProps) {
   const [isAddSubtopicOpen, setIsAddSubtopicOpen] = useState(false);
   const [editingSubtopic, setEditingSubtopic] = useState<any>(null);
@@ -428,6 +430,10 @@ export function SubjectSubtopicsSection({
               pdfUrl={subtopicForm.pdf_url}
               entityType="subtopic"
               entityName={subtopicForm.title || "New Subtopic"}
+              subjectId={subjectId}
+              chapterId={chapterId}
+              topicId={topicId}
+              subtopicId={editingSubtopic?.id}
             />
           </div>
 

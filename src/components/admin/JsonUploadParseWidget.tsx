@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, FileJson, Loader2, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Upload, FileJson, Loader2, Eye, EyeOff, Trash2, BookOpen } from "lucide-react";
 import { useDatalab } from "@/hooks/useDatalab";
 import { toast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useExtractJsonQuestions } from "@/hooks/useExtractJsonQuestions";
 
 interface JsonUploadParseWidgetProps {
   currentJson: any;
@@ -12,6 +13,11 @@ interface JsonUploadParseWidgetProps {
   pdfUrl?: string;
   entityType: "chapter" | "topic" | "subtopic";
   entityName: string;
+  // New props for question extraction
+  subjectId?: string;
+  chapterId?: string;
+  topicId?: string;
+  subtopicId?: string;
 }
 
 export function JsonUploadParseWidget({
@@ -20,10 +26,15 @@ export function JsonUploadParseWidget({
   pdfUrl,
   entityType,
   entityName,
+  subjectId,
+  chapterId,
+  topicId,
+  subtopicId,
 }: JsonUploadParseWidgetProps) {
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { parsePdfFromUrl, isLoading, progress } = useDatalab();
+  const extractQuestions = useExtractJsonQuestions();
 
   const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,6 +91,28 @@ export function JsonUploadParseWidget({
   };
 
   const hasJson = currentJson && Object.keys(currentJson).length > 0;
+  const canExtractQuestions = hasJson && subjectId && chapterId;
+
+  const handleExtractQuestions = () => {
+    if (!subjectId || !chapterId) {
+      toast({
+        title: "Missing Information",
+        description: "Subject and chapter information is required to extract questions",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    extractQuestions.mutate({
+      contentJson: currentJson,
+      subjectId,
+      chapterId,
+      topicId,
+      subtopicId,
+      entityType,
+      entityName,
+    });
+  };
 
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
@@ -139,6 +172,35 @@ export function JsonUploadParseWidget({
           </Button>
         )}
       </div>
+
+      {/* Push to Question Bank Button */}
+      {canExtractQuestions && (
+        <div className="pt-2 border-t">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleExtractQuestions}
+            disabled={extractQuestions.isPending}
+            className="w-full"
+          >
+            {extractQuestions.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Extracting MCQs...
+              </>
+            ) : (
+              <>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Push to Question Bank
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-1">
+            Extract MCQs from JSON and add to question bank with LLM difficulty analysis
+          </p>
+        </div>
+      )}
 
       {/* Progress */}
       {isLoading && progress && (
