@@ -376,6 +376,7 @@ CRITICAL:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        max_tokens: 8000, // Ensure full 6-slide presentation isn't truncated
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question }
