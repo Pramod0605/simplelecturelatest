@@ -723,14 +723,64 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
                 </div>
               ) : (
                 <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
-                  <CardContent className="text-center py-12">
-                    <div className="text-6xl mb-4">👨‍🏫</div>
-                    <h3 className="text-xl font-semibold mb-2">
-                      {subjectName ? `${subjectName} AI Professor` : 'AI Teaching Assistant'}
-                    </h3>
-                    <p className="text-muted-foreground max-w-md">
-                      Ask any question and I will explain with an interactive presentation.
+                  <CardContent className="text-center py-8 px-6 max-w-2xl">
+                    {/* Teacher Avatar */}
+                    <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center border-4 border-primary/30 shadow-lg">
+                      <span className="text-6xl">👨‍🏫</span>
+                    </div>
+                    
+                    {/* Greeting */}
+                    <h2 className="text-2xl font-bold mb-3 text-foreground">
+                      {narrationLanguage === 'hi-IN' 
+                        ? `नमस्ते! मैं आपका ${subjectName || 'विषय'} शिक्षक हूं।`
+                        : `Hello! I am your ${subjectName || 'Subject'} Teacher.`
+                      }
+                    </h2>
+                    <p className="text-lg text-muted-foreground mb-6">
+                      {narrationLanguage === 'hi-IN'
+                        ? 'मैं आपकी कैसे मदद कर सकता हूं?'
+                        : 'How may I help you today?'
+                      }
                     </p>
+                    
+                    {/* Subject Scope Notice */}
+                    <div className="bg-primary/10 rounded-lg px-4 py-3 mb-6 text-sm text-muted-foreground">
+                      {narrationLanguage === 'hi-IN'
+                        ? `मैं ${subjectName || 'इस विषय'} के प्रश्नों का उत्तर दे सकता हूं। अन्य विषयों के लिए संबंधित शिक्षक से पूछें।`
+                        : `I can answer questions about ${subjectName || 'this subject'}. For other subjects, please consult the respective teacher.`
+                      }
+                    </div>
+                    
+                    {/* Voice Input Prompt */}
+                    <div className="flex flex-col items-center gap-4">
+                      <p className="text-sm text-muted-foreground">
+                        {narrationLanguage === 'hi-IN' 
+                          ? 'अपना प्रश्न बोलें या नीचे टाइप करें'
+                          : 'Speak your question or type below'
+                        }
+                      </p>
+                      
+                      {isSupported && (
+                        <Button
+                          variant={isListening ? "destructive" : "default"}
+                          size="lg"
+                          className={cn(
+                            "rounded-full h-16 w-16 p-0 shadow-lg transition-all",
+                            isListening && "animate-pulse ring-4 ring-destructive/30"
+                          )}
+                          onClick={handleVoiceToggle}
+                          disabled={isLoading}
+                        >
+                          {isListening ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
+                        </Button>
+                      )}
+                      
+                      {isListening && (
+                        <p className="text-sm text-primary animate-pulse">
+                          {narrationLanguage === 'hi-IN' ? 'सुन रहा हूं...' : 'Listening...'}
+                        </p>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )}
