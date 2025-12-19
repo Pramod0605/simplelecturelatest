@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 export default function Learning() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -30,12 +31,29 @@ export default function Learning() {
   const { data: learningData, isLoading: courseLoading } = useLearningCourse(courseId);
   const { data: chapters, isLoading: chaptersLoading } = useSubjectChapters(selectedSubjectId || undefined);
 
-  // Set first subject as default when subjects load
+  // Handle URL query params for subject and tab
   useEffect(() => {
-    if (learningData?.subjects?.length && !selectedSubjectId) {
+    const subjectParam = searchParams.get('subject');
+    const tabParam = searchParams.get('tab');
+    
+    if (subjectParam && learningData?.subjects?.some(s => s.id === subjectParam)) {
+      setSelectedSubjectId(subjectParam);
+    }
+    
+    if (tabParam) {
+      setActiveTab(tabParam);
+      if (tabParam === 'ai-assistant') {
+        setSidebarCollapsed(true);
+      }
+    }
+  }, [searchParams, learningData?.subjects]);
+
+  // Set first subject as default when subjects load (only if no URL param)
+  useEffect(() => {
+    if (learningData?.subjects?.length && !selectedSubjectId && !searchParams.get('subject')) {
       setSelectedSubjectId(learningData.subjects[0].id);
     }
-  }, [learningData?.subjects, selectedSubjectId]);
+  }, [learningData?.subjects, selectedSubjectId, searchParams]);
 
   // Auto-collapse sidebar when AI Assistant tab is selected
   const handleTabChange = useCallback((value: string) => {
