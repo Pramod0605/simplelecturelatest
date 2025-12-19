@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,11 @@ export const EnrolledCoursesSection = () => {
   const [selectedCourse, setSelectedCourse] = useState<string>('');
 
   // Set first course as default when data loads
-  if (courses?.length && !selectedCourse) {
-    setSelectedCourse(courses[0].id);
-  }
+  useEffect(() => {
+    if (courses?.length && !selectedCourse) {
+      setSelectedCourse(courses[0].id);
+    }
+  }, [courses, selectedCourse]);
 
   if (isLoading) {
     return (
