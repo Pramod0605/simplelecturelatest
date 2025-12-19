@@ -176,26 +176,10 @@ export const useCurrentStudent = () => {
         console.error("Error fetching progress:", progressError);
       }
 
-      // Fetch class attendance
+      // Fetch class attendance (simplified - no nested joins)
       const { data: attendance, error: attendanceError } = await supabase
         .from('class_attendance')
-        .select(`
-          id,
-          status,
-          marked_at,
-          scheduled_class_id,
-          scheduled_classes (
-            id,
-            subject_id,
-            topic,
-            class_date,
-            start_time,
-            duration_minutes,
-            popular_subjects (
-              name
-            )
-          )
-        `)
+        .select('id, status, marked_at, scheduled_class_id')
         .eq('student_id', user.id)
         .order('marked_at', { ascending: false })
         .limit(20);
@@ -238,32 +222,14 @@ export const useCurrentStudent = () => {
         console.error("Error fetching assignment submissions:", assignmentError);
       }
 
-      // Fetch timetable from instructor_timetables for enrolled batches
+      // Fetch timetable from instructor_timetables for enrolled batches (simplified)
       const batchIds = enrollments?.map(e => e.batch_id).filter(Boolean) || [];
       let timetableData: any[] = [];
       
       if (batchIds.length > 0) {
         const { data: timetable, error: timetableError } = await supabase
           .from('instructor_timetables')
-          .select(`
-            id,
-            day_of_week,
-            start_time,
-            end_time,
-            is_active,
-            subject_id,
-            chapter_id,
-            instructor_id,
-            popular_subjects (
-              name
-            ),
-            subject_chapters (
-              name
-            ),
-            teacher_profiles (
-              full_name
-            )
-          `)
+          .select('id, day_of_week, start_time, end_time, is_active, subject_id, chapter_id, instructor_id')
           .in('batch_id', batchIds)
           .eq('is_active', true);
 
@@ -326,26 +292,15 @@ export const useCurrentStudent = () => {
         ? Math.round((attendedClasses / totalScheduled) * 100)
         : 0;
 
-      // Process recent classes
-      const recentClasses = attendanceRecords.slice(0, 5).map((a: any) => {
-        const scheduled = Array.isArray(a.scheduled_classes) 
-          ? a.scheduled_classes[0] 
-          : a.scheduled_classes;
-        
-        const subjectData = scheduled?.popular_subjects;
-        const subjectName = Array.isArray(subjectData) 
-          ? subjectData[0]?.name 
-          : subjectData?.name;
-
-        return {
-          id: a.id,
-          subject: subjectName || 'Unknown',
-          topic: scheduled?.topic || 'Class',
-          date: scheduled?.class_date || a.marked_at,
-          attended: a.status === 'present',
-          duration_minutes: scheduled?.duration_minutes || 60
-        };
-      });
+      // Process recent classes (simplified without nested joins)
+      const recentClasses = attendanceRecords.slice(0, 5).map((a: any) => ({
+        id: a.id,
+        subject: 'Class',
+        topic: 'Session',
+        date: a.marked_at,
+        attended: a.status === 'present',
+        duration_minutes: 60
+      }));
 
       // Process doubt logs
       const aiQueries = doubtLogs?.length || 0;
@@ -361,33 +316,16 @@ export const useCurrentStudent = () => {
         };
       });
 
-      // Process timetable
-      const formattedTimetable = timetableData.map((t: any) => {
-        const subjectData = t.popular_subjects;
-        const subjectName = Array.isArray(subjectData) 
-          ? subjectData[0]?.name 
-          : subjectData?.name;
-        
-        const chapterData = t.subject_chapters;
-        const chapterName = Array.isArray(chapterData)
-          ? chapterData[0]?.name
-          : chapterData?.name;
-
-        const instructorData = t.teacher_profiles;
-        const instructorName = Array.isArray(instructorData)
-          ? instructorData[0]?.full_name
-          : instructorData?.full_name;
-
-        return {
-          day: t.day_of_week,
-          subject: subjectName || 'Subject',
-          topic: chapterName || 'Topic',
-          start_time: t.start_time,
-          end_time: t.end_time,
-          instructor: instructorName || 'Instructor',
-          type: 'live_class'
-        };
-      });
+      // Process timetable (simplified without nested joins)
+      const formattedTimetable = timetableData.map((t: any) => ({
+        day: t.day_of_week,
+        subject: 'Subject',
+        topic: 'Topic',
+        start_time: t.start_time,
+        end_time: t.end_time,
+        instructor: 'Instructor',
+        type: 'live_class'
+      }));
 
       // Build the student data object with defaults for empty data
       const studentData: StudentData = {
