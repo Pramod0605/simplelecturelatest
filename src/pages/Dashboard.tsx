@@ -5,12 +5,12 @@ import { SEOHead } from '@/components/SEO';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { StudentIDCard } from '@/components/dashboard/StudentIDCard';
-import { SubjectProgressTable } from '@/components/dashboard/SubjectProgressTable';
 import UpcomingClasses from '@/components/dashboard/UpcomingClasses';
 import AssignmentsList from '@/components/dashboard/AssignmentsList';
 import InstructorsList from '@/components/dashboard/InstructorsList';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { BatchInfoCard } from '@/components/dashboard/BatchInfoCard';
+import { EnrolledCoursesSection } from '@/components/dashboard/EnrolledCoursesSection';
 import { Footer } from '@/components/Footer';
 
 const Dashboard = () => {
@@ -49,21 +49,19 @@ const Dashboard = () => {
             </Button>
           </div>
 
-          {/* Full-width Student ID Card */}
+          {/* Student ID Card */}
           <StudentIDCard />
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <SubjectProgressTable />
-            </div>
-            <div className="space-y-6">
-              <UpcomingClasses />
-              <AssignmentsList />
-            </div>
+          {/* Enrolled Courses with Subject Tabs */}
+          <EnrolledCoursesSection />
+
+          {/* Secondary Content Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <UpcomingClasses />
+            <AssignmentsList />
           </div>
 
-          {/* Horizontal Instructors List */}
+          {/* Instructors List */}
           <InstructorsList />
 
           {/* Batch Info Card */}
