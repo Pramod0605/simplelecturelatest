@@ -5,7 +5,6 @@ export interface SubjectWithDetails {
   id: string;
   name: string;
   description: string | null;
-  icon: string | null;
   thumbnail_url: string | null;
   chaptersTotal: number;
   chaptersCompleted: number;
@@ -90,7 +89,6 @@ export const useDashboardCourseDetails = () => {
                 id,
                 name,
                 description,
-                icon,
                 thumbnail_url
               )
             `)
@@ -171,7 +169,6 @@ export const useDashboardCourseDetails = () => {
               id: subject.id,
               name: subject.name,
               description: subject.description,
-              icon: subject.icon,
               thumbnail_url: subject.thumbnail_url,
               chaptersTotal: chaptersTotal || 0,
               chaptersCompleted,
