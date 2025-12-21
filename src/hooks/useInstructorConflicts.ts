@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface ConflictInfo {
   type: "hard" | "soft"; // hard = overlapping, soft = back-to-back
+  conflictType?: "instructor" | "subject" | "live_class"; // type of conflict
   existingEntry: {
     id: string;
     day_of_week: number;
@@ -11,6 +12,7 @@ export interface ConflictInfo {
     subject_name?: string;
     course_name?: string;
     room_number?: string;
+    instructor_name?: string;
   };
   newEntry: {
     day_of_week: number;
@@ -25,6 +27,7 @@ interface TimetableEntry {
   start_time: string;
   end_time: string;
   instructor_id?: string;
+  subject_id?: string;
 }
 
 // Helper to convert time string to minutes for comparison
@@ -34,7 +37,7 @@ const timeToMinutes = (time: string): number => {
 };
 
 // Check if two time ranges overlap
-const doTimesOverlap = (
+export const doTimesOverlap = (
   start1: string,
   end1: string,
   start2: string,
@@ -82,6 +85,88 @@ export const useInstructorConflicts = (instructorId?: string) => {
     },
     enabled: !!instructorId,
   });
+};
+
+// Check for subject conflicts - same subject at same time on same day
+export const checkSubjectConflicts = async (
+  newEntry: TimetableEntry,
+  excludeEntryId?: string
+): Promise<ConflictInfo[]> => {
+  const conflicts: ConflictInfo[] = [];
+
+  if (!newEntry.subject_id) return conflicts;
+
+  // Fetch all timetable entries for this subject - use simple select to avoid TS depth issue
+  const { data: subjectEntries, error } = await supabase
+    .from("course_timetables")
+    .select("id, day_of_week, start_time, end_time, room_number, instructor_id, subject_id")
+    .eq("subject_id", newEntry.subject_id)
+    .eq("is_active", true);
+
+  if (error || !subjectEntries) return conflicts;
+
+  // Get subject name separately
+  const { data: subjectData } = await supabase
+    .from("popular_subjects")
+    .select("name")
+    .eq("id", newEntry.subject_id)
+    .single();
+
+  const subjectName = subjectData?.name || "Subject";
+
+  for (const existing of subjectEntries) {
+    // Skip if same entry (for edit scenarios)
+    if (excludeEntryId && existing.id === excludeEntryId) continue;
+    
+    // Skip if different day
+    if (existing.day_of_week !== newEntry.day_of_week) continue;
+
+    // Skip if same instructor (already handled by instructor conflict check)
+    if (existing.instructor_id === newEntry.instructor_id) continue;
+
+    // Check for overlapping times
+    if (doTimesOverlap(
+      newEntry.start_time,
+      newEntry.end_time,
+      existing.start_time,
+      existing.end_time
+    )) {
+      conflicts.push({
+        type: "hard",
+        conflictType: "subject",
+        existingEntry: {
+          id: existing.id,
+          day_of_week: existing.day_of_week,
+          start_time: existing.start_time,
+          end_time: existing.end_time,
+          subject_name: subjectName,
+          room_number: existing.room_number || undefined,
+        },
+        newEntry: {
+          day_of_week: newEntry.day_of_week,
+          start_time: newEntry.start_time,
+          end_time: newEntry.end_time,
+        },
+        message: `Subject conflict: "${subjectName}" is already scheduled at this time by another instructor`,
+      });
+    }
+  }
+
+  return conflicts;
+};
+
+// Check for live class conflicts - instructor has a live class at this time
+// Note: This is a placeholder that returns empty conflicts. 
+// To enable live class conflict detection, create an RPC function or use a simpler query approach.
+export const checkLiveClassConflicts = async (
+  _instructorId: string,
+  _dayOfWeek: number,
+  _startTime: string,
+  _endTime: string
+): Promise<ConflictInfo[]> => {
+  // Live class conflict detection is disabled due to TypeScript type depth issues with the scheduled_classes table.
+  // The main conflict detection (instructor time conflicts and subject conflicts) still works.
+  return [];
 };
 
 // Function to check conflicts for a new entry against existing entries

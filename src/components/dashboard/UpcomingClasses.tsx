@@ -13,7 +13,12 @@ const UpcomingClasses = () => {
     const classDate = new Date(date);
     if (isToday(classDate)) return "Today";
     if (isTomorrow(classDate)) return "Tomorrow";
-    return format(classDate, "MMM d");
+    return format(classDate, "EEE, MMM d");
+  };
+
+  const formatFullDate = (date: string) => {
+    const classDate = new Date(date);
+    return format(classDate, "EEEE, MMMM d, yyyy");
   };
 
   const formatClassTime = (date: string, duration: number) => {
@@ -54,6 +59,7 @@ const UpcomingClasses = () => {
                 <div>
                   <h3 className="font-semibold">{classItem.subject || 'Class'}</h3>
                   <p className="text-sm text-muted-foreground">{classItem.notes || 'General Session'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{formatFullDate(classItem.scheduled_at)}</p>
                 </div>
                 <Badge variant="outline">{formatClassDate(classItem.scheduled_at)}</Badge>
               </div>
