@@ -14,6 +14,7 @@ import { useInstructorConflicts, checkConflicts, ConflictInfo } from "@/hooks/us
 import { useSaveTimetable } from "@/hooks/useSaveTimetable";
 import { ConflictBadge } from "@/components/hr/ConflictBadge";
 import { ConflictAlert } from "@/components/hr/ConflictAlert";
+import { TimetablePDFExport } from "@/components/hr/TimetablePDFExport";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -206,11 +207,47 @@ export default function AcademicsTimetable() {
     return all;
   }, [entryConflicts]);
 
+  // Get selected course name for PDF export
+  const selectedCourseName = courses?.find(c => c.id === selectedCourse)?.name || "Course";
+  const selectedBatchName = batches?.find(b => b.id === selectedBatch)?.name;
+
+  // Convert day entries to a flat array for PDF export
+  const entriesForPDF = useMemo(() => {
+    const entries: any[] = [];
+    Object.entries(dayEntries).forEach(([day, dayEntriesList]) => {
+      dayEntriesList.forEach((entry) => {
+        if (entry.subject_id && entry.start_time && entry.end_time) {
+          const subject = courseSubjects?.find(cs => cs.subject_id === entry.subject_id);
+          const instructor = allInstructors?.find(i => i.id === entry.instructor_id);
+          entries.push({
+            id: `${day}-${entry.start_time}`,
+            day_of_week: parseInt(day),
+            start_time: entry.start_time,
+            end_time: entry.end_time,
+            room_number: entry.room_number,
+            subject: subject?.subject ? { name: subject.subject.name } : undefined,
+            instructor: instructor ? { full_name: instructor.full_name } : undefined,
+          });
+        }
+      });
+    });
+    return entries;
+  }, [dayEntries, courseSubjects, allInstructors]);
+
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Course Timetable Management</h1>
-        <p className="text-muted-foreground">Create and manage course-based timetables</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Course Timetable Management</h1>
+          <p className="text-muted-foreground">Create and manage course-based timetables</p>
+        </div>
+        {selectedCourse && entriesForPDF.length > 0 && (
+          <TimetablePDFExport
+            entries={entriesForPDF}
+            title={`Timetable - ${selectedCourseName}`}
+            subtitle={selectedBatchName ? `Batch: ${selectedBatchName}` : undefined}
+          />
+        )}
       </div>
 
       <Card>
