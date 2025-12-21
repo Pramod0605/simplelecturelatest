@@ -12,10 +12,13 @@ interface PastClass {
   recording_url: string | null;
   recording_added_at: string | null;
   is_cancelled: boolean;
+  bbb_meeting_id: string | null;
   subject?: { id: string; name: string } | null;
   course?: { id: string; name: string } | null;
   teacher?: { full_name: string; avatar_url: string | null } | null;
 }
+
+export type { PastClass };
 
 export const usePastClasses = (options?: { withRecordingsOnly?: boolean; courseIds?: string[] }) => {
   return useQuery({
@@ -51,6 +54,7 @@ export const usePastClasses = (options?: { withRecordingsOnly?: boolean; courseI
           recording_url,
           recording_added_at,
           is_cancelled,
+          bbb_meeting_id,
           subject:popular_subjects(id, name),
           course:courses(id, name),
           teacher:teacher_profiles(full_name, avatar_url)
@@ -93,6 +97,7 @@ export const useInstructorPastClasses = () => {
           recording_url,
           recording_added_at,
           is_cancelled,
+          bbb_meeting_id,
           subject:popular_subjects(id, name),
           course:courses(id, name),
           teacher:teacher_profiles(full_name, avatar_url)
