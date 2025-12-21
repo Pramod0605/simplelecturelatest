@@ -82,6 +82,7 @@ import FileBrowser from "./pages/admin/FileBrowser";
 import CounselorAvatars from "./pages/admin/CounselorAvatars";
 import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
 import OrdersList from "./pages/admin/OrdersList";
+import BulkAssignInstructors from "./pages/admin/BulkAssignInstructors";
 
 const App = () => (
   <HelmetProvider>
@@ -178,6 +179,7 @@ const App = () => (
                 <Route path="hr/departments" element={<DepartmentsManager />} />
                 <Route path="hr/instructors" element={<InstructorsManager />} />
                 <Route path="hr/timetable" element={<TimetableManager />} />
+                <Route path="hr/bulk-assign-instructors" element={<BulkAssignInstructors />} />
                 <Route path="hr/live-classes" element={<LiveClassesManager />} />
               </Route>
             </Route>
