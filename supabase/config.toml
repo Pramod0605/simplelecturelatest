@@ -128,3 +128,9 @@ verify_jwt = true
 
 [functions.send-class-reminders]
 verify_jwt = false
+
+[functions.bbb-api]
+verify_jwt = true
+
+[functions.bbb-webhooks]
+verify_jwt = false

@@ -9,19 +9,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAISettings, useUpdateAISettings, AISettings } from "@/hooks/useAISettings";
 import { usePaymentSettings, useUpdatePaymentSettings, PaymentSettings, DEFAULT_PAYMENT_SETTINGS } from "@/hooks/usePaymentSettings";
+import { useBBBSettings, useUpdateBBBSettings, useTestBBBConnection, BBBSettings, DEFAULT_BBB_SETTINGS } from "@/hooks/useBBBSettings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Sparkles, CreditCard, Eye, EyeOff } from "lucide-react";
+import { Brain, Sparkles, CreditCard, Eye, EyeOff, Video, Loader2, CheckCircle2, Copy, ExternalLink } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
+  const { toast } = useToast();
   const { data: aiSettings, isLoading } = useAISettings();
   const updateSettings = useUpdateAISettings();
   
   const { data: paymentSettings, isLoading: paymentLoading } = usePaymentSettings();
   const updatePaymentSettings = useUpdatePaymentSettings();
+
+  const { data: bbbSettings, isLoading: bbbLoading } = useBBBSettings();
+  const updateBBBSettings = useUpdateBBBSettings();
+  const testBBBConnection = useTestBBBConnection();
   
   const [localSettings, setLocalSettings] = useState<AISettings | null>(null);
   const [localPaymentSettings, setLocalPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
+  const [localBBBSettings, setLocalBBBSettings] = useState<BBBSettings>(DEFAULT_BBB_SETTINGS);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [showBBBSecret, setShowBBBSecret] = useState(false);
 
   useEffect(() => {
     if (aiSettings) {
@@ -35,6 +44,12 @@ export default function Settings() {
     }
   }, [paymentSettings]);
 
+  useEffect(() => {
+    if (bbbSettings) {
+      setLocalBBBSettings(bbbSettings);
+    }
+  }, [bbbSettings]);
+
   const handleSaveAI = () => {
     if (localSettings) {
       updateSettings.mutate(localSettings);
@@ -43,6 +58,35 @@ export default function Settings() {
 
   const handleSavePayment = () => {
     updatePaymentSettings.mutate(localPaymentSettings);
+  };
+
+  const handleSaveBBB = () => {
+    updateBBBSettings.mutate(localBBBSettings);
+  };
+
+  const handleTestBBBConnection = () => {
+    if (!localBBBSettings.server_url || !localBBBSettings.shared_secret) {
+      toast({
+        title: 'Missing fields',
+        description: 'Please enter both Server URL and Shared Secret',
+        variant: 'destructive',
+      });
+      return;
+    }
+    testBBBConnection.mutate({
+      serverUrl: localBBBSettings.server_url,
+      sharedSecret: localBBBSettings.shared_secret,
+    });
+  };
+
+  const webhookUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/bbb-webhooks`;
+
+  const copyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast({
+      title: 'Copied',
+      description: 'Webhook URL copied to clipboard',
+    });
   };
 
   return (
@@ -470,6 +514,243 @@ export default function Settings() {
                   disabled={updateSettings.isPending}
                 >
                   {updateSettings.isPending ? "Saving..." : "Save AI Settings"}
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BigBlueButton Settings Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Video className="h-5 w-5 text-blue-600" />
+            <div>
+              <CardTitle>BigBlueButton Settings</CardTitle>
+              <CardDescription>Configure your self-hosted BigBlueButton server for live classes</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {bbbLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Enable BigBlueButton</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Use BBB for live classes instead of external meeting links
+                  </p>
+                </div>
+                <Switch
+                  checked={localBBBSettings.enabled}
+                  onCheckedChange={(checked) => setLocalBBBSettings({
+                    ...localBBBSettings,
+                    enabled: checked
+                  })}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <Label htmlFor="bbb-server-url">BBB Server URL</Label>
+                <Input
+                  id="bbb-server-url"
+                  value={localBBBSettings.server_url}
+                  onChange={(e) => setLocalBBBSettings({
+                    ...localBBBSettings,
+                    server_url: e.target.value
+                  })}
+                  placeholder="https://bbb.yourschool.com/bigbluebutton/api"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your BigBlueButton API endpoint (e.g., https://bbb.example.com/bigbluebutton/api)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bbb-shared-secret">Shared Secret</Label>
+                <div className="relative">
+                  <Input
+                    id="bbb-shared-secret"
+                    type={showBBBSecret ? "text" : "password"}
+                    value={localBBBSettings.shared_secret}
+                    onChange={(e) => setLocalBBBSettings({
+                      ...localBBBSettings,
+                      shared_secret: e.target.value
+                    })}
+                    placeholder="Enter your BBB shared secret"
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowBBBSecret(!showBBBSecret)}
+                  >
+                    {showBBBSecret ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Get this by running <code className="bg-muted px-1 rounded">sudo bbb-conf --secret</code> on your BBB server
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={handleTestBBBConnection}
+                disabled={testBBBConnection.isPending || !localBBBSettings.server_url || !localBBBSettings.shared_secret}
+                className="w-full"
+              >
+                {testBBBConnection.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Testing Connection...
+                  </>
+                ) : testBBBConnection.isSuccess ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                    Connection Successful
+                  </>
+                ) : (
+                  'Test Connection'
+                )}
+              </Button>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="font-medium">Meeting Options</h4>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Webhooks</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically track attendance when students join/leave
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localBBBSettings.webhook_enabled}
+                    onCheckedChange={(checked) => setLocalBBBSettings({
+                      ...localBBBSettings,
+                      webhook_enabled: checked
+                    })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Allow Recording</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable meeting recording capability
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localBBBSettings.allow_recording}
+                    onCheckedChange={(checked) => setLocalBBBSettings({
+                      ...localBBBSettings,
+                      allow_recording: checked
+                    })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Auto-start Recording</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Start recording automatically when meeting begins
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localBBBSettings.auto_start_recording}
+                    onCheckedChange={(checked) => setLocalBBBSettings({
+                      ...localBBBSettings,
+                      auto_start_recording: checked
+                    })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Mute on Start</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Mute attendees when they join the meeting
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localBBBSettings.mute_on_start}
+                    onCheckedChange={(checked) => setLocalBBBSettings({
+                      ...localBBBSettings,
+                      mute_on_start: checked
+                    })}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <Label htmlFor="bbb-welcome-message">Welcome Message</Label>
+                <Input
+                  id="bbb-welcome-message"
+                  value={localBBBSettings.default_welcome_message}
+                  onChange={(e) => setLocalBBBSettings({
+                    ...localBBBSettings,
+                    default_welcome_message: e.target.value
+                  })}
+                  placeholder="Welcome to the class!"
+                />
+              </div>
+
+              {localBBBSettings.webhook_enabled && (
+                <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Webhook Configuration
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Configure this URL in your BBB server to enable automatic attendance tracking:
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={webhookUrl}
+                      readOnly
+                      className="bg-background font-mono text-xs"
+                    />
+                    <Button variant="outline" size="icon" onClick={copyWebhookUrl}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Run on your BBB server: <code className="bg-muted px-1 rounded">bbb-conf --setwebhook {webhookUrl}</code>
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => bbbSettings && setLocalBBBSettings(bbbSettings)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  onClick={handleSaveBBB}
+                  disabled={updateBBBSettings.isPending}
+                >
+                  {updateBBBSettings.isPending ? "Saving..." : "Save BBB Settings"}
                 </Button>
               </div>
             </>
