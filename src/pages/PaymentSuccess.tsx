@@ -4,6 +4,8 @@ import { CheckCircle, Download, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SEOHead } from '@/components/SEO';
+import { SmartHeader } from '@/components/SmartHeader';
+import { Footer } from '@/components/Footer';
 import { formatINR } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
@@ -29,6 +31,7 @@ const PaymentSuccess = () => {
   return (
     <>
       <SEOHead title="Payment Successful | SimpleLecture" description="Your payment was successful" />
+      <SmartHeader />
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-2xl w-full p-8">
           <div className="text-center mb-8">
@@ -63,7 +66,7 @@ const PaymentSuccess = () => {
           </div>
 
           <div className="bg-primary/10 p-6 rounded-lg mb-6">
-            <h3 className="font-bold mb-3 text-lg">🎉 Enrollment Confirmed!</h3>
+            <h3 className="font-bold mb-3 text-lg">Enrollment Confirmed!</h3>
             <p className="mb-3 text-sm">You now have full access to:</p>
             <ul className="list-disc list-inside space-y-1 text-sm mb-4">
               <li>All course videos and materials</li>
@@ -75,13 +78,13 @@ const PaymentSuccess = () => {
             </ul>
             <div className="bg-background/80 p-3 rounded-md">
               <p className="text-sm font-semibold">
-                ✨ Access valid for: <span className="text-primary">1 Year from today</span>
+                Access valid for: <span className="text-primary">1 Year from today</span>
               </p>
             </div>
           </div>
 
           <div className="text-center text-sm text-muted-foreground mb-6">
-            <p>✉️ A confirmation email has been sent to your registered email address</p>
+            <p>A confirmation email has been sent to your registered email address</p>
           </div>
 
           <div className="flex gap-4">
@@ -96,6 +99,7 @@ const PaymentSuccess = () => {
           </div>
         </Card>
       </div>
+      <Footer />
     </>
   );
 };

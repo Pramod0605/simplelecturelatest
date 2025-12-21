@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { SEOHead } from '@/components/SEO';
+import { SmartHeader } from '@/components/SmartHeader';
+import { Footer } from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { formatINR } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -225,6 +227,7 @@ const Checkout = () => {
   return (
     <>
       <SEOHead title="Checkout | SimpleLecture" description="Complete your purchase" />
+      <SmartHeader />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold mb-8">Checkout</h1>
@@ -344,6 +347,7 @@ const Checkout = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 };

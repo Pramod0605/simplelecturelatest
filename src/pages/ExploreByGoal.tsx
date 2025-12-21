@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,7 @@ const ExploreByGoal = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1">
           <div className="container mx-auto px-4 py-8">
             <Skeleton className="h-12 w-64 mb-4" />
@@ -42,7 +42,7 @@ const ExploreByGoal = () => {
   if (!data) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Goal Not Found</h1>
@@ -67,7 +67,7 @@ const ExploreByGoal = () => {
         title={`${goal.name} Courses`}
         description={goal.description || `Explore courses for ${goal.name}`}
       />
-      <Header />
+      <SmartHeader />
       
       <main className="flex-1">
         {/* Hero Section */}
