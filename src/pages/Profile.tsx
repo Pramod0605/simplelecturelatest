@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/Header';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Footer } from '@/components/Footer';
 import { SEOHead } from '@/components/SEO';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,7 +61,7 @@ const Profile = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <DashboardHeader />
         <main className="flex-1 container mx-auto px-4 py-12">
           <Skeleton className="h-96 mb-8" />
         </main>
@@ -73,7 +73,7 @@ const Profile = () => {
   if (!userData) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+            <DashboardHeader />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold">Please Login</h1>
@@ -91,7 +91,7 @@ const Profile = () => {
         title="My Profile | SimpleLecture"
         description="Manage your profile settings"
       />
-      <Header />
+      <DashboardHeader />
 
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-8">

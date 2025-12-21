@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Header } from '@/components/Header';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,7 +126,7 @@ export default function Recordings() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <DashboardHeader />
       
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Header */}
