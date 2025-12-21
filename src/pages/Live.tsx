@@ -1,11 +1,12 @@
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveTimetable, DAYS, TimetableClass } from "@/hooks/useLiveTimetable";
-import { format, isToday, isTomorrow } from "date-fns";
-import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight } from "lucide-react";
+import { format, isToday, isTomorrow, startOfWeek, addWeeks, subWeeks, isSameWeek, addDays } from "date-fns";
+import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight, ChevronLeft, ChevronRight, Link as LinkIcon } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
@@ -153,66 +154,143 @@ const LivePage = () => {
           )}
 
           {/* Tabs for Today / Week */}
-          <Tabs defaultValue="today" className="mt-8">
-            <TabsList className="mb-6">
-              <TabsTrigger value="today">Today ({today.length})</TabsTrigger>
-              <TabsTrigger value="week">This Week ({week.length})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="today">
-              {today.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No Classes Today</h3>
-                  <p className="text-muted-foreground">You don't have any scheduled classes for today.</p>
-                </Card>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {today.map((classItem) => (
-                    <ClassCard key={classItem.id} classItem={classItem} />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="week">
-              {week.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No Classes This Week</h3>
-                  <p className="text-muted-foreground">You don't have any scheduled classes for this week.</p>
-                </Card>
-              ) : (
-                <div className="space-y-6">
-                  {DAYS.map((day, dayIndex) => {
-                    const dayClasses = week.filter(c => c.day_of_week === dayIndex);
-                    if (dayClasses.length === 0) return null;
-
-                    // Get the date for this day from the first class
-                    const dayDate = dayClasses[0]?.scheduled_date;
-                    const dateLabel = dayDate ? format(dayDate, "MMMM d, yyyy") : "";
-
-                    return (
-                      <div key={day}>
-                        <h3 className="text-lg font-semibold mb-3 text-muted-foreground">
-                          {day}{dateLabel && <span className="font-normal ml-2">({dateLabel})</span>}
-                        </h3>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {dayClasses.map((classItem) => (
-                            <ClassCard key={classItem.id} classItem={classItem} showDate />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+          <WeeklySchedule today={today} week={week} />
         </div>
       </main>
       <Footer />
     </>
+  );
+};
+
+// Separate component for weekly schedule with navigation
+const WeeklySchedule = ({ today, week }: { today: TimetableClass[]; week: TimetableClass[] }) => {
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => 
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  );
+
+  const weekDates = useMemo(() => {
+    return DAYS.map((_, idx) => addDays(selectedWeekStart, idx));
+  }, [selectedWeekStart]);
+
+  const isCurrentWeek = useMemo(() => {
+    return isSameWeek(selectedWeekStart, new Date(), { weekStartsOn: 0 });
+  }, [selectedWeekStart]);
+
+  const handlePreviousWeek = () => {
+    setSelectedWeekStart(prev => subWeeks(prev, 1));
+  };
+
+  const handleNextWeek = () => {
+    setSelectedWeekStart(prev => addWeeks(prev, 1));
+  };
+
+  const handleToday = () => {
+    setSelectedWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+  };
+
+  // Filter week classes for selected week
+  const filteredWeek = useMemo(() => {
+    return week.filter(classItem => {
+      const classDate = classItem.scheduled_date;
+      return isSameWeek(classDate, selectedWeekStart, { weekStartsOn: 0 });
+    });
+  }, [week, selectedWeekStart]);
+
+  return (
+    <Tabs defaultValue="today" className="mt-8">
+      <TabsList className="mb-6">
+        <TabsTrigger value="today">Today ({today.length})</TabsTrigger>
+        <TabsTrigger value="week">This Week ({filteredWeek.length})</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="today">
+        {today.length === 0 ? (
+          <Card className="p-8 text-center">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-medium mb-2">No Classes Today</h3>
+            <p className="text-muted-foreground">You don't have any scheduled classes for today.</p>
+          </Card>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {today.map((classItem) => (
+              <ClassCard key={classItem.id} classItem={classItem} />
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="week">
+        {/* Week Navigation */}
+        <div className="flex items-center justify-between mb-6 p-3 bg-muted/30 rounded-lg">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePreviousWeek}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          
+          <div className="flex items-center gap-3">
+            <span className="font-semibold">
+              {format(weekDates[0], "MMM d")} - {format(weekDates[6], "MMM d, yyyy")}
+            </span>
+            {!isCurrentWeek && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToday}
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Today
+              </Button>
+            )}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextWeek}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+
+        {filteredWeek.length === 0 ? (
+          <Card className="p-8 text-center">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-medium mb-2">No Classes This Week</h3>
+            <p className="text-muted-foreground">You don't have any scheduled classes for the selected week.</p>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {DAYS.map((day, dayIndex) => {
+              const dayClasses = filteredWeek.filter(c => c.day_of_week === dayIndex);
+              if (dayClasses.length === 0) return null;
+
+              const dayDate = weekDates[dayIndex];
+
+              return (
+                <div key={day}>
+                  <h3 className="text-lg font-semibold mb-3">
+                    {day}
+                    <span className="font-normal text-muted-foreground ml-2">
+                      {format(dayDate, "MMMM d, yyyy")}
+                    </span>
+                  </h3>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dayClasses.map((classItem) => (
+                      <ClassCard key={classItem.id} classItem={classItem} showDate />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 };
 

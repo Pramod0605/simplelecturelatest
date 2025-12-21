@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUpdateTimetableEntry, useDeleteTimetableEntry } from "@/hooks/useInstructorTimetable";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
+import { Trash2, Link } from "lucide-react";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -19,6 +19,7 @@ interface EditTimeSlotDialogProps {
     start_time: string;
     end_time: string;
     room_number?: string;
+    meeting_link?: string;
     subject?: { id: string; name: string };
     instructor?: { id: string; full_name: string };
     course?: { id: string; name: string };
@@ -31,6 +32,7 @@ export const EditTimeSlotDialog = ({ open, onOpenChange, entry }: EditTimeSlotDi
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [roomNumber, setRoomNumber] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
 
   const updateEntry = useUpdateTimetableEntry();
   const deleteEntry = useDeleteTimetableEntry();
@@ -41,6 +43,7 @@ export const EditTimeSlotDialog = ({ open, onOpenChange, entry }: EditTimeSlotDi
       setStartTime(entry.start_time.substring(0, 5));
       setEndTime(entry.end_time.substring(0, 5));
       setRoomNumber(entry.room_number || "");
+      setMeetingLink(entry.meeting_link || "");
     }
   }, [entry]);
 
@@ -54,6 +57,7 @@ export const EditTimeSlotDialog = ({ open, onOpenChange, entry }: EditTimeSlotDi
         start_time: startTime,
         end_time: endTime,
         room_number: roomNumber || null,
+        meeting_link: meetingLink || null,
       },
     });
     onOpenChange(false);
@@ -131,6 +135,22 @@ export const EditTimeSlotDialog = ({ open, onOpenChange, entry }: EditTimeSlotDi
               onChange={(e) => setRoomNumber(e.target.value)}
               placeholder="e.g., Room 101"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Meeting Link (Recurring)
+            </Label>
+            <Input
+              type="url"
+              value={meetingLink}
+              onChange={(e) => setMeetingLink(e.target.value)}
+              placeholder="e.g., https://meet.google.com/abc-xyz"
+            />
+            <p className="text-xs text-muted-foreground">
+              This link will auto-populate for all class occurrences
+            </p>
           </div>
         </div>
 

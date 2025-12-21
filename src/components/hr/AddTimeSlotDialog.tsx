@@ -39,6 +39,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
     start_time: "",
     end_time: "",
     room_number: "",
+    meeting_link: "",
     academic_year: "2024-2025",
     valid_from: new Date().toISOString().split("T")[0],
     valid_until: "",
@@ -136,6 +137,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
       start_time: formData.start_time,
       end_time: formData.end_time,
       room_number: formData.room_number || null,
+      meeting_link: formData.meeting_link || null,
       academic_year: formData.academic_year,
       valid_from: formData.valid_from,
       valid_until: formData.valid_until || null,
@@ -182,6 +184,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
       start_time: "",
       end_time: "",
       room_number: "",
+      meeting_link: "",
       academic_year: "2024-2025",
       valid_from: new Date().toISOString().split("T")[0],
       valid_until: "",
@@ -312,6 +315,19 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
               onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
               placeholder="Optional"
             />
+          </div>
+
+          <div>
+            <Label>Meeting Link (Recurring)</Label>
+            <Input
+              type="url"
+              value={formData.meeting_link}
+              onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
+              placeholder="e.g., https://meet.google.com/abc-xyz"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              This link will be used for all occurrences of this class
+            </p>
           </div>
 
           <div>

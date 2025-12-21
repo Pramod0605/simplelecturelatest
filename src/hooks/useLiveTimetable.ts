@@ -75,7 +75,8 @@ export const useLiveTimetable = () => {
           subject:popular_subjects(id, name),
           instructor:teacher_profiles(id, full_name, avatar_url),
           course:courses(id, name),
-          batch:batches(id, name)
+          batch:batches(id, name),
+          meeting_link
         `)
         .in('course_id', courseIds)
         .eq('is_active', true)
@@ -115,7 +116,7 @@ export const useLiveTimetable = () => {
             scheduled_date: occurrence,
             scheduled_at,
             ends_at,
-            meeting_link: null, // Can be enhanced to fetch from scheduled_classes
+            meeting_link: entry.meeting_link || null, // Use the recurring meeting link from timetable
             is_live,
             is_upcoming,
           });

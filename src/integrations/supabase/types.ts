@@ -689,6 +689,7 @@ export type Database = {
           id: string
           instructor_id: string | null
           is_active: boolean | null
+          meeting_link: string | null
           room_number: string | null
           start_time: string
           subject_id: string | null
@@ -706,6 +707,7 @@ export type Database = {
           id?: string
           instructor_id?: string | null
           is_active?: boolean | null
+          meeting_link?: string | null
           room_number?: string | null
           start_time: string
           subject_id?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           id?: string
           instructor_id?: string | null
           is_active?: boolean | null
+          meeting_link?: string | null
           room_number?: string | null
           start_time?: string
           subject_id?: string | null
@@ -2137,6 +2140,39 @@ export type Database = {
           id?: string
           phone_number?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      push_notification_tokens: {
+        Row: {
+          created_at: string | null
+          device_info: Json | null
+          id: string
+          is_active: boolean | null
+          platform: string
+          token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          platform: string
+          token: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          platform?: string
+          token?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

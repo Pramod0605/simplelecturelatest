@@ -125,3 +125,6 @@ verify_jwt = true
 
 [functions.extract-json-to-questions]
 verify_jwt = true
+
+[functions.send-class-reminders]
+verify_jwt = false

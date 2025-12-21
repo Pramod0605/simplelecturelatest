@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, GripVertical } from "lucide-react";
+import { Pencil, GripVertical, Link, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import {
   DndContext,
   DragEndEvent,
@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useUpdateTimetableEntry } from "@/hooks/useInstructorTimetable";
 import { EditTimeSlotDialog } from "./EditTimeSlotDialog";
 import { cn } from "@/lib/utils";
-import { format, addDays, startOfWeek } from "date-fns";
+import { format, addDays, startOfWeek, subWeeks, addWeeks, isSameWeek } from "date-fns";
 
 interface TimetableEntry {
   id: string;
@@ -32,6 +32,7 @@ interface TimetableEntry {
   course?: { id: string; name: string };
   batch?: { id: string; name: string };
   room_number?: string;
+  meeting_link?: string;
 }
 
 interface DraggableTimetableGridProps {
@@ -39,6 +40,7 @@ interface DraggableTimetableGridProps {
   onSlotClick?: (entry: TimetableEntry) => void;
   enableDragDrop?: boolean;
   enableEdit?: boolean;
+  showWeekNavigation?: boolean;
 }
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -90,11 +92,16 @@ const DraggableEntry = ({ entry, enableEdit, onEditClick }: {
           <p className="text-xs text-muted-foreground">
             {entry.start_time.substring(0, 5)} - {entry.end_time.substring(0, 5)}
           </p>
-          {entry.room_number && (
-            <p className="text-xs text-muted-foreground">
-              {entry.room_number}
-            </p>
-          )}
+          <div className="flex items-center gap-1">
+            {entry.room_number && (
+              <p className="text-xs text-muted-foreground">
+                {entry.room_number}
+              </p>
+            )}
+            {entry.meeting_link && (
+              <Link className="h-3 w-3 text-primary" />
+            )}
+          </div>
         </div>
         {enableEdit && (
           <Button
@@ -148,9 +155,13 @@ export const DraggableTimetableGrid = ({
   onSlotClick,
   enableDragDrop = true,
   enableEdit = true,
+  showWeekNavigation = true,
 }: DraggableTimetableGridProps) => {
   const [activeEntry, setActiveEntry] = useState<TimetableEntry | null>(null);
   const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => 
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  );
   const updateEntry = useUpdateTimetableEntry();
 
   const sensors = useSensors(
@@ -161,12 +172,26 @@ export const DraggableTimetableGrid = ({
     })
   );
 
-  // Calculate dates for the current week
+  // Calculate dates for the selected week
   const weekDates = useMemo(() => {
-    const today = new Date();
-    const weekStart = startOfWeek(today, { weekStartsOn: 0 }); // Sunday
-    return DAYS.map((_, idx) => addDays(weekStart, idx));
-  }, []);
+    return DAYS.map((_, idx) => addDays(selectedWeekStart, idx));
+  }, [selectedWeekStart]);
+
+  const isCurrentWeek = useMemo(() => {
+    return isSameWeek(selectedWeekStart, new Date(), { weekStartsOn: 0 });
+  }, [selectedWeekStart]);
+
+  const handlePreviousWeek = () => {
+    setSelectedWeekStart(prev => subWeeks(prev, 1));
+  };
+
+  const handleNextWeek = () => {
+    setSelectedWeekStart(prev => addWeeks(prev, 1));
+  };
+
+  const handleToday = () => {
+    setSelectedWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+  };
 
   const getEntryForSlot = (day: number, time: string) => {
     return entries.find((entry) => {
@@ -229,6 +254,45 @@ export const DraggableTimetableGrid = ({
   const gridContent = (
     <div className="overflow-x-auto">
       <div className="min-w-[1000px]">
+        {/* Week Navigation */}
+        {showWeekNavigation && (
+          <div className="flex items-center justify-between mb-4 p-2 bg-muted/30 rounded-lg">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousWeek}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous Week
+            </Button>
+            
+            <div className="flex items-center gap-3">
+              <span className="font-semibold">
+                {format(weekDates[0], "MMM d")} - {format(weekDates[6], "MMM d, yyyy")}
+              </span>
+              {!isCurrentWeek && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToday}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Today
+                </Button>
+              )}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextWeek}
+            >
+              Next Week
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-8 gap-2">
           <div className="font-semibold p-2">Time</div>
           {DAYS.map((day, idx) => (
