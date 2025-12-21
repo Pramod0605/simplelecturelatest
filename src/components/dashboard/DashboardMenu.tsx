@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LayoutDashboard, BookOpen, Video, FileText, Trophy, MessageSquare, HelpCircle, User, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, BookOpen, Video, PlayCircle, FileText, Trophy, MessageSquare, HelpCircle, User, LogOut, Menu } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ const items = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "My Courses", icon: BookOpen, to: "/my-courses" },
   { label: "Live Classes", icon: Video, to: "/live" },
+  { label: "My Recordings", icon: PlayCircle, to: "/recordings" },
   { label: "My Assignments", icon: FileText, to: "/assignments" },
   { label: "IRE", icon: Trophy, to: "/ire" },
   { label: "Forum", icon: MessageSquare, to: "/forum" },

@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Home, LayoutDashboard, BookOpen, Video, FileText, Trophy, MessageSquare, HelpCircle, User, LogOut } from "lucide-react";
+import { Menu, Home, LayoutDashboard, BookOpen, Video, PlayCircle, FileText, Trophy, MessageSquare, HelpCircle, User, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +11,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/mobile/dashboard" },
   { icon: BookOpen, label: "My Courses", path: "/mobile/my-courses" },
   { icon: Video, label: "Live Classes", path: "/mobile/live" },
+  { icon: PlayCircle, label: "My Recordings", path: "/recordings" },
   { icon: FileText, label: "My Assignments", path: "/mobile/my-assignments" },
   { icon: Trophy, label: "IRE", path: "/mobile/ire" },
   { icon: MessageSquare, label: "Forum", path: "/mobile/forum" },
