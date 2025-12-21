@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useStudentCourseIds } from './useStudentEnrollments';
 
 export interface ScheduledClass {
   id: string;
@@ -18,24 +19,13 @@ export interface ScheduledClass {
 }
 
 export const useScheduledClasses = () => {
-  const { data: classes, isLoading } = useQuery({
-    queryKey: ['scheduled-classes'],
+  const { courseIds, isLoading: enrollmentsLoading } = useStudentCourseIds();
+
+  const { data: classes, isLoading: queryLoading } = useQuery({
+    queryKey: ['scheduled-classes', courseIds],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      // Get enrolled courses
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('student_id', user.id)
-        .eq('is_active', true);
-
-      const courseIds = enrollments?.map(e => e.course_id) || [];
-
       if (courseIds.length === 0) return [];
 
-      // Get upcoming classes
       const now = new Date().toISOString();
       const { data: classesData, error } = await supabase
         .from('scheduled_classes')
@@ -47,10 +37,9 @@ export const useScheduledClasses = () => {
         .limit(10);
 
       if (error) throw error;
-
       if (!classesData || classesData.length === 0) return [];
 
-      // Get teacher profiles separately
+      // Get teacher profiles in batch
       const teacherIds = [...new Set(classesData.map(c => c.teacher_id).filter(Boolean))] as string[];
       
       let teacherProfiles: any[] = [];
@@ -64,20 +53,16 @@ export const useScheduledClasses = () => {
       }
 
       // Map teachers to classes
-      const classesWithTeachers = classesData.map(classItem => {
-        const teacher = teacherProfiles.find(t => t.id === classItem.teacher_id);
-        return {
-          ...classItem,
-          teacher: teacher || null,
-        };
-      });
-
-      return classesWithTeachers;
+      return classesData.map(classItem => ({
+        ...classItem,
+        teacher: teacherProfiles.find(t => t.id === classItem.teacher_id) || null,
+      }));
     },
+    enabled: courseIds.length > 0,
   });
 
   return {
     classes: classes || [],
-    isLoading,
+    isLoading: enrollmentsLoading || queryLoading,
   };
 };

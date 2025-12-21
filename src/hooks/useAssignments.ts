@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentAuthUser } from './useCurrentAuthUser';
+import { useStudentCourseIds } from './useStudentEnrollments';
 
 export interface Assignment {
   id: string;
@@ -18,32 +20,23 @@ export interface Assignment {
 const emptyStats = { pending: 0, submitted: 0, graded: 0 };
 
 export const useAssignments = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['student-assignments'],
+  const { data: user } = useCurrentAuthUser();
+  const { courseIds, isLoading: enrollmentsLoading } = useStudentCourseIds();
+
+  const { data, isLoading: queryLoading } = useQuery({
+    queryKey: ['student-assignments', user?.id, courseIds],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      if (!user || courseIds.length === 0) {
         return { assignments: [], stats: emptyStats };
       }
 
-      // Get enrolled courses
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('enrollments')
-        .select('course_id, courses(name)')
-        .eq('student_id', user.id)
-        .eq('is_active', true);
+      // Get course names
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, name')
+        .in('id', courseIds);
 
-      if (enrollError) {
-        console.error('Error fetching enrollments:', enrollError);
-        return { assignments: [], stats: emptyStats };
-      }
-
-      const courseIds = enrollments?.map(e => e.course_id) || [];
-
-      if (courseIds.length === 0) {
-        return { assignments: [], stats: emptyStats };
-      }
+      const courseMap = new Map(courses?.map(c => [c.id, c.name]) || []);
 
       // Get assignments for enrolled courses
       const { data: assignments, error: assignError } = await supabase
@@ -58,28 +51,23 @@ export const useAssignments = () => {
         return { assignments: [], stats: emptyStats };
       }
 
-      // Get submissions
       const assignmentIds = assignments?.map(a => a.id) || [];
       
       if (assignmentIds.length === 0) {
         return { assignments: [], stats: emptyStats };
       }
 
-      const { data: submissions, error: subError } = await supabase
+      // Get submissions
+      const { data: submissions } = await supabase
         .from('assignment_submissions')
         .select('*')
         .eq('student_id', user.id)
         .in('assignment_id', assignmentIds);
 
-      if (subError) {
-        console.error('Error fetching submissions:', subError);
-      }
-
       const submissionsMap = new Map(submissions?.map(s => [s.assignment_id, s]) || []);
 
       const processedAssignments: Assignment[] = (assignments || []).map(assignment => {
         const submission = submissionsMap.get(assignment.id);
-        const courseName = enrollments?.find(e => e.course_id === assignment.course_id)?.courses?.name;
 
         let status: 'pending' | 'submitted' | 'graded' = 'pending';
         if (submission) {
@@ -94,7 +82,7 @@ export const useAssignments = () => {
           total_marks: assignment.total_marks,
           passing_marks: assignment.passing_marks,
           course_id: assignment.course_id,
-          course_name: courseName,
+          course_name: courseMap.get(assignment.course_id),
           status,
           score: submission?.score,
           submitted_at: submission?.submitted_at,
@@ -109,11 +97,12 @@ export const useAssignments = () => {
 
       return { assignments: processedAssignments, stats };
     },
+    enabled: !!user && courseIds.length > 0,
   });
 
   return {
     assignments: data?.assignments || [],
     stats: data?.stats || emptyStats,
-    isLoading,
+    isLoading: enrollmentsLoading || queryLoading,
   };
 };

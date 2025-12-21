@@ -21,8 +21,9 @@ const defaultWeeklyData = [
 export const StudentIDCard = () => {
   const { percentage: attendancePercentage } = useAttendance();
 
+  // Share the same query key as DashboardHeader to avoid duplicate fetches
   const { data: profile } = useQuery({
-    queryKey: ['user-profile'],
+    queryKey: ['dashboard-header-profile'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
@@ -31,10 +32,11 @@ export const StudentIDCard = () => {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       return { ...data, email: user.email };
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const initials = profile?.full_name
