@@ -8,7 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { mockDPT } from "@/data/mockDashboard";
+
+const defaultWeeklyData = [
+  { day: 'Mon', completed: false },
+  { day: 'Tue', completed: false },
+  { day: 'Wed', completed: false },
+  { day: 'Thu', completed: false },
+  { day: 'Fri', completed: false },
+  { day: 'Sat', completed: false },
+  { day: 'Sun', completed: false },
+];
 export const StudentIDCard = () => {
   const { percentage: attendancePercentage } = useAttendance();
 
@@ -77,7 +86,7 @@ export const StudentIDCard = () => {
             </Badge>
           </div>
           <div className="grid grid-cols-7 gap-2">
-            {(weeklyData || mockDPT.weeklyData).map((d: any, idx: number) => (
+            {(weeklyData || defaultWeeklyData).map((d: any, idx: number) => (
               <div key={idx} className={`h-8 rounded-md flex items-center justify-center text-xs ${d.completed ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 {d.completed ? (d.score ?? '✓') : d.day?.[0]}
               </div>
@@ -87,12 +96,12 @@ export const StudentIDCard = () => {
             <div>
               <p className="text-xs text-muted-foreground">Streak</p>
               <p className="text-xl font-bold flex items-center gap-1">
-                <Flame className="h-4 w-4 text-primary" /> {(streak ?? mockDPT.streak)} days
+                <Flame className="h-4 w-4 text-primary" /> {streak ?? 0} days
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Average Score</p>
-              <p className="text-xl font-bold">{(averageScore ?? mockDPT.averageScore)}%</p>
+              <p className="text-xl font-bold">{averageScore ?? 0}%</p>
             </div>
           </div>
           <Button onClick={() => navigate('/learning')} disabled={todayCompleted}>
