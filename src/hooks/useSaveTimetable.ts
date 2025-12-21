@@ -42,6 +42,8 @@ export const useSaveTimetable = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['course-timetables'] });
+      queryClient.invalidateQueries({ queryKey: ['instructor-timetable'] });
+      queryClient.invalidateQueries({ queryKey: ['instructor-conflicts'] });
       toast.success(`Successfully saved ${data.length} timetable entries`);
     },
     onError: (error: any) => {

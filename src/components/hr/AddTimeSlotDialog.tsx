@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTimetableEntry } from "@/hooks/useInstructorTimetable";
+import { useAllSubjects } from "@/hooks/useAllSubjects";
 import { useInstructorSubjects } from "@/hooks/useInstructors";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
+import { usePaginatedCourses } from "@/hooks/usePaginatedCourses";
+import { useInstructorConflicts, checkConflicts, ConflictInfo } from "@/hooks/useInstructorConflicts";
+import { ConflictAlert } from "./ConflictAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,11 +23,16 @@ interface AddTimeSlotDialogProps {
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeSlotDialogProps) => {
+  const { data: allSubjects } = useAllSubjects();
   const { data: instructorSubjects } = useInstructorSubjects(instructorId);
   const { data: batches } = useAdminBatches();
+  const { data: coursesData } = usePaginatedCourses({ page: 1, pageSize: 100 });
+  const { data: existingEntries } = useInstructorConflicts(instructorId);
   const createEntry = useCreateTimetableEntry();
   
+  const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
   const [formData, setFormData] = useState({
+    course_id: "",
     subject_id: "",
     batch_id: "",
     day_of_week: "",
@@ -35,10 +44,37 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
     valid_until: "",
   });
 
+  // Separate instructor's assigned subjects vs other subjects
+  const assignedSubjectIds = new Set(instructorSubjects?.map(is => is.subject_id) || []);
+  const assignedSubjects = allSubjects?.filter(s => assignedSubjectIds.has(s.id)) || [];
+  const otherSubjects = allSubjects?.filter(s => !assignedSubjectIds.has(s.id)) || [];
+
+  // Check for conflicts when day/time changes
+  useEffect(() => {
+    if (formData.day_of_week && formData.start_time && formData.end_time && existingEntries) {
+      const newConflicts = checkConflicts(
+        {
+          day_of_week: parseInt(formData.day_of_week),
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          instructor_id: instructorId,
+        },
+        existingEntries
+      );
+      setConflicts(newConflicts);
+    } else {
+      setConflicts([]);
+    }
+  }, [formData.day_of_week, formData.start_time, formData.end_time, existingEntries, instructorId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
+    if (!formData.course_id) {
+      toast.error("Please select a course");
+      return;
+    }
     if (!formData.subject_id) {
       toast.error("Please select a subject");
       return;
@@ -47,9 +83,17 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
       toast.error("Please select a day of week");
       return;
     }
+
+    // Block on hard conflicts
+    const hardConflicts = conflicts.filter(c => c.type === "hard");
+    if (hardConflicts.length > 0) {
+      toast.error("Cannot save: There are scheduling conflicts. Please fix them first.");
+      return;
+    }
     
-    // First create the timetable entry
+    // Create the timetable entry
     await createEntry.mutateAsync({
+      course_id: formData.course_id,
       instructor_id: instructorId,
       subject_id: formData.subject_id || null,
       batch_id: formData.batch_id || null,
@@ -64,7 +108,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
     });
 
     // If subject is selected, auto-map it to the instructor
-    if (formData.subject_id) {
+    if (formData.subject_id && !assignedSubjectIds.has(formData.subject_id)) {
       try {
         // Check if mapping already exists
         const { data: existing } = await supabase
@@ -96,6 +140,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
 
     onOpenChange(false);
     setFormData({
+      course_id: "",
       subject_id: "",
       batch_id: "",
       day_of_week: "",
@@ -106,15 +151,37 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
       valid_from: new Date().toISOString().split("T")[0],
       valid_until: "",
     });
+    setConflicts([]);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Time Slot</DialogTitle>
         </DialogHeader>
+        
+        {conflicts.length > 0 && (
+          <ConflictAlert conflicts={conflicts} />
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Course *</Label>
+            <Select value={formData.course_id} onValueChange={(val) => setFormData({ ...formData, course_id: val })} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select course" />
+              </SelectTrigger>
+              <SelectContent>
+                {coursesData?.courses?.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label>Subject *</Label>
             <Select value={formData.subject_id} onValueChange={(val) => setFormData({ ...formData, subject_id: val })} required>
@@ -122,16 +189,29 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
               <SelectContent>
-                {instructorSubjects && instructorSubjects.length > 0 ? (
-                  instructorSubjects.map((is) => (
-                    <SelectItem key={is.subject_id} value={is.subject_id || ""}>
-                      {is.subject?.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    No subjects mapped. Please map subjects first.
-                  </div>
+                {assignedSubjects.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      Assigned Subjects
+                    </div>
+                    {assignedSubjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {otherSubjects.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                      Other Subjects (will auto-assign)
+                    </div>
+                    {otherSubjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
+                  </>
                 )}
               </SelectContent>
             </Select>
@@ -155,7 +235,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Start Time</Label>
+              <Label>Start Time *</Label>
               <Input
                 type="time"
                 value={formData.start_time}
@@ -164,7 +244,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
               />
             </div>
             <div>
-              <Label>End Time</Label>
+              <Label>End Time *</Label>
               <Input
                 type="time"
                 value={formData.end_time}
@@ -181,7 +261,7 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
                 <SelectValue placeholder="Select batch" />
               </SelectTrigger>
               <SelectContent>
-                {batches?.map((batch) => (
+                {batches?.filter(b => !formData.course_id || b.course_id === formData.course_id).map((batch) => (
                   <SelectItem key={batch.id} value={batch.id}>
                     {batch.name}
                   </SelectItem>
@@ -232,7 +312,10 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createEntry.isPending}>
+            <Button 
+              type="submit" 
+              disabled={createEntry.isPending || conflicts.some(c => c.type === "hard")}
+            >
               {createEntry.isPending ? "Adding..." : "Add Time Slot"}
             </Button>
           </div>
