@@ -5,6 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -40,7 +46,11 @@ import {
 } from '@/hooks/useAdminRecordings';
 import { useAdminCourses } from '@/hooks/useAdminCourses';
 import { useAllSubjects } from '@/hooks/useAllSubjects';
+import { RecordingUploadDialog } from '@/components/admin/RecordingUploadDialog';
+import { RecordingEditDialog } from '@/components/admin/RecordingEditDialog';
+import { RecordingPreviewDialog } from '@/components/admin/RecordingPreviewDialog';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { 
   Video, 
   Search, 
@@ -52,7 +62,11 @@ import {
   AlertCircle,
   Loader2,
   Play,
-  Download
+  Upload,
+  Edit,
+  Calendar as CalendarIcon,
+  Download,
+  FileDown
 } from 'lucide-react';
 
 const formatDuration = (seconds: number | null) => {
@@ -90,12 +104,22 @@ export default function RecordingsManager() {
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Dialog states
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [selectedRecording, setSelectedRecording] = useState<any>(null);
 
   const { data: recordings, isLoading } = useAdminRecordings({
     courseId: courseFilter !== 'all' ? courseFilter : undefined,
     subjectId: subjectFilter !== 'all' ? subjectFilter : undefined,
     status: statusFilter !== 'all' ? statusFilter : undefined,
+    dateFrom: dateFrom?.toISOString(),
+    dateTo: dateTo?.toISOString(),
   });
   const { data: stats, isLoading: statsLoading } = useRecordingStats();
   const { data: courses } = useAdminCourses();
@@ -138,11 +162,62 @@ export default function RecordingsManager() {
     });
   };
 
+  const handlePreview = (recording: any) => {
+    setSelectedRecording(recording);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleEdit = (recording: any) => {
+    setSelectedRecording(recording);
+    setEditDialogOpen(true);
+  };
+
+  const exportToCsv = () => {
+    if (!filteredRecordings.length) return;
+
+    const headers = ['Subject', 'Course', 'Instructor', 'Date', 'Duration', 'Status', 'Qualities'];
+    const rows = filteredRecordings.map(r => [
+      r.scheduled_class?.subject || '',
+      r.scheduled_class?.course?.name || '',
+      r.scheduled_class?.teacher?.full_name || '',
+      r.scheduled_class?.scheduled_at ? format(new Date(r.scheduled_class.scheduled_at), 'yyyy-MM-dd') : '',
+      formatDuration(r.duration_seconds),
+      r.processing_status || '',
+      r.available_qualities?.join(', ') || '',
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `recordings-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setCourseFilter('all');
+    setSubjectFilter('all');
+    setStatusFilter('all');
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
+
+  const hasActiveFilters = searchQuery || courseFilter !== 'all' || subjectFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Class Recordings Manager</h1>
-        <p className="text-muted-foreground">Manage and monitor all class recordings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Class Recordings Manager</h1>
+          <p className="text-muted-foreground">Manage and monitor all class recordings</p>
+        </div>
+        <Button onClick={() => setUploadDialogOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          Upload Recording
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -203,7 +278,8 @@ export default function RecordingsManager() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-4">
+          {/* Row 1: Search and Dropdowns */}
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
@@ -251,6 +327,61 @@ export default function RecordingsManager() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Row 2: Date Range */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4" />
+              Date Range:
+            </span>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(dateFrom && 'bg-primary/10')}>
+                  {dateFrom ? format(dateFrom, 'MMM d, yyyy') : 'From Date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <span className="text-muted-foreground">-</span>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(dateTo && 'bg-primary/10')}>
+                  {dateTo ? format(dateTo, 'MMM d, yyyy') : 'To Date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <div className="flex-1" />
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            )}
+
+            <Button variant="outline" size="sm" onClick={exportToCsv} disabled={!filteredRecordings.length}>
+              <FileDown className="h-4 w-4 mr-1" />
+              Export CSV
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -261,6 +392,20 @@ export default function RecordingsManager() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{selectedIds.length} recording(s) selected</span>
               <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const failedIds = filteredRecordings
+                      .filter(r => selectedIds.includes(r.id) && r.processing_status === 'failed')
+                      .map(r => r.id);
+                    failedIds.forEach(id => reprocessRecording.mutate(id));
+                  }}
+                  disabled={reprocessRecording.isPending}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Retry Failed
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm">
@@ -311,6 +456,11 @@ export default function RecordingsManager() {
             <div className="text-center py-12 text-muted-foreground">
               <Video className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No recordings found</p>
+              {hasActiveFilters && (
+                <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
@@ -378,10 +528,23 @@ export default function RecordingsManager() {
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         {recording.processing_status === 'ready' && (
-                          <Button variant="ghost" size="icon" title="Preview">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Preview"
+                            onClick={() => handlePreview(recording)}
+                          >
                             <Play className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Edit"
+                          onClick={() => handleEdit(recording)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         {recording.processing_status === 'failed' && (
                           <Button 
                             variant="ghost" 
@@ -426,6 +589,22 @@ export default function RecordingsManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <RecordingUploadDialog 
+        open={uploadDialogOpen} 
+        onOpenChange={setUploadDialogOpen} 
+      />
+      <RecordingEditDialog 
+        recording={selectedRecording} 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen} 
+      />
+      <RecordingPreviewDialog 
+        recording={selectedRecording} 
+        open={previewDialogOpen} 
+        onOpenChange={setPreviewDialogOpen} 
+      />
     </div>
   );
 }
