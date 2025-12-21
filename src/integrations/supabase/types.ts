@@ -428,7 +428,10 @@ export type Database = {
       }
       class_attendance: {
         Row: {
+          duration_seconds: number | null
           id: string
+          joined_at: string | null
+          left_at: string | null
           marked_at: string | null
           notes: string | null
           scheduled_class_id: string
@@ -436,7 +439,10 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          duration_seconds?: number | null
           id?: string
+          joined_at?: string | null
+          left_at?: string | null
           marked_at?: string | null
           notes?: string | null
           scheduled_class_id: string
@@ -444,7 +450,10 @@ export type Database = {
           student_id: string
         }
         Update: {
+          duration_seconds?: number | null
           id?: string
+          joined_at?: string | null
+          left_at?: string | null
           marked_at?: string | null
           notes?: string | null
           scheduled_class_id?: string
@@ -2443,8 +2452,12 @@ export type Database = {
           id: string
           is_cancelled: boolean | null
           is_live: boolean | null
+          live_ended_at: string | null
+          live_started_at: string | null
           meeting_link: string | null
           notes: string | null
+          recording_added_at: string | null
+          recording_url: string | null
           room_number: string | null
           scheduled_at: string
           subject: string
@@ -2459,8 +2472,12 @@ export type Database = {
           id?: string
           is_cancelled?: boolean | null
           is_live?: boolean | null
+          live_ended_at?: string | null
+          live_started_at?: string | null
           meeting_link?: string | null
           notes?: string | null
+          recording_added_at?: string | null
+          recording_url?: string | null
           room_number?: string | null
           scheduled_at: string
           subject: string
@@ -2475,8 +2492,12 @@ export type Database = {
           id?: string
           is_cancelled?: boolean | null
           is_live?: boolean | null
+          live_ended_at?: string | null
+          live_started_at?: string | null
           meeting_link?: string | null
           notes?: string | null
+          recording_added_at?: string | null
+          recording_url?: string | null
           room_number?: string | null
           scheduled_at?: string
           subject?: string
