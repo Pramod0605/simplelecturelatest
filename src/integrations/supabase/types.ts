@@ -2445,6 +2445,10 @@ export type Database = {
       }
       scheduled_classes: {
         Row: {
+          bbb_attendee_pw: string | null
+          bbb_internal_meeting_id: string | null
+          bbb_meeting_id: string | null
+          bbb_moderator_pw: string | null
           chapter_id: string | null
           course_id: string
           created_at: string | null
@@ -2465,6 +2469,10 @@ export type Database = {
           timetable_entry_id: string | null
         }
         Insert: {
+          bbb_attendee_pw?: string | null
+          bbb_internal_meeting_id?: string | null
+          bbb_meeting_id?: string | null
+          bbb_moderator_pw?: string | null
           chapter_id?: string | null
           course_id: string
           created_at?: string | null
@@ -2485,6 +2493,10 @@ export type Database = {
           timetable_entry_id?: string | null
         }
         Update: {
+          bbb_attendee_pw?: string | null
+          bbb_internal_meeting_id?: string | null
+          bbb_meeting_id?: string | null
+          bbb_moderator_pw?: string | null
           chapter_id?: string | null
           course_id?: string
           created_at?: string | null
