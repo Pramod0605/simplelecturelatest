@@ -261,6 +261,12 @@ export const Header = () => {
                         My Courses
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/recordings" className="cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        My Recordings
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />

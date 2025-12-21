@@ -86,6 +86,7 @@ import BulkAssignInstructors from "./pages/admin/BulkAssignInstructors";
 import Live from "./pages/Live";
 import WatchRecording from "./pages/WatchRecording";
 import RecordingsManager from "./pages/admin/RecordingsManager";
+import Recordings from "./pages/Recordings";
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -117,6 +118,7 @@ const App = () => (
             <Route path="/learning/:courseId/:subjectId" element={<Learning />} />
             <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
             <Route path="/live" element={<Live />} />
+            <Route path="/recordings" element={<Recordings />} />
             <Route path="/watch/:recordingId" element={<WatchRecording />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
