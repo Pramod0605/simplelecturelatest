@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,12 @@ import { formatINR } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const MobileCheckout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -20,6 +26,7 @@ const MobileCheckout = () => {
   const { toast } = useToast();
 
   const discount = location.state?.discount || 0;
+  const promoCode = location.state?.promoCode || null;
   const finalAmount = total - discount;
 
   const [formData, setFormData] = useState({
@@ -32,8 +39,19 @@ const MobileCheckout = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
     if (!acceptedTerms) {
       toast({
@@ -50,17 +68,143 @@ const MobileCheckout = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Demo payment simulation
-      setTimeout(async () => {
+      // Create payment order with correct data structure
+      const { data: orderData, error: orderError } = await supabase.functions.invoke(
+        'create-payment-order',
+        {
+          body: {
+            userId: user.id,
+            amount: finalAmount,
+            courses: items.map((item) => ({
+              id: item.course_id,
+              price: item.course_price,
+              name: item.course_name
+            })),
+            customerInfo: formData,
+            promoCode
+          },
+        }
+      );
+
+      if (orderError) throw orderError;
+
+      console.log('Order created:', orderData);
+
+      // If Razorpay order was created, open checkout
+      if (orderData.razorpayOrderId && orderData.razorpayKeyId && window.Razorpay) {
+        const options = {
+          key: orderData.razorpayKeyId,
+          amount: finalAmount * 100,
+          currency: 'INR',
+          name: 'SimpleLecture',
+          description: `Payment for ${items.length} course(s)`,
+          order_id: orderData.razorpayOrderId,
+          prefill: {
+            name: formData.fullName,
+            email: formData.email,
+            contact: formData.phone
+          },
+          theme: {
+            color: '#6366f1'
+          },
+          handler: async (response: any) => {
+            console.log('Razorpay payment response:', response);
+            
+            // Verify payment
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+              'verify-payment',
+              {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderId: orderData.orderId,
+                  userId: user.id,
+                  courses: items.map((item) => ({
+                    id: item.course_id,
+                    price: item.course_price
+                  }))
+                }
+              }
+            );
+
+            if (verifyError || !verifyData?.verified) {
+              toast({
+                title: 'Payment Verification Failed',
+                description: 'Please contact support if amount was deducted',
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            await clearCart();
+            navigate('/mobile/payment-success', {
+              state: {
+                orderId: orderData.orderId,
+                amount: finalAmount,
+                programs: items.map(item => ({
+                  id: item.course_id,
+                  program_name: item.course_name
+                })),
+              },
+            });
+          },
+          modal: {
+            ondismiss: () => {
+              setProcessing(false);
+              toast({
+                title: 'Payment Cancelled',
+                description: 'You cancelled the payment',
+              });
+            }
+          }
+        };
+
+        const razorpay = new window.Razorpay(options);
+        razorpay.on('payment.failed', (response: any) => {
+          console.error('Payment failed:', response.error);
+          toast({
+            title: 'Payment Failed',
+            description: response.error.description || 'Payment could not be processed',
+            variant: 'destructive',
+          });
+          setProcessing(false);
+        });
+        razorpay.open();
+      } else {
+        // Fallback: demo mode without Razorpay
+        console.log('Running in demo mode - no Razorpay configured');
+        
+        // Update payment status to success for demo
+        await supabase
+          .from('payments')
+          .update({ status: 'success', completed_at: new Date().toISOString() })
+          .eq('order_id', orderData.orderId);
+
+        // Create enrollments
+        for (const item of items) {
+          await supabase
+            .from('enrollments')
+            .upsert({
+              student_id: user.id,
+              course_id: item.course_id,
+              is_active: true,
+              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+            }, { onConflict: 'student_id,course_id' });
+        }
+
         await clearCart();
         navigate('/mobile/payment-success', {
           state: {
-            orderId: `ORD-${Date.now()}`,
+            orderId: orderData.orderId,
             amount: finalAmount,
-            programs: items,
+            programs: items.map(item => ({
+              id: item.course_id,
+              program_name: item.course_name
+            })),
           },
         });
-      }, 2000);
+      }
     } catch (error: any) {
       console.error('Checkout error:', error);
       toast({
@@ -106,7 +250,7 @@ const MobileCheckout = () => {
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount</span>
+                  <span>Discount {promoCode && `(${promoCode})`}</span>
                   <span>-{formatINR(discount)}</span>
                 </div>
               )}

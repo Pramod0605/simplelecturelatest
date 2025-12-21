@@ -50,7 +50,46 @@ serve(async (req) => {
 
     const finalAmount = Math.max(0, amount - discountAmount);
 
-    // Create payment record
+    // Create Razorpay order
+    const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
+    const razorpaySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
+    
+    let razorpayOrderId = null;
+
+    if (razorpayKeyId && razorpaySecret) {
+      try {
+        const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa(`${razorpayKeyId}:${razorpaySecret}`)
+          },
+          body: JSON.stringify({
+            amount: finalAmount * 100, // Razorpay expects amount in paise
+            currency: 'INR',
+            receipt: orderId,
+            notes: {
+              customer_name: customerInfo?.fullName || '',
+              customer_email: customerInfo?.email || '',
+              customer_phone: customerInfo?.phone || ''
+            }
+          })
+        });
+
+        if (razorpayResponse.ok) {
+          const razorpayOrder = await razorpayResponse.json();
+          razorpayOrderId = razorpayOrder.id;
+          console.log('Razorpay order created:', razorpayOrderId);
+        } else {
+          const errorText = await razorpayResponse.text();
+          console.error('Razorpay order creation failed:', errorText);
+        }
+      } catch (razorpayError) {
+        console.error('Razorpay API error:', razorpayError);
+      }
+    }
+
+    // Create payment record with pending status
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -59,9 +98,9 @@ serve(async (req) => {
         amount_inr: amount,
         discount_amount: discountAmount,
         final_amount: finalAmount,
-        status: 'success', // Simulating successful payment (production would start as 'pending')
+        status: 'pending',
         payment_gateway: 'razorpay',
-        completed_at: new Date().toISOString(),
+        razorpay_order_id: razorpayOrderId,
         metadata: { customerInfo, promoCode: promoCode || null }
       })
       .select()
@@ -72,13 +111,13 @@ serve(async (req) => {
       throw paymentError;
     }
 
-    console.log('Payment created:', payment.id);
+    console.log('Payment record created:', payment.id);
 
     // Create order items
     const orderItems = courses.map((course: any) => ({
       payment_id: payment.id,
       course_id: course.id,
-      price_inr: course.price || finalAmount
+      price_inr: course.price || 0
     }));
 
     const { error: orderItemsError } = await supabase
@@ -92,31 +131,20 @@ serve(async (req) => {
 
     console.log('Order items created');
 
-    // Create enrollments for each course
-    const enrollments = courses.map((course: any) => ({
-      student_id: userId,
-      course_id: course.id,
-      is_active: true,
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
-    }));
-
-    const { error: enrollmentError } = await supabase
-      .from('enrollments')
-      .insert(enrollments);
-
-    if (enrollmentError) {
-      console.error('Error creating enrollments:', enrollmentError);
-      throw enrollmentError;
-    }
-
-    console.log('Enrollments created');
-
     // Increment promo code usage
     if (promoCodeId) {
-      await supabase
+      const { data: currentCode } = await supabase
         .from('discount_codes')
-        .update({ times_used: supabase.rpc('increment', { row_id: promoCodeId }) })
-        .eq('id', promoCodeId);
+        .select('times_used')
+        .eq('id', promoCodeId)
+        .single();
+
+      if (currentCode) {
+        await supabase
+          .from('discount_codes')
+          .update({ times_used: (currentCode.times_used || 0) + 1 })
+          .eq('id', promoCodeId);
+      }
 
       console.log('Promo code usage incremented');
     }
@@ -126,7 +154,9 @@ serve(async (req) => {
         orderId, 
         amount: finalAmount, 
         status: 'created',
-        paymentId: payment.id 
+        paymentId: payment.id,
+        razorpayOrderId,
+        razorpayKeyId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

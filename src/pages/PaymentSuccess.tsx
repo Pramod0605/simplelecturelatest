@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, Download } from 'lucide-react';
+import { CheckCircle, Download, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SEOHead } from '@/components/SEO';
@@ -85,8 +85,9 @@ const PaymentSuccess = () => {
           </div>
 
           <div className="flex gap-4">
-            <Button onClick={() => navigate('/dashboard')} className="flex-1" size="lg">
+            <Button onClick={() => navigate('/student-dashboard')} className="flex-1" size="lg">
               Go to My Dashboard
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg">
               <Download className="mr-2 h-4 w-4" />

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SEOHead } from '@/components/SEO';
@@ -76,6 +76,7 @@ const MobilePaymentSuccess = () => {
 
           <Button onClick={() => navigate('/mobile/dashboard')} className="w-full" size="lg">
             Go to My Dashboard
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Card>
       </div>
