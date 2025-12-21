@@ -1,22 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Linkedin, 
-  Youtube,
-  BookOpen,
-  Send
-} from "lucide-react";
-
+import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, BookOpen, Send } from "lucide-react";
 export const Footer = () => {
-  return (
-    <footer className="bg-card border-t">
+  return <footer className="bg-card border-t">
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
@@ -155,11 +142,7 @@ export const Footer = () => {
               Subscribe to our newsletter for latest courses, offers, and educational tips
             </p>
             <div className="flex gap-2">
-              <Input 
-                type="email" 
-                placeholder="Enter your email" 
-                className="max-w-md"
-              />
+              <Input type="email" placeholder="Enter your email" className="max-w-md" />
               <Button className="group">
                 Subscribe
                 <Send className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -175,47 +158,29 @@ export const Footer = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>© 2025 SimpleLecture. All rights reserved.</span>
-              <Badge variant="outline" className="text-xs">
-                Made with AI ❤️
-              </Badge>
+              
             </div>
 
             {/* Social Links */}
             <div className="flex items-center gap-3">
-              <a 
-                href="#" 
-                className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a 
-                href="#" 
-                className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a 
-                href="#" 
-                className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a 
-                href="#" 
-                className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group">
                 <Linkedin className="w-4 h-4" />
               </a>
-              <a 
-                href="#" 
-                className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group"
-              >
+              <a href="#" className="w-9 h-9 rounded-full bg-background hover:bg-primary hover:text-white transition-all flex items-center justify-center group">
                 <Youtube className="w-4 h-4" />
               </a>
             </div>
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
