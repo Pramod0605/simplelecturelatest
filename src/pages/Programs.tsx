@@ -22,6 +22,7 @@ const Programs = () => {
   
   const categorySlug = searchParams.get("category");
   const subcategorySlug = searchParams.get("subcategory");
+  const subSubcategorySlug = searchParams.get("subsubcategory");
   const pageParam = searchParams.get("page");
   const searchParam = searchParams.get("q");
   
@@ -57,14 +58,24 @@ const Programs = () => {
     ? categories?.find(cat => cat.slug === categorySlug)
     : null;
 
-  // Get subcategories for selected parent
+  // Get subcategories for selected parent (level 2)
   const subcategories = selectedParentCategory
     ? categories?.filter(cat => cat.parent_id === selectedParentCategory.id) || []
     : [];
 
-  // Get selected subcategory
+  // Get selected subcategory (level 2)
   const selectedSubcategory = subcategorySlug
     ? categories?.find(cat => cat.slug === subcategorySlug)
+    : null;
+
+  // Get sub-subcategories for selected subcategory (level 3)
+  const subSubcategories = selectedSubcategory
+    ? categories?.filter(cat => cat.parent_id === selectedSubcategory.id) || []
+    : [];
+
+  // Get selected sub-subcategory (level 3)
+  const selectedSubSubcategory = subSubcategorySlug
+    ? categories?.find(cat => cat.slug === subSubcategorySlug)
     : null;
 
   // Fetch courses with server-side pagination and search
@@ -74,6 +85,7 @@ const Programs = () => {
     searchQuery: debouncedSearch,
     categoryId: selectedParentCategory?.id,
     subcategoryId: selectedSubcategory?.id,
+    subSubcategoryId: selectedSubSubcategory?.id,
     sortBy,
   });
 
@@ -83,10 +95,11 @@ const Programs = () => {
   const { data: enrolledCourseIds } = useEnrolledCourseIds();
 
   // Update URL when filters change
-  const updateFilters = useCallback((category?: string, subcategory?: string, page?: number, search?: string) => {
+  const updateFilters = useCallback((category?: string, subcategory?: string, subsubcategory?: string, page?: number, search?: string) => {
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (subcategory) params.set("subcategory", subcategory);
+    if (subsubcategory) params.set("subsubcategory", subsubcategory);
     if (page && page > 1) params.set("page", page.toString());
     if (search) params.set("q", search);
     setSearchParams(params);
@@ -97,12 +110,12 @@ const Programs = () => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [debouncedSearch, categorySlug, subcategorySlug, sortBy]);
+  }, [debouncedSearch, categorySlug, subcategorySlug, subSubcategorySlug, sortBy]);
 
   // Sync URL with state
   useEffect(() => {
-    updateFilters(categorySlug || undefined, subcategorySlug || undefined, currentPage, debouncedSearch || undefined);
-  }, [currentPage, debouncedSearch, categorySlug, subcategorySlug, updateFilters]);
+    updateFilters(categorySlug || undefined, subcategorySlug || undefined, subSubcategorySlug || undefined, currentPage, debouncedSearch || undefined);
+  }, [currentPage, debouncedSearch, categorySlug, subcategorySlug, subSubcategorySlug, updateFilters]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -155,21 +168,47 @@ const Programs = () => {
                 Home
               </Link>
               <ChevronRightIcon className="h-4 w-4" />
-              <Link to="/programs" className="hover:text-primary transition-colors">
-                Programs
-              </Link>
+              {selectedParentCategory ? (
+                <Link to="/programs" className="hover:text-primary transition-colors">
+                  Programs
+                </Link>
+              ) : (
+                <span className="text-foreground font-medium">Programs</span>
+              )}
               {selectedParentCategory && (
                 <>
                   <ChevronRightIcon className="h-4 w-4" />
-                  <span className={!selectedSubcategory ? "text-foreground font-medium" : ""}>
-                    {selectedParentCategory.name}
-                  </span>
+                  {selectedSubcategory ? (
+                    <Link 
+                      to={`/programs?category=${categorySlug}`} 
+                      className="hover:text-primary transition-colors"
+                    >
+                      {selectedParentCategory.name}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground font-medium">{selectedParentCategory.name}</span>
+                  )}
                 </>
               )}
               {selectedSubcategory && (
                 <>
                   <ChevronRightIcon className="h-4 w-4" />
-                  <span className="text-foreground font-medium">{selectedSubcategory.name}</span>
+                  {selectedSubSubcategory ? (
+                    <Link 
+                      to={`/programs?category=${categorySlug}&subcategory=${subcategorySlug}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {selectedSubcategory.name}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground font-medium">{selectedSubcategory.name}</span>
+                  )}
+                </>
+              )}
+              {selectedSubSubcategory && (
+                <>
+                  <ChevronRightIcon className="h-4 w-4" />
+                  <span className="text-foreground font-medium">{selectedSubSubcategory.name}</span>
                 </>
               )}
             </div>
@@ -180,10 +219,10 @@ const Programs = () => {
         <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background py-8">
           <div className="container mx-auto px-4">
             <h1 className="text-4xl font-bold mb-2">
-              {selectedSubcategory?.name || selectedParentCategory?.name || "All Programs"}
+              {selectedSubSubcategory?.name || selectedSubcategory?.name || selectedParentCategory?.name || "All Programs"}
             </h1>
             <p className="text-muted-foreground">
-              {selectedSubcategory?.description || selectedParentCategory?.description || 
+              {selectedSubSubcategory?.description || selectedSubcategory?.description || selectedParentCategory?.description || 
                "Explore our comprehensive courses designed for your success"}
             </p>
           </div>
@@ -224,7 +263,7 @@ const Programs = () => {
           </div>
         )}
 
-        {/* Subcategory Cards */}
+        {/* Subcategory Cards (Level 2) */}
         {categorySlug && !subcategorySlug && subcategories.length > 0 && (
           <div className="container mx-auto px-4 py-8">
             <h2 className="text-2xl font-semibold mb-6">Choose Subcategory</h2>
@@ -251,6 +290,46 @@ const Programs = () => {
                     {subcat.description && (
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         {subcat.description}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sub-Subcategory Cards (Level 3) */}
+        {categorySlug && subcategorySlug && !subSubcategorySlug && subSubcategories.length > 0 && (
+          <div className="container mx-auto px-4 py-8">
+            <h2 className="text-2xl font-semibold mb-6">Choose Specific Category</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 border-2"
+                onClick={() => setSearchParams({ category: categorySlug, subcategory: subcategorySlug })}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl mb-3">📚</div>
+                  <p className="font-semibold text-sm">All</p>
+                  <p className="text-xs text-muted-foreground mt-1">View all {selectedSubcategory?.name}</p>
+                </CardContent>
+              </Card>
+              {subSubcategories.map((subsubcat) => (
+                <Card
+                  key={subsubcat.id}
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 border-2 hover:border-primary"
+                  onClick={() => setSearchParams({ 
+                    category: categorySlug, 
+                    subcategory: subcategorySlug, 
+                    subsubcategory: subsubcat.slug 
+                  })}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="text-4xl mb-3">{subsubcat.icon || "📖"}</div>
+                    <p className="font-semibold text-sm">{subsubcat.name}</p>
+                    {subsubcat.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {subsubcat.description}
                       </p>
                     )}
                   </CardContent>

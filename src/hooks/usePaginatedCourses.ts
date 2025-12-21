@@ -7,6 +7,7 @@ interface UsePaginatedCoursesOptions {
   searchQuery?: string;
   categoryId?: string;
   subcategoryId?: string;
+  subSubcategoryId?: string;
   sortBy?: "newest" | "popular" | "price-low" | "price-high";
 }
 
@@ -22,17 +23,21 @@ export const usePaginatedCourses = ({
   searchQuery,
   categoryId,
   subcategoryId,
+  subSubcategoryId,
   sortBy = "newest",
 }: UsePaginatedCoursesOptions) => {
   return useQuery({
-    queryKey: ["paginated-courses", page, pageSize, searchQuery, categoryId, subcategoryId, sortBy],
+    queryKey: ["paginated-courses", page, pageSize, searchQuery, categoryId, subcategoryId, subSubcategoryId, sortBy],
     queryFn: async (): Promise<PaginatedResult> => {
       const offset = (page - 1) * pageSize;
 
       // Build the category IDs array if filtering by category
       let categoryIds: string[] = [];
       
-      if (subcategoryId) {
+      if (subSubcategoryId) {
+        // If sub-subcategory (level 3) selected, filter only by that
+        categoryIds = [subSubcategoryId];
+      } else if (subcategoryId) {
         // If subcategory selected, get it and its children (level 3)
         const { data: childCats } = await supabase
           .from("categories")
