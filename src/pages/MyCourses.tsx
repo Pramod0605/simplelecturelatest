@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SEOHead } from '@/components/SEO';
-import { Header } from '@/components/Header';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -58,7 +58,7 @@ const MyCourses = () => {
   return (
     <>
       <SEOHead title="My Courses | SimpleLecture" description="View and continue your enrolled courses" />
-      <Header />
+      <DashboardHeader />
       
       <main className="min-h-screen bg-background">
         {/* Breadcrumb */}

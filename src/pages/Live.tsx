@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveTimetable, DAYS, TimetableClass } from "@/hooks/useLiveTimetable";
 import { format, isToday, isTomorrow, startOfWeek, addWeeks, subWeeks, isSameWeek, addDays } from "date-fns";
 import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight, ChevronLeft, ChevronRight, BarChart3, PlayCircle } from "lucide-react";
-import { Header } from "@/components/Header";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { AttendanceDashboard } from "@/components/learning/AttendanceDashboard";
@@ -125,7 +125,7 @@ const LivePage = () => {
   if (isLoading) {
     return (
       <>
-        <Header />
+        <DashboardHeader />
         <main className="min-h-screen bg-background py-8">
           <div className="container mx-auto px-4">
             <Skeleton className="h-10 w-64 mb-6" />
@@ -145,7 +145,7 @@ const LivePage = () => {
 
   return (
     <>
-      <Header />
+      <DashboardHeader />
       <main className="min-h-screen bg-background py-8">
         <div className="container mx-auto px-4">
           <div className="mb-8">
