@@ -403,6 +403,20 @@ export const AdminSidebar = () => {
             >
               Manage Live Classes
             </NavLink>
+            <NavLink
+              to="/admin/hr/bulk-assign-instructors"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <UserPlus className="h-4 w-4" />
+              Bulk Assign Instructors
+            </NavLink>
           </CollapsibleContent>
         </Collapsible>
 
