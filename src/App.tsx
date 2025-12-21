@@ -81,6 +81,7 @@ import GenerateSeedImages from "./pages/admin/GenerateSeedImages";
 import FileBrowser from "./pages/admin/FileBrowser";
 import CounselorAvatars from "./pages/admin/CounselorAvatars";
 import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
+import OrdersList from "./pages/admin/OrdersList";
 
 const App = () => (
   <HelmetProvider>
@@ -155,6 +156,7 @@ const App = () => (
                 <Route path="batches/new" element={<BatchForm />} />
                 <Route path="batches/:id" element={<BatchDetails />} />
                 <Route path="batches/:id/edit" element={<BatchForm />} />
+                <Route path="orders" element={<OrdersList />} />
                 <Route path="promo-codes" element={<PromoCodesList />} />
                 <Route path="promo-codes/add" element={<PromoCodeForm />} />
                 <Route path="promo-codes/edit/:id" element={<PromoCodeForm />} />
