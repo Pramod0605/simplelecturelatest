@@ -1,53 +1,60 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { SEOHead } from "@/components/SEO";
-import { HamburgerMenu } from "@/components/mobile/HamburgerMenu";
 import { BottomNav } from "@/components/mobile/BottomNav";
-import { CourseCard } from "@/components/mobile/CourseCard";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Bell, ChevronLeft, ChevronRight, Filter } from "lucide-react";
-import { mockPromos } from "@/data/mockPromos";
-import heroImage from "@/assets/hero-students.jpg";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Search, 
+  Bell, 
+  Briefcase, 
+  Palette, 
+  DollarSign, 
+  TrendingUp, 
+  Code, 
+  BookOpen,
+  ChevronRight,
+  GraduationCap,
+  Beaker
+} from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useExploreByGoalPublic } from "@/hooks/useExploreByGoalPublic";
+import { useFeaturedCourses } from "@/hooks/useFeaturedCourses";
+import { formatINR } from "@/lib/utils";
 
-const filterTabs = ["All", "Paper-1", "Commerce", "Science", "Arts", "Technology"];
+// Icon mapping for explore topics
+const iconMap: Record<string, React.ReactNode> = {
+  Briefcase: <Briefcase className="h-5 w-5" />,
+  Palette: <Palette className="h-5 w-5" />,
+  DollarSign: <DollarSign className="h-5 w-5" />,
+  TrendingUp: <TrendingUp className="h-5 w-5" />,
+  Code: <Code className="h-5 w-5" />,
+  BookOpen: <BookOpen className="h-5 w-5" />,
+  GraduationCap: <GraduationCap className="h-5 w-5" />,
+  Beaker: <Beaker className="h-5 w-5" />,
+};
 
-const mockCourses = [
-  {
-    id: 1,
-    image: "/placeholder.svg",
-    badge: "New",
-    title: "Complete Data Science Bootcamp 2025",
-    instructor: "Dr. Priya Sharma",
-    language: "Hinglish",
-    price: 5999,
-    originalPrice: 12999,
-    description: "Master Python, ML, AI and get job-ready",
-  },
-  {
-    id: 2,
-    image: "/placeholder.svg",
-    badge: "Trending",
-    title: "UGC NET Paper 1 Complete Course",
-    instructor: "Prof. Amit Kumar",
-    language: "Hindi",
-    price: 3999,
-    originalPrice: 8999,
-    description: "Complete preparation for NET exam",
-  },
-];
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+};
 
 const MobileHome = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [activeFilter, setActiveFilter] = useState("All");
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: user, isLoading: userLoading } = useCurrentUser();
+  const { data: exploreGoals, isLoading: goalsLoading } = useExploreByGoalPublic();
+  const { data: featuredCourses, isLoading: coursesLoading } = useFeaturedCourses("bestsellers");
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % mockPromos.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+  const userName = user?.profile?.full_name || "Learner";
+  const userAvatar = user?.profile?.avatar_url;
+  const greeting = getGreeting();
 
   return (
     <>
@@ -59,140 +66,189 @@ const MobileHome = () => {
       />
       
       <div className="min-h-screen bg-background pb-20">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-40 bg-background border-b border-border">
-          <div className="flex items-center justify-between p-4">
-            <HamburgerMenu />
-            
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              UGC NET 📚
-            </Badge>
-            
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="p-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search for courses, topics..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12"
-              />
+        {/* Native App Header */}
+        <div className="bg-gradient-to-br from-primary via-primary to-secondary px-5 pt-12 pb-8 rounded-b-[2rem]">
+          {/* Top Row - Greeting & Avatar */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-primary-foreground/80 text-sm">{greeting}</p>
+              <h1 className="text-primary-foreground text-xl font-bold">
+                {userLoading ? (
+                  <Skeleton className="h-6 w-32 bg-primary-foreground/20" />
+                ) : (
+                  userName
+                )}
+              </h1>
             </div>
-            <Button className="h-12 px-6">Study</Button>
-          </div>
-        </div>
-
-        {/* Hero Carousel - Synced with Desktop */}
-        <div className="relative px-4 mb-6">
-          <div className="relative h-64 rounded-lg overflow-hidden shadow-lg">
-            {/* Background Image */}
-            <div className="absolute inset-0">
-              <img src={heroImage} alt="Students learning" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/80" />
-            </div>
-            
-            {/* Content */}
-            <div className="absolute inset-0 flex items-center justify-center text-center p-6">
-              <div className="text-white">
-                <h2 className="text-xl font-bold mb-3 leading-tight">
-                  {mockPromos[currentSlide].title}
-                </h2>
-                <p className="text-sm mb-4 opacity-90 max-w-xs mx-auto">
-                  {mockPromos[currentSlide].description}
-                </p>
-                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-white/90">
-                  {mockPromos[currentSlide].cta}
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Carousel Controls */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-6 right-6 flex justify-between pointer-events-none">
-            <Button
-              size="icon"
-              variant="secondary"
-              className="rounded-full pointer-events-auto opacity-80"
-              onClick={() => setCurrentSlide((prev) => (prev - 1 + mockPromos.length) % mockPromos.length)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              className="rounded-full pointer-events-auto opacity-80"
-              onClick={() => setCurrentSlide((prev) => (prev + 1) % mockPromos.length)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Dots Indicator */}
-          <div className="flex justify-center gap-2 mt-4">
-            {mockPromos.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-2 rounded-full transition-all ${
-                  index === currentSlide ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="px-4 mb-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <Button variant="ghost" size="icon" className="flex-shrink-0">
-              <Filter className="h-4 w-4" />
-            </Button>
-            {filterTabs.map((tab) => (
-              <Button
-                key={tab}
-                variant={activeFilter === tab ? "default" : "outline"}
-                className="flex-shrink-0 rounded-full"
-                onClick={() => setActiveFilter(tab)}
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => navigate("/mobile/dashboard")}
               >
-                {tab}
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
               </Button>
-            ))}
+              <Avatar 
+                className="h-10 w-10 ring-2 ring-primary-foreground/30 cursor-pointer"
+                onClick={() => navigate("/mobile/profile")}
+              >
+                <AvatarImage src={userAvatar || ""} alt={userName} />
+                <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">
+                  {userName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="What do you want to learn?"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 h-12 bg-background border-0 rounded-xl shadow-lg text-foreground placeholder:text-muted-foreground"
+            />
           </div>
         </div>
 
-        {/* Results Counter */}
-        <div className="px-4 mb-4">
-          <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">80</span> Batches available
-          </p>
+        {/* Explore Topics Section */}
+        <div className="px-5 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Explore topics</h2>
+            <Button 
+              variant="ghost" 
+              className="text-primary text-sm p-0 h-auto hover:bg-transparent"
+              onClick={() => navigate("/programs")}
+            >
+              See More
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+
+          {/* Horizontal Scrolling Topic Pills */}
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex gap-3 pb-2">
+              {goalsLoading ? (
+                // Skeleton loaders
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <Skeleton className="h-14 w-14 rounded-xl" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                ))
+              ) : (
+                exploreGoals?.map((goal) => (
+                  <button
+                    key={goal.id}
+                    onClick={() => navigate(`/explore/${goal.slug}`)}
+                    className="flex flex-col items-center gap-2 min-w-[4.5rem] group"
+                  >
+                    <div className="h-14 w-14 rounded-xl bg-muted flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      {iconMap[goal.icon || "BookOpen"] || <BookOpen className="h-5 w-5" />}
+                    </div>
+                    <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate max-w-[4.5rem]">
+                      {goal.name}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+            <ScrollBar orientation="horizontal" className="invisible" />
+          </ScrollArea>
         </div>
 
-        {/* Course Cards */}
-        <div className="px-4 space-y-4">
-          {mockCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              image={course.image}
-              badge={course.badge}
-              title={course.title}
-              instructor={course.instructor}
-              language={course.language}
-              price={course.price}
-              originalPrice={course.originalPrice}
-              description={course.description}
-              onWhatsAppClick={() => console.log("WhatsApp clicked for", course.id)}
-            />
-          ))}
+        {/* Recommended For You Section */}
+        <div className="px-5 mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Recommended for you</h2>
+            <Button 
+              variant="ghost" 
+              className="text-primary text-sm p-0 h-auto hover:bg-transparent"
+              onClick={() => navigate("/programs")}
+            >
+              See More
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+
+          {/* Course Cards */}
+          <div className="space-y-4">
+            {coursesLoading ? (
+              // Skeleton loaders
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="flex gap-4 p-3">
+                    <Skeleton className="h-24 w-24 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              featuredCourses?.slice(0, 6).map((featured) => {
+                const course = featured.courses;
+                if (!course) return null;
+                
+                return (
+                  <Card 
+                    key={featured.id}
+                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
+                    onClick={() => navigate(`/enroll/${course.slug}`)}
+                  >
+                    <div className="flex gap-4 p-3">
+                      {/* Course Image */}
+                      <div className="relative h-24 w-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                        <img
+                          src={course.thumbnail_url || "/placeholder.svg"}
+                          alt={course.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+
+                      {/* Course Info */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                        <div>
+                          <h3 className="font-medium text-foreground line-clamp-2 text-sm leading-tight">
+                            {course.name}
+                          </h3>
+                          {course.instructor_name && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Avatar className="h-4 w-4">
+                                <AvatarFallback className="text-[8px] bg-muted">
+                                  {course.instructor_name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {course.instructor_name}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">
+                              {formatINR(course.price_inr || 0)}
+                            </span>
+                            {course.original_price_inr && course.original_price_inr > (course.price_inr || 0) && (
+                              <span className="text-xs text-muted-foreground line-through">
+                                {formatINR(course.original_price_inr)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 
