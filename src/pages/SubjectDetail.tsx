@@ -198,26 +198,26 @@ const SubjectDetail = () => {
         </section>
 
         {/* Features Section - Enhanced */}
-        <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
+        <section className="py-8 md:py-16 bg-gradient-to-b from-muted/30 to-background">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Complete Learning Experience</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-2xl md:text-4xl font-bold mb-3 md:mb-4">Complete Learning Experience</h2>
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
                 Everything you need to master {subject.name} in one comprehensive package
               </p>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
               {features.map((feature, index) => (
                 <Card key={index} className="relative border-2 hover:shadow-xl transition-all hover:scale-[1.02] group">
-                  <CardContent className="p-6">
-                    <div className="p-3 bg-primary/10 rounded-xl w-fit mb-4 group-hover:bg-primary/20 transition-colors">
-                      <feature.icon className="h-8 w-8 text-primary" />
+                  <CardContent className="p-4 md:p-6">
+                    <div className="p-2 md:p-3 bg-primary/10 rounded-xl w-fit mb-3 md:mb-4 group-hover:bg-primary/20 transition-colors">
+                      <feature.icon className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground">{feature.description}</p>
+                    <h3 className="text-base md:text-xl font-semibold mb-1 md:mb-2">{feature.title}</h3>
+                    <p className="text-xs md:text-base text-muted-foreground">{feature.description}</p>
                     {!isEnrolled && (
-                      <div className="absolute top-4 right-4 p-2 bg-muted rounded-full">
-                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      <div className="absolute top-3 right-3 md:top-4 md:right-4 p-1.5 md:p-2 bg-muted rounded-full">
+                        <Lock className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                       </div>
                     )}
                   </CardContent>
@@ -228,11 +228,11 @@ const SubjectDetail = () => {
         </section>
 
         {/* Curriculum Section - Enhanced */}
-        <section className="py-16 bg-background">
+        <section className="py-8 md:py-16 bg-background">
           <div className="container mx-auto px-4">
-            <div className="mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Complete Course Curriculum</h2>
-              <p className="text-lg text-muted-foreground">
+            <div className="mb-8 md:mb-12">
+              <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-4">Complete Course Curriculum</h2>
+              <p className="text-base md:text-lg text-muted-foreground">
                 Structured learning path with {chaptersData?.length || 0} comprehensive chapters covering all essential topics
               </p>
             </div>
@@ -333,24 +333,24 @@ const SubjectDetail = () => {
 
         {/* CTA Section - Enhanced */}
         {!isEnrolled && (
-          <section className="py-16 bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground">
+          <section className="py-10 md:py-16 bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground">
             <div className="container mx-auto px-4 text-center">
-              <div className="max-w-3xl mx-auto space-y-6">
-                <h2 className="text-3xl md:text-4xl font-bold">
+              <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
+                <h2 className="text-2xl md:text-4xl font-bold">
                   Ready to Master {subject.name}?
                 </h2>
-                <p className="text-xl md:text-2xl opacity-90">
+                <p className="text-base md:text-2xl opacity-90">
                   Join thousands of students and unlock complete access to all chapters, topics, practice tests, and AI-powered learning tools
                 </p>
-                <div className="flex flex-wrap gap-4 justify-center pt-4">
-                  <Button size="lg" variant="secondary" asChild className="shadow-xl text-lg px-8">
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center pt-2 md:pt-4">
+                  <Button size="lg" variant="secondary" asChild className="shadow-xl text-base md:text-lg px-6 md:px-8">
                     <Link to={enrolledCourses.length > 0 ? `/programs/${enrolledCourses[0].slug}` : "/programs"}>
-                      <Target className="h-5 w-5 mr-2" />
+                      <Target className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                       {enrolledCourses.length > 0 ? "Back to Course" : "Explore Courses"}
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 text-lg px-8">
-                    <MessageCircle className="h-5 w-5 mr-2" />
+                  <Button size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 text-base md:text-lg px-6 md:px-8">
+                    <MessageCircle className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                     Talk to Advisor
                   </Button>
                 </div>

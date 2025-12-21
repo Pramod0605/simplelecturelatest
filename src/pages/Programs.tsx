@@ -159,8 +159,8 @@ const Programs = () => {
       <SmartHeader />
       
       <main className="min-h-screen bg-background">
-        {/* Breadcrumb */}
-        <div className="bg-muted/30 border-b">
+        {/* Breadcrumb - Hidden on mobile, visible on md+ */}
+        <div className="bg-muted/30 border-b hidden md:block">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Link to="/" className="hover:text-primary transition-colors flex items-center gap-1">
@@ -216,12 +216,12 @@ const Programs = () => {
         </div>
 
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background py-8">
+        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background py-6 md:py-8">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl font-bold mb-2">
+            <h1 className="text-2xl md:text-4xl font-bold mb-2">
               {selectedSubSubcategory?.name || selectedSubcategory?.name || selectedParentCategory?.name || "All Programs"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm md:text-base text-muted-foreground">
               {selectedSubSubcategory?.description || selectedSubcategory?.description || selectedParentCategory?.description || 
                "Explore our comprehensive courses designed for your success"}
             </p>
@@ -340,9 +340,9 @@ const Programs = () => {
         )}
 
         {/* Filters & Search */}
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
-            <div className="relative w-full md:w-96">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search courses..."
@@ -352,12 +352,12 @@ const Programs = () => {
               />
             </div>
             
-            <div className="flex gap-4 items-center w-full md:w-auto">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {isFetching ? "Loading..." : `${totalCount} courses found`}
+            <div className="flex gap-2 md:gap-4 items-center justify-between">
+              <span className="text-xs md:text-sm text-muted-foreground whitespace-nowrap">
+                {isFetching ? "Loading..." : `${totalCount} courses`}
               </span>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[140px] md:w-[180px] text-xs md:text-sm">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -386,7 +386,7 @@ const Programs = () => {
             </div>
           ) : courses.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {courses.map((course) => (
                   <Link key={course.id} to={`/programs/${course.slug}`}>
                     <Card className="h-full overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer">

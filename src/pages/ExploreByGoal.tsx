@@ -71,11 +71,11 @@ const ExploreByGoal = () => {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-b from-primary/10 to-background py-12">
+        <section className="bg-gradient-to-b from-primary/10 to-background py-8 md:py-12">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{goal.name}</h1>
+            <h1 className="text-2xl md:text-5xl font-bold mb-2 md:mb-4">{goal.name}</h1>
             {goal.description && (
-              <p className="text-xl text-muted-foreground max-w-3xl">
+              <p className="text-base md:text-xl text-muted-foreground max-w-3xl">
                 {goal.description}
               </p>
             )}
@@ -83,7 +83,7 @@ const ExploreByGoal = () => {
         </section>
 
         {/* Filters and Courses */}
-        <section className="py-12">
+        <section className="py-8 md:py-12">
           <div className="container mx-auto px-4">
             <div className="mb-8">
               <CategorySelector
@@ -109,7 +109,7 @@ const ExploreByGoal = () => {
                   </h2>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {courses.map((course: any) => (
                     <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                       <Link to={`/programs/${course.slug}`}>
@@ -122,18 +122,18 @@ const ExploreByGoal = () => {
                             />
                           </div>
                         )}
-                        <CardContent className="p-6">
-                          <h3 className="text-xl font-semibold mb-2 line-clamp-2">
+                        <CardContent className="p-4 md:p-6">
+                          <h3 className="text-lg md:text-xl font-semibold mb-2 line-clamp-2">
                             {course.name}
                           </h3>
                           
                           {course.short_description && (
-                            <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                            <p className="text-muted-foreground text-xs md:text-sm mb-3 md:mb-4 line-clamp-2 md:line-clamp-3">
                               {course.short_description}
                             </p>
                           )}
 
-                          <div className="flex flex-wrap gap-2 mb-4">
+                          <div className="flex flex-wrap gap-1.5 md:gap-2 mb-3 md:mb-4">
                             {course.course_subjects && (
                               <Badge variant="secondary" className="flex items-center gap-1">
                                 <BookOpen className="h-3 w-3" />
@@ -160,18 +160,18 @@ const ExploreByGoal = () => {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-2xl font-bold">
+                              <span className="text-xl md:text-2xl font-bold">
                                 ₹{course.price_inr || 0}
                               </span>
                               {course.original_price_inr && course.original_price_inr > course.price_inr && (
-                                <span className="text-sm text-muted-foreground line-through">
+                                <span className="text-xs md:text-sm text-muted-foreground line-through">
                                   ₹{course.original_price_inr}
                                 </span>
                               )}
                             </div>
-                            <Button size="sm">View Details</Button>
+                            <Button size="sm" className="text-xs md:text-sm">View Details</Button>
                           </div>
                         </CardContent>
                       </Link>
