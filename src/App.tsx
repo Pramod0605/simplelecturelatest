@@ -83,6 +83,7 @@ import CounselorAvatars from "./pages/admin/CounselorAvatars";
 import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
 import OrdersList from "./pages/admin/OrdersList";
 import BulkAssignInstructors from "./pages/admin/BulkAssignInstructors";
+import Live from "./pages/Live";
 
 const App = () => (
   <HelmetProvider>
@@ -114,6 +115,7 @@ const App = () => (
             <Route path="/learning/:courseId" element={<Learning />} />
             <Route path="/learning/:courseId/:subjectId" element={<Learning />} />
             <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
+            <Route path="/live" element={<Live />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />

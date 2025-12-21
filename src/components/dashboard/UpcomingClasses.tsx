@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Video, BookOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useScheduledClasses } from "@/hooks/useScheduledClasses";
+import { useUpcomingClassesFromTimetable } from "@/hooks/useUpcomingClassesFromTimetable";
 import { format, isToday, isTomorrow } from "date-fns";
 
 const UpcomingClasses = () => {
-  const { classes, isLoading } = useScheduledClasses();
+  const { data: classes = [], isLoading } = useUpcomingClassesFromTimetable();
 
   const formatClassDate = (date: string) => {
     const classDate = new Date(date);
