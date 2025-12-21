@@ -8,14 +8,20 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAISettings, useUpdateAISettings, AISettings } from "@/hooks/useAISettings";
+import { usePaymentSettings, useUpdatePaymentSettings, PaymentSettings, DEFAULT_PAYMENT_SETTINGS } from "@/hooks/usePaymentSettings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Sparkles } from "lucide-react";
+import { Brain, Sparkles, CreditCard, Eye, EyeOff } from "lucide-react";
 
 export default function Settings() {
   const { data: aiSettings, isLoading } = useAISettings();
   const updateSettings = useUpdateAISettings();
   
+  const { data: paymentSettings, isLoading: paymentLoading } = usePaymentSettings();
+  const updatePaymentSettings = useUpdatePaymentSettings();
+  
   const [localSettings, setLocalSettings] = useState<AISettings | null>(null);
+  const [localPaymentSettings, setLocalPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
+  const [showSecretKey, setShowSecretKey] = useState(false);
 
   useEffect(() => {
     if (aiSettings) {
@@ -23,11 +29,22 @@ export default function Settings() {
     }
   }, [aiSettings]);
 
+  useEffect(() => {
+    if (paymentSettings) {
+      setLocalPaymentSettings(paymentSettings);
+    }
+  }, [paymentSettings]);
+
   const handleSaveAI = () => {
     if (localSettings) {
       updateSettings.mutate(localSettings);
     }
   };
+
+  const handleSavePayment = () => {
+    updatePaymentSettings.mutate(localPaymentSettings);
+  };
+
   return (
     <div className="p-8 space-y-6 max-w-4xl">
       <div>
@@ -113,6 +130,143 @@ export default function Settings() {
             </div>
             <Switch defaultChecked />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Settings Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-green-600" />
+            <div>
+              <CardTitle>Payment Gateway Settings</CardTitle>
+              <CardDescription>Configure Razorpay payment gateway credentials</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {paymentLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="payment-provider">Payment Provider</Label>
+                <Select
+                  value={localPaymentSettings.provider}
+                  onValueChange={(value) => setLocalPaymentSettings({ ...localPaymentSettings, provider: value })}
+                >
+                  <SelectTrigger id="payment-provider">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="razorpay">Razorpay</SelectItem>
+                    <SelectItem value="demo">Demo Mode (No Real Payments)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select your payment gateway provider
+                </p>
+              </div>
+
+              {localPaymentSettings.provider === "razorpay" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="razorpay-key-id">Razorpay Key ID</Label>
+                    <Input
+                      id="razorpay-key-id"
+                      value={localPaymentSettings.razorpay_key_id}
+                      onChange={(e) => setLocalPaymentSettings({
+                        ...localPaymentSettings,
+                        razorpay_key_id: e.target.value
+                      })}
+                      placeholder="rzp_live_xxxxxxxxxxxxx or rzp_test_xxxxxxxxxxxxx"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your Razorpay Key ID (starts with rzp_live_ or rzp_test_)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="razorpay-key-secret">Razorpay Key Secret</Label>
+                    <div className="relative">
+                      <Input
+                        id="razorpay-key-secret"
+                        type={showSecretKey ? "text" : "password"}
+                        value={localPaymentSettings.razorpay_key_secret}
+                        onChange={(e) => setLocalPaymentSettings({
+                          ...localPaymentSettings,
+                          razorpay_key_secret: e.target.value
+                        })}
+                        placeholder="Enter your Razorpay Key Secret"
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowSecretKey(!showSecretKey)}
+                      >
+                        {showSecretKey ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Your Razorpay Key Secret (keep this confidential)
+                    </p>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Test Mode</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable test mode to use sandbox credentials
+                  </p>
+                </div>
+                <Switch
+                  checked={localPaymentSettings.test_mode}
+                  onCheckedChange={(checked) => setLocalPaymentSettings({
+                    ...localPaymentSettings,
+                    test_mode: checked
+                  })}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> These settings are stored in the database for reference. 
+                  For production use, ensure the <code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> 
+                  are also configured in your Supabase Edge Function secrets for secure server-side processing.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => paymentSettings && setLocalPaymentSettings(paymentSettings)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  onClick={handleSavePayment}
+                  disabled={updatePaymentSettings.isPending}
+                >
+                  {updatePaymentSettings.isPending ? "Saving..." : "Save Payment Settings"}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -320,18 +474,6 @@ export default function Settings() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Settings</CardTitle>
-          <CardDescription>Configure payment gateway settings</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Payment gateway configuration coming soon.
-          </p>
         </CardContent>
       </Card>
     </div>

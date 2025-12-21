@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
+import { useAdminCourses } from "@/hooks/useAdminCourses";
 
 interface StudentFiltersProps {
   onFilterChange: (filters: any) => void;
@@ -19,6 +20,8 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
     enrollmentDateFrom: "",
     enrollmentDateTo: "",
   });
+
+  const { data: courses, isLoading: coursesLoading } = useAdminCourses();
 
   const handleFilterChange = (key: string, value: string) => {
     const newFilters = { ...filters, [key]: value };
@@ -56,7 +59,7 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Name, email, or phone..."
+                placeholder="Name or phone..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
                 className="pl-9"
@@ -72,10 +75,11 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Courses</SelectItem>
-                <SelectItem value="course-1">JEE Main 2025 Complete</SelectItem>
-                <SelectItem value="course-2">Advanced Mathematics</SelectItem>
-                <SelectItem value="course-3">NEET 2025 Biology</SelectItem>
-                <SelectItem value="course-4">Class 12 Board Prep</SelectItem>
+                {!coursesLoading && courses?.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -89,7 +93,6 @@ export const StudentFilters = ({ onFilterChange }: StudentFiltersProps) => {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="at_risk">At Risk</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
