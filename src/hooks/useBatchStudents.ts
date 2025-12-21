@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentAuthUser } from "./useCurrentAuthUser";
 
 export const useBatchStudents = (batchId?: string) => {
   return useQuery({
@@ -33,10 +34,11 @@ export const useBatchStudents = (batchId?: string) => {
 };
 
 export const useStudentBatchInfo = () => {
+  const { data: user } = useCurrentAuthUser();
+
   return useQuery({
-    queryKey: ['student-batch-info'],
+    queryKey: ['student-batch-info', user?.id],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
       const { data, error } = await supabase
@@ -66,5 +68,6 @@ export const useStudentBatchInfo = () => {
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 };

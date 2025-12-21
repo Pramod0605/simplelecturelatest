@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentAuthUser } from './useCurrentAuthUser';
+import { useStudentCourseIds } from './useStudentEnrollments';
 
 export interface SubjectWithDetails {
   id: string;
@@ -20,179 +22,153 @@ export interface CourseWithSubjects {
 }
 
 export const useDashboardCourseDetails = () => {
-  return useQuery({
-    queryKey: ['dashboard-course-details'],
+  const { data: user } = useCurrentAuthUser();
+  const { courseIds, isLoading: enrollmentsLoading } = useStudentCourseIds();
+
+  const { data, isLoading: queryLoading } = useQuery({
+    queryKey: ['dashboard-course-details', user?.id, courseIds],
     queryFn: async () => {
-      try {
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) {
-          console.error('Error getting user:', userError);
-          return [];
-        }
-        if (!user) {
-          console.log('No user logged in');
-          return [];
-        }
+      if (!user || courseIds.length === 0) return [];
 
-        console.log('Fetching enrollments for user:', user.id);
+      // Batch 1: Get all courses
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, name, slug, thumbnail_url')
+        .in('id', courseIds);
 
-        // Get enrolled courses
-        const { data: enrollments, error: enrollError } = await supabase
-          .from('enrollments')
-          .select(`
-            course_id,
-            courses:course_id (
-              id,
-              name,
-              slug,
-              thumbnail_url
-            )
-          `)
+      if (!courses?.length) return [];
+
+      // Batch 2: Get all course subjects at once
+      const { data: courseSubjects } = await supabase
+        .from('course_subjects')
+        .select(`
+          course_id,
+          subject_id,
+          display_order,
+          popular_subjects:subject_id (
+            id,
+            name,
+            description,
+            thumbnail_url
+          )
+        `)
+        .in('course_id', courseIds)
+        .order('display_order');
+
+      const allSubjectIds = [...new Set(courseSubjects?.map(cs => cs.subject_id) || [])];
+      
+      if (allSubjectIds.length === 0) {
+        return courses.map(course => ({
+          id: course.id,
+          name: course.name,
+          slug: course.slug,
+          thumbnail_url: course.thumbnail_url,
+          subjects: [],
+        }));
+      }
+
+      // Batch 3: Get all chapters for all subjects at once
+      const { data: allChapters } = await supabase
+        .from('subject_chapters')
+        .select('id, subject_id')
+        .in('subject_id', allSubjectIds);
+
+      const chaptersBySubject = new Map<string, string[]>();
+      allChapters?.forEach(ch => {
+        const existing = chaptersBySubject.get(ch.subject_id) || [];
+        existing.push(ch.id);
+        chaptersBySubject.set(ch.subject_id, existing);
+      });
+
+      const allChapterIds = allChapters?.map(c => c.id) || [];
+
+      // Batch 4: Get all student progress at once
+      let completedChaptersSet = new Set<string>();
+      if (allChapterIds.length > 0) {
+        const { data: progress } = await supabase
+          .from('student_progress')
+          .select('chapter_id')
           .eq('student_id', user.id)
-          .eq('is_active', true);
+          .eq('is_completed', true)
+          .in('chapter_id', allChapterIds);
 
-        if (enrollError) {
-          console.error('Error fetching enrollments:', enrollError);
-          return [];
-        }
+        completedChaptersSet = new Set(progress?.map(p => p.chapter_id) || []);
+      }
 
-        console.log('Enrollments found:', enrollments?.length || 0, enrollments);
+      // Batch 5: Get all assignments at once
+      const { data: allAssignments } = await supabase
+        .from('assignments')
+        .select('id, chapter_id, course_id')
+        .in('course_id', courseIds)
+        .eq('is_active', true);
 
-        if (!enrollments?.length) {
-          console.log('No active enrollments found');
-          return [];
-        }
+      const assignmentIds = allAssignments?.map(a => a.id) || [];
 
-        const coursesWithSubjects: CourseWithSubjects[] = [];
+      // Batch 6: Get all submissions at once
+      let submittedAssignmentIds = new Set<string>();
+      if (assignmentIds.length > 0) {
+        const { data: submissions } = await supabase
+          .from('assignment_submissions')
+          .select('assignment_id')
+          .eq('student_id', user.id)
+          .in('assignment_id', assignmentIds);
 
-        for (const enrollment of enrollments) {
-          // Handle both object and array response types from Supabase
-          const course = Array.isArray(enrollment.courses) 
-            ? enrollment.courses[0] 
-            : enrollment.courses;
-          
-          if (!course) {
-            console.warn('No course data for enrollment:', enrollment.course_id);
-            continue;
-          }
+        submittedAssignmentIds = new Set(submissions?.map(s => s.assignment_id) || []);
+      }
 
-          console.log('Processing course:', course.name, course.id);
-
-          // Get subjects for this course
-          const { data: courseSubjects, error: subjectsError } = await supabase
-            .from('course_subjects')
-            .select(`
-              subject_id,
-              display_order,
-              popular_subjects:subject_id (
-                id,
-                name,
-                description,
-                thumbnail_url
-              )
-            `)
-            .eq('course_id', course.id)
-            .order('display_order');
-
-          if (subjectsError) {
-            console.error('Error fetching subjects for course:', course.id, subjectsError);
-          }
-
-          console.log('Subjects found for course:', course.name, courseSubjects?.length || 0);
-
-          const subjects: SubjectWithDetails[] = [];
-
-          for (const cs of courseSubjects || []) {
-            // Handle both object and array response types
+      // Process all data in memory
+      const coursesWithSubjects: CourseWithSubjects[] = courses.map(course => {
+        const subjects = (courseSubjects || [])
+          .filter(cs => cs.course_id === course.id)
+          .map(cs => {
             const subject = Array.isArray(cs.popular_subjects)
               ? cs.popular_subjects[0]
               : cs.popular_subjects;
-            
-            if (!subject) {
-              console.warn('No subject data for course_subject:', cs.subject_id);
-              continue;
-            }
 
-            // Get chapters count for this subject
-            const { count: chaptersTotal } = await supabase
-              .from('subject_chapters')
-              .select('*', { count: 'exact', head: true })
-              .eq('subject_id', subject.id);
+            if (!subject) return null;
 
-            // Get completed chapters for this student
-            const { data: subjectChapters } = await supabase
-              .from('subject_chapters')
-              .select('id')
-              .eq('subject_id', subject.id);
+            const subjectChapterIds = chaptersBySubject.get(subject.id) || [];
+            const chaptersTotal = subjectChapterIds.length;
+            const chaptersCompleted = subjectChapterIds.filter(id => completedChaptersSet.has(id)).length;
 
-            const chapterIds = subjectChapters?.map(c => c.id) || [];
-            
-            let chaptersCompleted = 0;
-            if (chapterIds.length > 0) {
-              const { count } = await supabase
-                .from('student_progress')
-                .select('*', { count: 'exact', head: true })
-                .eq('student_id', user.id)
-                .eq('is_completed', true)
-                .in('chapter_id', chapterIds);
-              chaptersCompleted = count || 0;
-            }
+            // Count pending assignments for this subject's chapters
+            const subjectAssignments = (allAssignments || []).filter(
+              a => a.course_id === course.id && a.chapter_id && subjectChapterIds.includes(a.chapter_id)
+            );
+            const pendingAssignments = subjectAssignments.filter(
+              a => !submittedAssignmentIds.has(a.id)
+            ).length;
 
-            // Get pending assignments for this subject's chapters
-            let pendingAssignments = 0;
-            if (chapterIds.length > 0) {
-              // Get assignments for these chapters
-              const { data: assignments } = await supabase
-                .from('assignments')
-                .select('id')
-                .eq('course_id', course.id)
-                .in('chapter_id', chapterIds)
-                .eq('is_active', true);
-
-              const assignmentIds = assignments?.map(a => a.id) || [];
-
-              if (assignmentIds.length > 0) {
-                // Get submitted assignments
-                const { data: submissions } = await supabase
-                  .from('assignment_submissions')
-                  .select('assignment_id')
-                  .eq('student_id', user.id)
-                  .in('assignment_id', assignmentIds);
-
-                const submittedIds = new Set(submissions?.map(s => s.assignment_id) || []);
-                pendingAssignments = assignmentIds.filter(id => !submittedIds.has(id)).length;
-              }
-            }
-
-            subjects.push({
+            return {
               id: subject.id,
               name: subject.name,
               description: subject.description,
               thumbnail_url: subject.thumbnail_url,
-              chaptersTotal: chaptersTotal || 0,
+              chaptersTotal,
               chaptersCompleted,
-              pendingAssignments
-            });
-          }
+              pendingAssignments,
+            } as SubjectWithDetails;
+          })
+          .filter(Boolean) as SubjectWithDetails[];
 
-          coursesWithSubjects.push({
-            id: course.id,
-            name: course.name,
-            slug: course.slug,
-            thumbnail_url: course.thumbnail_url,
-            subjects
-          });
-        }
+        return {
+          id: course.id,
+          name: course.name,
+          slug: course.slug,
+          thumbnail_url: course.thumbnail_url,
+          subjects,
+        };
+      });
 
-        console.log('Final courses with subjects:', coursesWithSubjects.length);
-        return coursesWithSubjects;
-      } catch (error) {
-        console.error('Error in useDashboardCourseDetails:', error);
-        return [];
-      }
+      return coursesWithSubjects;
     },
-    staleTime: 0, // Always fetch fresh data
+    enabled: !!user && courseIds.length > 0,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  return {
+    data: data || [],
+    isLoading: enrollmentsLoading || queryLoading,
+  };
 };

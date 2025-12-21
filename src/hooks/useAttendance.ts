@@ -1,29 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, format } from 'date-fns';
+import { subDays } from 'date-fns';
+import { useCurrentAuthUser } from './useCurrentAuthUser';
+import { useStudentCourseIds } from './useStudentEnrollments';
 
 export const useAttendance = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['student-attendance'],
+  const { data: user } = useCurrentAuthUser();
+  const { courseIds, isLoading: enrollmentsLoading } = useStudentCourseIds();
+
+  const { data, isLoading: queryLoading } = useQuery({
+    queryKey: ['student-attendance', user?.id, courseIds],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { percentage: 0, present: 0, total: 0, recent: [] };
-
-      // Get last 30 days
-      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
-
-      // Get enrolled courses
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('student_id', user.id)
-        .eq('is_active', true);
-
-      const courseIds = enrollments?.map(e => e.course_id) || [];
-
-      if (courseIds.length === 0) {
+      if (!user || courseIds.length === 0) {
         return { percentage: 0, present: 0, total: 0, recent: [] };
       }
+
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
 
       // Get scheduled classes for enrolled courses in last 30 days
       const { data: scheduledClasses } = await supabase
@@ -58,13 +50,9 @@ export const useAttendance = () => {
         .sort((a, b) => new Date(b.scheduled_class.scheduled_at).getTime() - new Date(a.scheduled_class.scheduled_at).getTime())
         .slice(0, 7);
 
-      return {
-        percentage,
-        present,
-        total,
-        recent,
-      };
+      return { percentage, present, total, recent };
     },
+    enabled: !!user && courseIds.length > 0,
   });
 
   return {
@@ -72,6 +60,6 @@ export const useAttendance = () => {
     present: data?.present || 0,
     total: data?.total || 0,
     recent: data?.recent || [],
-    isLoading,
+    isLoading: enrollmentsLoading || queryLoading,
   };
 };
