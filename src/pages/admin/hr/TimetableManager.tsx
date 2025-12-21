@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useInstructorTimetable } from "@/hooks/useInstructorTimetable";
-import { TimetableGrid } from "@/components/hr/TimetableGrid";
+import { DraggableTimetableGrid } from "@/components/hr/DraggableTimetableGrid";
+import { TimetablePDFExport } from "@/components/hr/TimetablePDFExport";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInstructors } from "@/hooks/useInstructors";
 import { AddTimeSlotDialog } from "@/components/hr/AddTimeSlotDialog";
@@ -48,13 +49,22 @@ export default function TimetableManager() {
           <h1 className="text-3xl font-bold">Instructor Timetable</h1>
           <p className="text-muted-foreground">View and manage individual instructor schedules</p>
         </div>
-        <Button 
-          onClick={() => setIsAddDialogOpen(true)}
-          disabled={!selectedInstructorId}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Time Slot
-        </Button>
+        <div className="flex gap-2">
+          {selectedInstructorId && timetable && timetable.length > 0 && (
+            <TimetablePDFExport
+              entries={timetable}
+              title={`Timetable - ${selectedInstructor?.full_name || "Instructor"}`}
+              subtitle={`Weekly Schedule`}
+            />
+          )}
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)}
+            disabled={!selectedInstructorId}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Time Slot
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -113,13 +123,22 @@ export default function TimetableManager() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Weekly Schedule</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Weekly Schedule</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Drag entries to move them • Click edit icon to modify
+                </p>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <p>Loading timetable...</p>
               ) : timetable && timetable.length > 0 ? (
-                <TimetableGrid entries={timetable} />
+                <DraggableTimetableGrid 
+                  entries={timetable} 
+                  enableDragDrop={true}
+                  enableEdit={true}
+                />
               ) : (
                 <p className="text-muted-foreground text-center py-8">
                   No timetable entries found. Click "Add Time Slot" to create one.
