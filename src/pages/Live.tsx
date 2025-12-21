@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveTimetable, DAYS, TimetableClass } from "@/hooks/useLiveTimetable";
-import { useRecordAttendance } from "@/hooks/useRecordAttendance";
 import { format, isToday, isTomorrow, startOfWeek, addWeeks, subWeeks, isSameWeek, addDays } from "date-fns";
 import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight, ChevronLeft, ChevronRight, BarChart3, PlayCircle } from "lucide-react";
 import { Header } from "@/components/Header";
