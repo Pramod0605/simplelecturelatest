@@ -174,10 +174,12 @@ serve(async (req) => {
           const playbackUrl = recordingData.playback?.format?.url || 
                              recordingData['playback-format']?.url ||
                              null;
+          const recordingId = recordingData.recordID || recordingData['record-id'];
 
           if (playbackUrl) {
-            console.log('Recording ready:', { scheduledClassId, playbackUrl });
+            console.log('Recording ready:', { scheduledClassId, playbackUrl, recordingId });
             
+            // Update scheduled class with recording URL
             await supabase
               .from('scheduled_classes')
               .update({
@@ -185,6 +187,55 @@ serve(async (req) => {
                 recording_added_at: new Date().toISOString(),
               })
               .eq('id', scheduledClassId);
+
+            // Create class_recordings entry for CDN processing
+            const { data: recording, error: recordingError } = await supabase
+              .from('class_recordings')
+              .insert({
+                scheduled_class_id: scheduledClassId,
+                bbb_recording_id: recordingId,
+                processing_status: 'pending',
+                original_filename: `bbb-${recordingId}.mp4`,
+              })
+              .select()
+              .single();
+
+            if (recordingError) {
+              console.error('Error creating class_recordings entry:', recordingError);
+            } else {
+              console.log('Created class_recordings entry:', recording.id);
+
+              // Check if auto-transfer is enabled and trigger transfer
+              const { data: settings } = await supabase
+                .from('ai_settings')
+                .select('setting_value')
+                .eq('setting_key', 'video_streaming')
+                .single();
+
+              const videoSettings = settings?.setting_value as Record<string, unknown> | null;
+              
+              if (videoSettings?.auto_transfer_bbb_recordings) {
+                console.log('Auto-transfer enabled, triggering transfer-recording function');
+                
+                // Call transfer-recording edge function
+                try {
+                  await fetch(`${supabaseUrl}/functions/v1/transfer-recording`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${supabaseKey}`,
+                    },
+                    body: JSON.stringify({
+                      recording_id: recording.id,
+                      bbb_recording_id: recordingId,
+                      playback_url: playbackUrl,
+                    }),
+                  });
+                } catch (transferError) {
+                  console.error('Error triggering transfer:', transferError);
+                }
+              }
+            }
           }
           break;
         }

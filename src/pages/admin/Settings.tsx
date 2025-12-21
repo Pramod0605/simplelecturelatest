@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAISettings, useUpdateAISettings, AISettings } from "@/hooks/useAISettings";
 import { usePaymentSettings, useUpdatePaymentSettings, PaymentSettings, DEFAULT_PAYMENT_SETTINGS } from "@/hooks/usePaymentSettings";
 import { useBBBSettings, useUpdateBBBSettings, useTestBBBConnection, BBBSettings, DEFAULT_BBB_SETTINGS } from "@/hooks/useBBBSettings";
+import { useVideoStreamSettings, useUpdateVideoStreamSettings, useTestCloudflareConnection, VideoStreamSettings, DEFAULT_VIDEO_STREAM_SETTINGS } from "@/hooks/useVideoStreamSettings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Sparkles, CreditCard, Eye, EyeOff, Video, Loader2, CheckCircle2, Copy, ExternalLink } from "lucide-react";
+import { Brain, Sparkles, CreditCard, Eye, EyeOff, Video, Loader2, CheckCircle2, Copy, ExternalLink, Cloud, Download, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
@@ -25,12 +26,19 @@ export default function Settings() {
   const { data: bbbSettings, isLoading: bbbLoading } = useBBBSettings();
   const updateBBBSettings = useUpdateBBBSettings();
   const testBBBConnection = useTestBBBConnection();
+
+  const { data: videoSettings, isLoading: videoLoading } = useVideoStreamSettings();
+  const updateVideoSettings = useUpdateVideoStreamSettings();
+  const testCloudflare = useTestCloudflareConnection();
   
   const [localSettings, setLocalSettings] = useState<AISettings | null>(null);
   const [localPaymentSettings, setLocalPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
   const [localBBBSettings, setLocalBBBSettings] = useState<BBBSettings>(DEFAULT_BBB_SETTINGS);
+  const [localVideoSettings, setLocalVideoSettings] = useState<VideoStreamSettings>(DEFAULT_VIDEO_STREAM_SETTINGS);
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showBBBSecret, setShowBBBSecret] = useState(false);
+  const [showCloudflareToken, setShowCloudflareToken] = useState(false);
+  const [showBunnyKey, setShowBunnyKey] = useState(false);
 
   useEffect(() => {
     if (aiSettings) {
@@ -50,6 +58,12 @@ export default function Settings() {
     }
   }, [bbbSettings]);
 
+  useEffect(() => {
+    if (videoSettings) {
+      setLocalVideoSettings(videoSettings);
+    }
+  }, [videoSettings]);
+
   const handleSaveAI = () => {
     if (localSettings) {
       updateSettings.mutate(localSettings);
@@ -62,6 +76,25 @@ export default function Settings() {
 
   const handleSaveBBB = () => {
     updateBBBSettings.mutate(localBBBSettings);
+  };
+
+  const handleSaveVideo = () => {
+    updateVideoSettings.mutate(localVideoSettings);
+  };
+
+  const handleTestCloudflare = () => {
+    if (!localVideoSettings.cloudflare_zone_id || !localVideoSettings.cloudflare_api_token) {
+      toast({
+        title: 'Missing fields',
+        description: 'Please enter Zone ID and API Token',
+        variant: 'destructive',
+      });
+      return;
+    }
+    testCloudflare.mutate({
+      zoneId: localVideoSettings.cloudflare_zone_id,
+      apiToken: localVideoSettings.cloudflare_api_token,
+    });
   };
 
   const handleTestBBBConnection = () => {
@@ -751,6 +784,383 @@ export default function Settings() {
                   disabled={updateBBBSettings.isPending}
                 >
                   {updateBBBSettings.isPending ? "Saving..." : "Save BBB Settings"}
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Video Streaming Settings Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Cloud className="h-5 w-5 text-orange-600" />
+            <div>
+              <CardTitle>Video Streaming Settings</CardTitle>
+              <CardDescription>Configure CDN, adaptive quality, and offline downloads for recorded classes</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {videoLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label>Primary Provider</Label>
+                <Select
+                  value={localVideoSettings.primary_provider}
+                  onValueChange={(value: 'cloudflare_b2' | 'bunny' | 'both') => setLocalVideoSettings({
+                    ...localVideoSettings,
+                    primary_provider: value
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="cloudflare_b2">Cloudflare + Backblaze B2</SelectItem>
+                    <SelectItem value="bunny">Bunny.net Stream</SelectItem>
+                    <SelectItem value="both">Both (Fallback)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Cloudflare+B2 is cost-effective; Bunny.net offers built-in transcoding
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Cloudflare Settings */}
+              {(localVideoSettings.primary_provider === 'cloudflare_b2' || localVideoSettings.primary_provider === 'both') && (
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Cloud className="h-4 w-4" />
+                    Cloudflare CDN Settings
+                  </h4>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Zone ID</Label>
+                      <Input
+                        value={localVideoSettings.cloudflare_zone_id}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          cloudflare_zone_id: e.target.value
+                        })}
+                        placeholder="your-zone-id"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Account ID</Label>
+                      <Input
+                        value={localVideoSettings.cloudflare_account_id}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          cloudflare_account_id: e.target.value
+                        })}
+                        placeholder="your-account-id"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>API Token</Label>
+                    <div className="relative">
+                      <Input
+                        type={showCloudflareToken ? "text" : "password"}
+                        value={localVideoSettings.cloudflare_api_token}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          cloudflare_api_token: e.target.value
+                        })}
+                        placeholder="Enter Cloudflare API token"
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowCloudflareToken(!showCloudflareToken)}
+                      >
+                        {showCloudflareToken ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>CDN Hostname</Label>
+                    <Input
+                      value={localVideoSettings.cdn_hostname}
+                      onChange={(e) => setLocalVideoSettings({
+                        ...localVideoSettings,
+                        cdn_hostname: e.target.value
+                      })}
+                      placeholder="cdn.yourdomain.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Point this CNAME to your B2 bucket through Cloudflare
+                    </p>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleTestCloudflare}
+                    disabled={testCloudflare.isPending || !localVideoSettings.cloudflare_zone_id || !localVideoSettings.cloudflare_api_token}
+                    className="w-full"
+                  >
+                    {testCloudflare.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Testing...
+                      </>
+                    ) : testCloudflare.isSuccess ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                        Connected
+                      </>
+                    ) : (
+                      'Test Cloudflare Connection'
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Bunny.net Settings */}
+              {(localVideoSettings.primary_provider === 'bunny' || localVideoSettings.primary_provider === 'both') && (
+                <div className="space-y-4">
+                  <Separator />
+                  <h4 className="font-medium">Bunny.net Stream Settings</h4>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Library ID</Label>
+                      <Input
+                        value={localVideoSettings.bunny_library_id}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          bunny_library_id: e.target.value
+                        })}
+                        placeholder="your-library-id"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CDN Hostname</Label>
+                      <Input
+                        value={localVideoSettings.bunny_cdn_hostname}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          bunny_cdn_hostname: e.target.value
+                        })}
+                        placeholder="vz-xxxxx.b-cdn.net"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>API Key</Label>
+                    <div className="relative">
+                      <Input
+                        type={showBunnyKey ? "text" : "password"}
+                        value={localVideoSettings.bunny_api_key}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          bunny_api_key: e.target.value
+                        })}
+                        placeholder="Enter Bunny.net API key"
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowBunnyKey(!showBunnyKey)}
+                      >
+                        {showBunnyKey ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Use Bunny for Transcoding</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Auto-transcode to HLS with multiple qualities
+                      </p>
+                    </div>
+                    <Switch
+                      checked={localVideoSettings.use_bunny_for_transcoding}
+                      onCheckedChange={(checked) => setLocalVideoSettings({
+                        ...localVideoSettings,
+                        use_bunny_for_transcoding: checked
+                      })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Quality Settings */}
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Wifi className="h-4 w-4" />
+                  Adaptive Quality Settings
+                </h4>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Adaptive Quality</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically adjust video quality based on network speed
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localVideoSettings.enable_adaptive_quality}
+                    onCheckedChange={(checked) => setLocalVideoSettings({
+                      ...localVideoSettings,
+                      enable_adaptive_quality: checked
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Default Quality</Label>
+                  <Select
+                    value={localVideoSettings.default_quality}
+                    onValueChange={(value) => setLocalVideoSettings({
+                      ...localVideoSettings,
+                      default_quality: value
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="360p">360p (Low)</SelectItem>
+                      <SelectItem value="480p">480p (Medium)</SelectItem>
+                      <SelectItem value="720p">720p (HD)</SelectItem>
+                      <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Offline Downloads */}
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Offline Downloads
+                </h4>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Offline Downloads</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Allow students to download recordings for offline viewing
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localVideoSettings.enable_offline_downloads}
+                    onCheckedChange={(checked) => setLocalVideoSettings({
+                      ...localVideoSettings,
+                      enable_offline_downloads: checked
+                    })}
+                  />
+                </div>
+
+                {localVideoSettings.enable_offline_downloads && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Max Downloads per User</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={localVideoSettings.max_downloads_per_user}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          max_downloads_per_user: parseInt(e.target.value)
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Download Expiry (Days)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={localVideoSettings.offline_download_expiry_days}
+                        onChange={(e) => setLocalVideoSettings({
+                          ...localVideoSettings,
+                          offline_download_expiry_days: parseInt(e.target.value)
+                        })}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Auto Transfer Settings */}
+              <div className="space-y-4">
+                <h4 className="font-medium">BBB Recording Transfer</h4>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Auto-transfer BBB Recordings</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically transfer recordings to CDN when ready
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localVideoSettings.auto_transfer_bbb_recordings}
+                    onCheckedChange={(checked) => setLocalVideoSettings({
+                      ...localVideoSettings,
+                      auto_transfer_bbb_recordings: checked
+                    })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Delete from BBB After Transfer</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Free up BBB storage after successful transfer
+                    </p>
+                  </div>
+                  <Switch
+                    checked={localVideoSettings.delete_from_bbb_after_transfer}
+                    onCheckedChange={(checked) => setLocalVideoSettings({
+                      ...localVideoSettings,
+                      delete_from_bbb_after_transfer: checked
+                    })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => videoSettings && setLocalVideoSettings(videoSettings)}
+                >
+                  Reset
+                </Button>
+                <Button
+                  onClick={handleSaveVideo}
+                  disabled={updateVideoSettings.isPending}
+                >
+                  {updateVideoSettings.isPending ? "Saving..." : "Save Video Settings"}
                 </Button>
               </div>
             </>
