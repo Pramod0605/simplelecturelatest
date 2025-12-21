@@ -30,8 +30,9 @@ export interface ClassRecording {
     id: string;
     subject: string;
     scheduled_at: string;
-    course?: { name: string };
-    teacher?: { full_name: string };
+    course?: { id?: string; name: string };
+    teacher?: { id?: string; full_name: string };
+    subject_id?: string;
   };
 }
 
