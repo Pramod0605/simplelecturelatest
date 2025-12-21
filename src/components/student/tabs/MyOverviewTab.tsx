@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Activity, BookOpen, Trophy, TrendingUp, Clock, Target, FolderOpen } from "lucide-react";
+import { BookOpen, Target, Clock, FolderOpen, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -16,89 +16,40 @@ export const MyOverviewTab = ({ student }: MyOverviewTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Activity Score</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{student.activity_score || 0}%</div>
-            <Progress value={student.activity_score || 0} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{student.total_progress || 0}%</div>
-            <Progress value={student.total_progress || 0} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tests Taken</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{student.tests_taken || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Avg: {student.avg_test_score || 0}%
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Attendance</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {student.live_classes?.attendance_percentage || 0}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {student.live_classes?.attended || 0}/{student.live_classes?.total_scheduled || 0} classes
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Enrolled Courses */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BookOpen className="h-5 w-5 text-primary" />
             My Courses
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {hasCourses ? (
             student.courses.map((course: any) => (
-              <div key={course.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{course.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {course.subjects?.length > 0 ? course.subjects.join(", ") : "No subjects assigned"}
+              <div key={course.id} className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold truncate">{course.name}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {course.subjects?.length > 0 
+                        ? course.subjects.slice(0, 3).join(", ") + (course.subjects.length > 3 ? ` +${course.subjects.length - 3} more` : "")
+                        : "No subjects assigned"}
                     </p>
                   </div>
-                  <Badge variant="secondary">{course.progress || 0}%</Badge>
+                  <Badge variant="secondary" className="shrink-0 font-mono">
+                    {course.progress || 0}%
+                  </Badge>
                 </div>
-                <Progress value={course.progress || 0} />
+                <Progress value={course.progress || 0} className="h-2" />
               </div>
             ))
           ) : (
-            <div className="text-center py-6">
-              <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground mb-3">You haven't enrolled in any courses yet.</p>
+            <div className="text-center py-8">
+              <FolderOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet.</p>
               <Link to="/">
-                <Button variant="outline" size="sm">Browse Courses</Button>
+                <Button variant="outline">Browse Courses</Button>
               </Link>
             </div>
           )}
@@ -108,16 +59,16 @@ export const MyOverviewTab = ({ student }: MyOverviewTabProps) => {
       {/* Areas of Improvement */}
       {hasAreasOfImprovement && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Target className="h-5 w-5 text-amber-500" />
               Areas to Focus On
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {student.areas_of_improvement.map((area: string, index: number) => (
-                <Badge key={index} variant="outline">
+                <Badge key={index} variant="outline" className="py-1.5 px-3">
                   {area}
                 </Badge>
               ))}
@@ -128,32 +79,54 @@ export const MyOverviewTab = ({ student }: MyOverviewTabProps) => {
 
       {/* Recent Activity */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Clock className="h-5 w-5 text-blue-500" />
+            Recent Activity
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent>
           {hasClasses ? (
-            student.live_classes.recent_classes.slice(0, 3).map((cls: any) => (
-              <div key={cls.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div>
-                  <p className="font-medium text-sm">{cls.topic}</p>
-                  <p className="text-xs text-muted-foreground">{cls.subject}</p>
+            <div className="space-y-3">
+              {student.live_classes.recent_classes.slice(0, 5).map((cls: any) => (
+                <div 
+                  key={cls.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {cls.attended ? (
+                      <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{cls.topic}</p>
+                      <p className="text-xs text-muted-foreground">{cls.subject}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge 
+                      variant={cls.attended ? "default" : "destructive"} 
+                      className="text-xs"
+                    >
+                      {cls.attended ? "Attended" : "Missed"}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(cls.date).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Badge variant={cls.attended ? "default" : "destructive"} className="text-xs">
-                    {cls.attended ? "Attended" : "Missed"}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(cls.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
-            <div className="text-center py-6">
-              <Clock className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-50" />
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
               <p className="text-muted-foreground">No recent class activity yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 Your class attendance will appear here once you start attending.
               </p>
             </div>
