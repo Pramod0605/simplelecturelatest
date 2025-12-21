@@ -16,17 +16,17 @@ const Implementation = () => {
       />
       <SmartHeader />
       
-      <div className="min-h-screen bg-background pt-20 pb-12">
+      <div className="min-h-screen bg-background pt-16 md:pt-20 pb-8 md:pb-12">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-3">Implementation Guide</h1>
-            <p className="text-lg text-muted-foreground">
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-2 md:mb-3">Implementation Guide</h1>
+            <p className="text-base md:text-lg text-muted-foreground">
               Step-by-step prompts organized by feature area. Copy each prompt to build the SimpleLecture platform.
             </p>
           </div>
 
           <Tabs defaultValue="mobile-ui" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8">
               <TabsTrigger value="mobile-ui" className="flex items-center gap-2">
                 <Code2 className="h-4 w-4" />
                 Mobile App UI Design

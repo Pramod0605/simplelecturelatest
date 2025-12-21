@@ -153,22 +153,23 @@ const Cart = () => {
             </Button>
           </Link>
 
-          <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8">Shopping Cart</h1>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
             {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-3 md:space-y-4">
               {items.map((item) => (
-                <Card key={item.id} className="p-6">
-                  <div className="flex gap-4">
-                    <div className="w-24 h-24 bg-muted rounded-lg flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">{item.course_name}</h3>
-                      <p className="text-2xl font-bold text-primary">{formatINR(item.course_price)}</p>
+                <Card key={item.id} className="p-4 md:p-6">
+                  <div className="flex gap-3 md:gap-4">
+                    <div className="w-16 h-16 md:w-24 md:h-24 bg-muted rounded-lg flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base md:text-lg mb-1 line-clamp-2">{item.course_name}</h3>
+                      <p className="text-xl md:text-2xl font-bold text-primary">{formatINR(item.course_price)}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="shrink-0"
                       onClick={() => removeFromCart(item.id)}
                     >
                       <Trash2 className="h-5 w-5 text-destructive" />
@@ -180,7 +181,7 @@ const Cart = () => {
 
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <Card className="p-6 sticky top-4">
+              <Card className="p-4 md:p-6 sticky top-4">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
 
                 <div className="space-y-3 mb-4">

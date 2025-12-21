@@ -14,10 +14,10 @@ const PaymentFailed = () => {
       <SEOHead title="Payment Failed | SimpleLecture" description="Payment failed" />
       <SmartHeader />
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center">
-          <XCircle className="h-20 w-20 text-destructive mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-2">Payment Failed</h1>
-          <p className="text-muted-foreground mb-6">
+        <Card className="max-w-md w-full p-6 md:p-8 text-center">
+          <XCircle className="h-16 w-16 md:h-20 md:w-20 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Payment Failed</h1>
+          <p className="text-sm md:text-base text-muted-foreground mb-6">
             We couldn't process your payment. Please try again.
           </p>
 

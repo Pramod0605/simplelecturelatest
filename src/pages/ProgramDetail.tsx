@@ -298,21 +298,21 @@ const ProgramDetail = () => {
           </div>
         </section>
 
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid lg:grid-cols-3 gap-8">
+        <div className="container mx-auto px-4 py-6 md:py-12">
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6 md:space-y-8">
               {/* About Program */}
               {course.detailed_description && (
                 <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <BookOpen className="h-6 w-6 text-primary" />
+                  <CardHeader className="pb-2 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
+                      <BookOpen className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                       About This Program
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground leading-relaxed text-lg whitespace-pre-wrap">
+                  <CardContent className="pt-0">
+                    <p className="text-sm md:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap">
                       {course.detailed_description}
                     </p>
                   </CardContent>
@@ -322,20 +322,20 @@ const ProgramDetail = () => {
               {/* What You'll Learn */}
               {learningPoints.length > 0 && (
                 <Card className="border-2 bg-gradient-to-br from-primary/5 to-background">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Target className="h-6 w-6 text-primary" />
+                  <CardHeader className="pb-2 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
+                      <Target className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                       What You'll Learn
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       {learningPoints.map((point: any, index: number) => {
                         const text = typeof point === 'string' ? point : point.text || point.title || '';
                         return (
-                          <div key={index} className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                            <p className="text-muted-foreground">{text}</p>
+                          <div key={index} className="flex items-start gap-2 md:gap-3">
+                            <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-primary shrink-0 mt-0.5" />
+                            <p className="text-sm md:text-base text-muted-foreground">{text}</p>
                           </div>
                         );
                       })}
@@ -347,46 +347,46 @@ const ProgramDetail = () => {
               {/* Subjects Covered - Enhanced Clickable Cards */}
               {subjects.length > 0 && (
                 <Card className="border-2 border-primary/20 shadow-lg overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <GraduationCap className="h-6 w-6 text-primary" />
+                  <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent pb-2 md:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
+                      <GraduationCap className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                       Subjects You'll Master
                     </CardTitle>
-                    <p className="text-muted-foreground mt-2">
+                    <p className="text-sm text-muted-foreground mt-1 md:mt-2">
                       Click on any subject to explore the complete curriculum
                     </p>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="grid md:grid-cols-2 gap-4">
+                  <CardContent className="pt-4 md:pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       {subjects.map((subject: any) => (
                         <Link 
                           key={subject.id}
                           to={`/subject/${subject.slug}`}
                           className="block group"
                         >
-                          <Card className="h-full hover:shadow-xl transition-all duration-300 hover:scale-[1.03] border-2 hover:border-primary cursor-pointer bg-gradient-to-br from-background to-muted/20">
-                            <CardContent className="p-5">
-                              <div className="flex items-start gap-4">
+                          <Card className="h-full hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-2 hover:border-primary cursor-pointer bg-gradient-to-br from-background to-muted/20">
+                            <CardContent className="p-4 md:p-5">
+                              <div className="flex items-start gap-3 md:gap-4">
                                 {subject.thumbnail_url ? (
                                   <div className="relative">
                                     <img
                                       src={subject.thumbnail_url}
                                       alt={subject.name}
-                                      className="w-16 h-16 rounded-lg object-cover group-hover:scale-110 transition-transform duration-300"
+                                      className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-cover group-hover:scale-110 transition-transform duration-300"
                                     />
                                     <div className="absolute inset-0 bg-primary/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
                                 ) : (
-                                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center group-hover:from-primary/40 group-hover:to-primary/20 transition-colors">
-                                    <BookOpen className="h-8 w-8 text-primary" />
+                                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center group-hover:from-primary/40 group-hover:to-primary/20 transition-colors">
+                                    <BookOpen className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-lg group-hover:text-primary transition-colors mb-1 line-clamp-1">
+                                  <h4 className="font-bold text-base md:text-lg group-hover:text-primary transition-colors mb-1 line-clamp-1">
                                     {subject.name}
                                   </h4>
                                   {subject.description && (
-                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                    <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mb-2">
                                       {subject.description}
                                     </p>
                                   )}

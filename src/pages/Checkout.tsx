@@ -230,13 +230,13 @@ const Checkout = () => {
       <SmartHeader />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8">Checkout</h1>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
             {/* Checkout Form */}
-            <div className="lg:col-span-2">
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-6">Contact Information</h2>
+            <div className="lg:col-span-2 order-2 lg:order-1">
+              <Card className="p-4 md:p-6">
+                <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6">Contact Information</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="fullName">Full Name *</Label>
@@ -309,9 +309,9 @@ const Checkout = () => {
             </div>
 
             {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <Card className="p-6 sticky top-4">
-                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+            <div className="lg:col-span-1 order-1 lg:order-2">
+              <Card className="p-4 md:p-6 lg:sticky lg:top-4">
+                <h2 className="text-lg md:text-xl font-bold mb-4">Order Summary</h2>
 
                 <div className="space-y-3 mb-4">
                   {items.map((item) => (

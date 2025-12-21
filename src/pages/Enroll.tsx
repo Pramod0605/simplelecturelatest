@@ -253,25 +253,25 @@ const Enroll = () => {
       <SmartHeader />
 
       <main className="flex-1 bg-muted/30">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6 md:py-8">
           {/* Back Button */}
-          <Button variant="ghost" asChild className="mb-6">
+          <Button variant="ghost" asChild className="mb-4 md:mb-6 -ml-2">
             <Link to={`/programs/${courseSlug}`}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Course
             </Link>
           </Button>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
             {/* Enrollment Form */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 order-2 lg:order-1">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">Complete Your Enrollment</CardTitle>
-                  <p className="text-muted-foreground">Fill in your details to get started</p>
+                <CardHeader className="pb-2 md:pb-4">
+                  <CardTitle className="text-xl md:text-2xl">Complete Your Enrollment</CardTitle>
+                  <p className="text-sm text-muted-foreground">Fill in your details to get started</p>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="fullName">Full Name *</Label>
@@ -284,7 +284,7 @@ const Enroll = () => {
                         />
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="email">Email Address *</Label>
                           <Input
@@ -309,7 +309,7 @@ const Enroll = () => {
                         </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="state">State</Label>
                           <Input
@@ -356,7 +356,7 @@ const Enroll = () => {
             </div>
 
             {/* Order Summary */}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6 order-1 lg:order-2">
               {/* Course Summary */}
               <Card>
                 <CardHeader>

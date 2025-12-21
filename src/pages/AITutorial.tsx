@@ -29,11 +29,11 @@ const AITutorial = () => {
         </div>
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-5xl mx-auto space-y-6">
+        <div className="container mx-auto px-4 py-4 md:py-8">
+          <div className="max-w-5xl mx-auto space-y-4 md:space-y-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Physical Quantities</h1>
-              <p className="text-muted-foreground">Chapter 1: Units and Measurements • Physics</p>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2">Physical Quantities</h1>
+              <p className="text-sm md:text-base text-muted-foreground">Chapter 1: Units and Measurements • Physics</p>
             </div>
 
             {/* Video Player */}
@@ -41,12 +41,12 @@ const AITutorial = () => {
               <div className="aspect-video bg-black flex items-center justify-center">
                 <PlayCircle className="h-24 w-24 text-white opacity-80 hover:opacity-100 cursor-pointer transition-opacity" />
               </div>
-              <div className="p-4 bg-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-mono">{currentTime} / 30:00</span>
+              <div className="p-3 md:p-4 bg-card">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <span className="text-xs md:text-sm font-mono">{currentTime} / 30:00</span>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline">Speed: 1x</Button>
-                    <Button size="sm" variant="outline">Quality: 720p</Button>
+                    <Button size="sm" variant="outline" className="text-xs">Speed: 1x</Button>
+                    <Button size="sm" variant="outline" className="text-xs">Quality: 720p</Button>
                   </div>
                 </div>
               </div>
@@ -128,10 +128,10 @@ const AITutorial = () => {
             </Tabs>
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
-              <Button size="lg">Mark as Complete</Button>
-              <Button size="lg" variant="outline">Next Topic</Button>
-              <Button size="lg" variant="outline">Practice Questions</Button>
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+              <Button size="lg" className="flex-1 sm:flex-none">Mark as Complete</Button>
+              <Button size="lg" variant="outline" className="flex-1 sm:flex-none">Next Topic</Button>
+              <Button size="lg" variant="outline" className="flex-1 sm:flex-none">Practice Questions</Button>
             </div>
           </div>
         </div>
