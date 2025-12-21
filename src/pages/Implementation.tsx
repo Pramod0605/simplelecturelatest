@@ -1,5 +1,5 @@
 import { SEOHead } from "@/components/SEO";
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Footer } from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ const Implementation = () => {
         keywords="implementation, development guide, mobile app, backend integration"
         canonicalUrl="https://simplelecture.com/implementation"
       />
-      <Header />
+      <SmartHeader />
       
       <div className="min-h-screen bg-background pt-20 pb-12">
         <div className="container mx-auto px-4 max-w-7xl">

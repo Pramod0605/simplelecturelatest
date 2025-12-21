@@ -1,4 +1,4 @@
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Hero } from "@/components/Hero";
 import { ExploreProgramsSection } from "@/components/ExploreProgramsSection";
 import { BestsellersSection } from "@/components/BestsellersSection";
@@ -28,7 +28,7 @@ const Index = () => {
         structuredData={structuredData}
       />
       <div className="min-h-screen bg-background">
-        <Header />
+        <SmartHeader />
         <main>
           <Hero />
           <ExploreProgramsSection />

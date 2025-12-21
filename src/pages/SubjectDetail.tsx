@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +39,7 @@ const SubjectDetail = () => {
   if (loadingSubject || loadingChapters) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1">
           <div className="container mx-auto px-4 py-8">
             <Skeleton className="h-64 mb-8" />
@@ -59,7 +59,7 @@ const SubjectDetail = () => {
   if (!subject) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Subject Not Found</h1>
@@ -89,7 +89,7 @@ const SubjectDetail = () => {
         title={subject.name}
         description={subject.description || `Learn ${subject.name} with comprehensive chapters and topics`}
       />
-      <Header />
+      <SmartHeader />
       
       <main className="flex-1">
         {/* Breadcrumb Navigation */}

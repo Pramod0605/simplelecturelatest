@@ -3,6 +3,8 @@ import { XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SEOHead } from '@/components/SEO';
+import { SmartHeader } from '@/components/SmartHeader';
+import { Footer } from '@/components/Footer';
 
 const PaymentFailed = () => {
   const navigate = useNavigate();
@@ -10,6 +12,7 @@ const PaymentFailed = () => {
   return (
     <>
       <SEOHead title="Payment Failed | SimpleLecture" description="Payment failed" />
+      <SmartHeader />
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center">
           <XCircle className="h-20 w-20 text-destructive mx-auto mb-4" />
@@ -32,6 +35,7 @@ const PaymentFailed = () => {
           </p>
         </Card>
       </div>
+      <Footer />
     </>
   );
 };

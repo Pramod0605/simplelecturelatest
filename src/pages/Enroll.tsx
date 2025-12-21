@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Header } from '@/components/Header';
+import { SmartHeader } from '@/components/SmartHeader';
 import { Footer } from '@/components/Footer';
 import { SEOHead } from '@/components/SEO';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,7 +213,7 @@ const Enroll = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1 container mx-auto px-4 py-12">
           <Skeleton className="h-96 mb-8" />
         </main>
@@ -225,7 +225,7 @@ const Enroll = () => {
   if (!course) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold">Course Not Found</h1>
@@ -250,7 +250,7 @@ const Enroll = () => {
         title={`Enroll in ${course.name} | SimpleLecture`}
         description={`Enroll in ${course.name} and start learning today`}
       />
-      <Header />
+      <SmartHeader />
 
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-8">

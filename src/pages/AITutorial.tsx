@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SEOHead } from '@/components/SEO';
+import { SmartHeader } from '@/components/SmartHeader';
+import { Footer } from '@/components/Footer';
 
 const AITutorial = () => {
   const [currentTime, setCurrentTime] = useState('00:00');
@@ -12,8 +14,9 @@ const AITutorial = () => {
   return (
     <>
       <SEOHead title="AI Tutorial | SimpleLecture" description="AI-powered video learning" />
+      <SmartHeader />
       <div className="min-h-screen bg-background">
-        {/* Header */}
+        {/* Back Button */}
         <div className="border-b">
           <div className="container mx-auto px-4 py-4">
             <Link to="/learning">
@@ -96,7 +99,7 @@ const AITutorial = () => {
 
                   <div className="space-y-3">
                     <div className="bg-muted p-4 rounded-lg">
-                      <p className="text-sm">💡 Try asking: "What are scalar and vector quantities?"</p>
+                      <p className="text-sm">Try asking: "What are scalar and vector quantities?"</p>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -133,6 +136,7 @@ const AITutorial = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 };

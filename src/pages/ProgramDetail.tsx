@@ -1,7 +1,7 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,7 +99,7 @@ const ProgramDetail = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1">
           <div className="container mx-auto px-4 py-12">
             <Skeleton className="h-96 mb-8 rounded-xl" />
@@ -120,7 +120,7 @@ const ProgramDetail = () => {
   if (!course) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <SmartHeader />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold">Program Not Found</h1>
@@ -168,7 +168,7 @@ const ProgramDetail = () => {
         title={`${course.name} | SimpleLecture`}
         description={course.short_description || course.detailed_description || `Learn ${course.name} with expert guidance`}
       />
-      <Header />
+      <SmartHeader />
 
       <main className="flex-1">
         {/* Hero Section with Gradient */}

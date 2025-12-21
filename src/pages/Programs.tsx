@@ -3,7 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SEOHead } from "@/components/SEO";
-import { Header } from "@/components/Header";
+import { SmartHeader } from "@/components/SmartHeader";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -156,7 +156,7 @@ const Programs = () => {
         description="Explore our comprehensive programs for board exams, NEET, JEE, and more"
         keywords="online courses, board exams, NEET, JEE, integrated programs"
       />
-      <Header />
+      <SmartHeader />
       
       <main className="min-h-screen bg-background">
         {/* Breadcrumb */}

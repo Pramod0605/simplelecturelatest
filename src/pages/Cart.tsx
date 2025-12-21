@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { SEOHead } from '@/components/SEO';
-import { Header } from '@/components/Header';
+import { SmartHeader } from '@/components/SmartHeader';
 import { Footer } from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { formatINR } from '@/lib/utils';
@@ -79,7 +79,7 @@ const Cart = () => {
   if (checkingAuth || loading) {
     return (
       <>
-        <Header />
+        <SmartHeader />
         <div className="min-h-screen flex items-center justify-center">
           <p>Loading...</p>
         </div>
@@ -93,7 +93,7 @@ const Cart = () => {
     return (
       <>
         <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
-        <Header />
+        <SmartHeader />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="container mx-auto px-4 py-16">
             <Card className="max-w-md mx-auto p-8 text-center">
@@ -122,7 +122,7 @@ const Cart = () => {
     return (
       <>
         <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
-        <Header />
+        <SmartHeader />
         <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-16">
             <Card className="max-w-md mx-auto p-8 text-center">
@@ -143,7 +143,7 @@ const Cart = () => {
   return (
     <>
       <SEOHead title="Shopping Cart | SimpleLecture" description="Review your selected programs" />
-      <Header />
+      <SmartHeader />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <Link to="/courses">
