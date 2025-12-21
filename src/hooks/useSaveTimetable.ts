@@ -27,7 +27,7 @@ export const useSaveTimetable = () => {
 
       // Validate required fields
       for (const entry of entries) {
-        if (!entry.course_id || !entry.day_of_week || !entry.start_time || !entry.end_time || !entry.academic_year) {
+        if (!entry.course_id || entry.day_of_week === undefined || entry.day_of_week === null || !entry.start_time || !entry.end_time || !entry.academic_year) {
           throw new Error("Missing required fields: course, day, times, and academic year are mandatory");
         }
       }

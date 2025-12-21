@@ -32,10 +32,10 @@ export const TimetableGrid = ({ entries, onSlotClick }: TimetableGridProps) => {
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[800px]">
+      <div className="min-w-[1000px]">
         <div className="grid grid-cols-8 gap-2">
           <div className="font-semibold p-2">Time</div>
-          {DAYS.slice(1, 6).map((day) => (
+          {DAYS.map((day) => (
             <div key={day} className="font-semibold p-2 text-center">
               {day}
             </div>
@@ -45,7 +45,7 @@ export const TimetableGrid = ({ entries, onSlotClick }: TimetableGridProps) => {
         {TIME_SLOTS.map((time) => (
           <div key={time} className="grid grid-cols-8 gap-2 mb-2">
             <div className="p-2 text-sm text-muted-foreground">{time}</div>
-            {[1, 2, 3, 4, 5].map((day) => {
+            {[0, 1, 2, 3, 4, 5, 6].map((day) => {
               const entry = getEntryForSlot(day, time);
               return (
                 <Card
