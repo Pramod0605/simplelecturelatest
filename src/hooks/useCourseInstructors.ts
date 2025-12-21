@@ -53,17 +53,19 @@ export const useCourseInstructors = (courseId?: string) => {
 
       if (subsError) throw subsError;
 
-      // Step 6: Map the data
-      return instructorSubjects.map(is => {
-        const teacher = teachers?.find(t => t.id === is.instructor_id);
-        const subject = subjects?.find(s => s.id === is.subject_id);
-        
-        return {
-          ...is,
-          teacher: teacher || null,
-          subject: subject || null
-        };
-      });
+      // Step 6: Filter out null instructor_ids and map the data
+      return instructorSubjects
+        .filter(is => is.instructor_id !== null)
+        .map(is => {
+          const teacher = teachers?.find(t => t.id === is.instructor_id);
+          const subject = subjects?.find(s => s.id === is.subject_id);
+          
+          return {
+            ...is,
+            teacher: teacher || null,
+            subject: subject || null
+          };
+        });
     },
     enabled: !!courseId,
   });

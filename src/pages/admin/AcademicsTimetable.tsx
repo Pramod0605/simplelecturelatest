@@ -342,13 +342,13 @@ export default function AcademicsTimetable() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-background z-50">
                                   {courseInstructors
-                                    ?.filter(ci => ci.subject_id === entry.subject_id)
+                                    ?.filter(ci => ci.subject_id === entry.subject_id && ci.instructor_id)
                                     ?.map((ci) => (
-                                      <SelectItem key={ci.instructor_id} value={ci.instructor_id}>
+                                      <SelectItem key={ci.instructor_id!} value={ci.instructor_id!}>
                                         {ci.teacher?.full_name || "Unknown"}
                                       </SelectItem>
                                     ))}
-                                  {courseInstructors?.filter(ci => ci.subject_id === entry.subject_id)?.length === 0 && (
+                                  {courseInstructors?.filter(ci => ci.subject_id === entry.subject_id && ci.instructor_id)?.length === 0 && (
                                     <div className="p-2 text-sm text-muted-foreground text-center">
                                       No instructors assigned to this subject
                                     </div>
