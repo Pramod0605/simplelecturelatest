@@ -1,14 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLiveTimetable, DAYS, TimetableClass } from "@/hooks/useLiveTimetable";
+import { useRecordAttendance } from "@/hooks/useRecordAttendance";
 import { format, isToday, isTomorrow, startOfWeek, addWeeks, subWeeks, isSameWeek, addDays } from "date-fns";
-import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight, ChevronLeft, ChevronRight, Link as LinkIcon } from "lucide-react";
+import { Video, Clock, User, MapPin, BookOpen, Radio, Calendar, ArrowRight, ChevronLeft, ChevronRight, BarChart3, PlayCircle } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
+import { AttendanceDashboard } from "@/components/learning/AttendanceDashboard";
+import { RecordingsTab } from "@/components/learning/RecordingsTab";
+import { useQueryClient } from "@tanstack/react-query";
 
 const ClassCard = ({ classItem, showDate = false }: { classItem: TimetableClass; showDate?: boolean }) => {
   const formatTime = (time: string) => {
@@ -91,7 +96,32 @@ const ClassCard = ({ classItem, showDate = false }: { classItem: TimetableClass;
 };
 
 const LivePage = () => {
-  const { data, isLoading } = useLiveTimetable();
+  const { data, isLoading, refetch } = useLiveTimetable();
+  const queryClient = useQueryClient();
+
+  // Real-time subscription for live class updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('live-class-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scheduled_classes',
+        },
+        () => {
+          // Refetch data when any scheduled class changes
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ['live-classes'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch, queryClient]);
 
   if (isLoading) {
     return (
@@ -153,12 +183,46 @@ const LivePage = () => {
             </div>
           )}
 
-          {/* Tabs for Today / Week */}
-          <WeeklySchedule today={today} week={week} />
+          {/* Main Tabs with Schedule, Attendance, Recordings */}
+          <MainTabs today={today} week={week} />
         </div>
       </main>
       <Footer />
     </>
+  );
+};
+
+// Main tabs component with Schedule, Attendance, and Recordings
+const MainTabs = ({ today, week }: { today: TimetableClass[]; week: TimetableClass[] }) => {
+  return (
+    <Tabs defaultValue="schedule" className="mt-8">
+      <TabsList className="mb-6">
+        <TabsTrigger value="schedule" className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          Schedule
+        </TabsTrigger>
+        <TabsTrigger value="attendance" className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" />
+          Attendance
+        </TabsTrigger>
+        <TabsTrigger value="recordings" className="flex items-center gap-2">
+          <PlayCircle className="h-4 w-4" />
+          Recordings
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="schedule">
+        <WeeklySchedule today={today} week={week} />
+      </TabsContent>
+
+      <TabsContent value="attendance">
+        <AttendanceDashboard />
+      </TabsContent>
+
+      <TabsContent value="recordings">
+        <RecordingsTab />
+      </TabsContent>
+    </Tabs>
   );
 };
 
