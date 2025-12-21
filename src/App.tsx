@@ -84,7 +84,8 @@ import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
 import OrdersList from "./pages/admin/OrdersList";
 import BulkAssignInstructors from "./pages/admin/BulkAssignInstructors";
 import Live from "./pages/Live";
-
+import WatchRecording from "./pages/WatchRecording";
+import RecordingsManager from "./pages/admin/RecordingsManager";
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -116,6 +117,7 @@ const App = () => (
             <Route path="/learning/:courseId/:subjectId" element={<Learning />} />
             <Route path="/ai-tutorial/:topicId" element={<AITutorial />} />
             <Route path="/live" element={<Live />} />
+            <Route path="/watch/:recordingId" element={<WatchRecording />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />
@@ -183,6 +185,7 @@ const App = () => (
                 <Route path="hr/timetable" element={<TimetableManager />} />
                 <Route path="hr/bulk-assign-instructors" element={<BulkAssignInstructors />} />
                 <Route path="hr/live-classes" element={<LiveClassesManager />} />
+                <Route path="hr/recordings" element={<RecordingsManager />} />
               </Route>
             </Route>
             
