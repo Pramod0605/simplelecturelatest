@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,12 @@ import { useAdminCategories, getCategoryHierarchyDisplay } from "@/hooks/useAdmi
 import { useCoursesByCategory } from "@/hooks/useCoursesByCategory";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
 import { useCourseSubjects } from "@/hooks/useCourseSubjects";
-import { useCourseInstructors } from "@/hooks/useCourseInstructors";
+import { useSubjectInstructorsForTimetable, useAllInstructorsForTimetable } from "@/hooks/useSubjectInstructorsForTimetable";
+import { useInstructorConflicts, checkConflicts, ConflictInfo } from "@/hooks/useInstructorConflicts";
 import { useSaveTimetable } from "@/hooks/useSaveTimetable";
-import { Trash2 } from "lucide-react";
+import { ConflictBadge } from "@/components/hr/ConflictBadge";
+import { ConflictAlert } from "@/components/hr/ConflictAlert";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -27,12 +30,18 @@ export default function AcademicsTimetable() {
     interval: "10",
     roomNo: "",
   });
+  const [activeSubjectId, setActiveSubjectId] = useState<string>("");
+  const [entryConflicts, setEntryConflicts] = useState<Map<string, ConflictInfo[]>>(new Map());
 
   const { data: categories } = useAdminCategories();
   const { data: courses } = useCoursesByCategory(selectedCategory || undefined);
   const { data: batches } = useAdminBatches();
   const { data: courseSubjects } = useCourseSubjects(selectedCourse);
-  const { data: courseInstructors } = useCourseInstructors(selectedCourse);
+  
+  // Fetch instructors for the currently selected subject
+  const { data: subjectInstructors } = useSubjectInstructorsForTimetable(activeSubjectId);
+  const { data: allInstructors } = useAllInstructorsForTimetable();
+  
   const saveTimetableMutation = useSaveTimetable();
 
   const [dayEntries, setDayEntries] = useState<Record<number, any[]>>({
@@ -45,6 +54,11 @@ export default function AcademicsTimetable() {
     0: [],
   });
 
+  // Reset active subject when course changes
+  useEffect(() => {
+    setActiveSubjectId("");
+  }, [selectedCourse]);
+
   const handleQuickGenerate = () => {
     const { startTime, duration, interval } = generatorSettings;
     if (!startTime || !duration) {
@@ -54,7 +68,7 @@ export default function AcademicsTimetable() {
 
     const newEntries: Record<number, any[]> = {};
     DAYS.forEach((_, dayIdx) => {
-      const dayOfWeek = dayIdx === 6 ? 0 : dayIdx + 1; // Convert to 0=Sunday format
+      const dayOfWeek = dayIdx === 6 ? 0 : dayIdx + 1;
       newEntries[dayOfWeek] = [{
         subject_id: "",
         instructor_id: "",
@@ -100,12 +114,38 @@ export default function AcademicsTimetable() {
   const updateEntry = (dayOfWeek: number, index: number, field: string, value: any) => {
     const updated = [...dayEntries[dayOfWeek]];
     updated[index] = { ...updated[index], [field]: value };
+    
+    // If subject changed, update activeSubjectId and clear instructor
+    if (field === "subject_id") {
+      setActiveSubjectId(value);
+      updated[index].instructor_id = "";
+    }
+    
     setDayEntries({ ...dayEntries, [dayOfWeek]: updated });
   };
 
   const removeEntry = (dayOfWeek: number, index: number) => {
     const updated = dayEntries[dayOfWeek].filter((_, i) => i !== index);
     setDayEntries({ ...dayEntries, [dayOfWeek]: updated });
+  };
+
+  // Get instructors for a specific subject
+  const getInstructorsForSubject = (subjectId: string) => {
+    if (!subjectId) return [];
+    if (subjectId === activeSubjectId && subjectInstructors && subjectInstructors.length > 0) {
+      return subjectInstructors;
+    }
+    // Fallback to all instructors
+    return allInstructors || [];
+  };
+
+  // Check if we're showing fallback instructors (no subject-specific ones)
+  const isUsingFallbackInstructors = (subjectId: string) => {
+    if (!subjectId) return false;
+    if (subjectId === activeSubjectId) {
+      return !subjectInstructors || subjectInstructors.length === 0;
+    }
+    return true; // For non-active subjects, we don't know yet
   };
 
   const handleSaveTimetable = async () => {
@@ -144,8 +184,27 @@ export default function AcademicsTimetable() {
       return;
     }
 
+    // Check for conflicts
+    const hasHardConflicts = Array.from(entryConflicts.values()).some(
+      conflicts => conflicts.some(c => c.type === "hard")
+    );
+
+    if (hasHardConflicts) {
+      toast.error("Cannot save: There are scheduling conflicts. Please fix them first.");
+      return;
+    }
+
     await saveTimetableMutation.mutateAsync(entries);
   };
+
+  // Aggregate all conflicts for display
+  const allConflicts = useMemo(() => {
+    const all: ConflictInfo[] = [];
+    entryConflicts.forEach((conflicts) => {
+      all.push(...conflicts);
+    });
+    return all;
+  }, [entryConflicts]);
 
   return (
     <div className="p-8 space-y-6">
@@ -224,18 +283,19 @@ export default function AcademicsTimetable() {
               ⚠️ This course has no subjects mapped. Please map subjects in the Course Edit page first.
             </div>
           )}
-
-          {selectedCourse && courseSubjects && courseSubjects.length > 0 && 
-           courseInstructors && courseInstructors.length === 0 && (
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
-              ⚠️ No instructors assigned to teach subjects in this course. Please assign instructors in the Course Edit page → Instructors tab.
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {selectedCourse && (
         <>
+          {/* Conflict Summary */}
+          {allConflicts.length > 0 && (
+            <ConflictAlert 
+              conflicts={allConflicts} 
+              onDismiss={() => setEntryConflicts(new Map())}
+            />
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Quick Timetable Generator</CardTitle>
@@ -306,88 +366,114 @@ export default function AcademicsTimetable() {
                       </div>
                       
                       <div className="space-y-2">
-                        {dayEntries[dayOfWeek]?.map((entry, entryIdx) => (
-                          <div key={entryIdx} className="grid grid-cols-6 gap-2 items-end p-3 border rounded">
-                            <div>
-                              <Label className="text-xs">Subject</Label>
-                              <Select
-                                value={entry.subject_id}
-                                onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'subject_id', v)}
-                              >
-                                <SelectTrigger className="bg-background">
-                                  <SelectValue placeholder="Select subject" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-background z-50">
-                                  {courseSubjects?.map((cs) => (
-                                    <SelectItem key={cs.subject_id} value={cs.subject_id}>
-                                      {cs.subject?.name || "Unknown"}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Instructor</Label>
-                              <Select
-                                value={entry.instructor_id}
-                                onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'instructor_id', v)}
-                                disabled={!entry.subject_id}
-                              >
-                                <SelectTrigger className="bg-background">
-                                  <SelectValue placeholder={
-                                    !entry.subject_id 
-                                      ? "Select subject first" 
-                                      : "Select instructor"
-                                  } />
-                                </SelectTrigger>
-                                <SelectContent className="bg-background z-50">
-                                  {courseInstructors
-                                    ?.filter(ci => ci.subject_id === entry.subject_id && ci.instructor_id)
-                                    ?.map((ci) => (
-                                      <SelectItem key={ci.instructor_id!} value={ci.instructor_id!}>
-                                        {ci.teacher?.full_name || "Unknown"}
+                        {dayEntries[dayOfWeek]?.map((entry, entryIdx) => {
+                          const entryKey = `${dayOfWeek}-${entry.start_time}-${entry.instructor_id}`;
+                          const conflicts = entryConflicts.get(entryKey) || [];
+                          const hasConflict = conflicts.length > 0;
+                          const instructors = entry.subject_id ? getInstructorsForSubject(entry.subject_id) : [];
+                          const isFallback = isUsingFallbackInstructors(entry.subject_id);
+                          
+                          return (
+                            <div 
+                              key={entryIdx} 
+                              className={`grid grid-cols-6 gap-2 items-end p-3 border rounded ${
+                                hasConflict ? "border-destructive bg-destructive/5" : ""
+                              }`}
+                            >
+                              <div>
+                                <Label className="text-xs">Subject</Label>
+                                <Select
+                                  value={entry.subject_id}
+                                  onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'subject_id', v)}
+                                >
+                                  <SelectTrigger className="bg-background">
+                                    <SelectValue placeholder="Select subject" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-background z-50">
+                                    {courseSubjects?.map((cs) => (
+                                      <SelectItem key={cs.subject_id} value={cs.subject_id}>
+                                        {cs.subject?.name || "Unknown"}
                                       </SelectItem>
                                     ))}
-                                  {courseInstructors?.filter(ci => ci.subject_id === entry.subject_id && ci.instructor_id)?.length === 0 && (
-                                    <div className="p-2 text-sm text-muted-foreground text-center">
-                                      No instructors assigned to this subject
-                                    </div>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <Label className="text-xs">Instructor</Label>
+                                  {isFallback && entry.subject_id && (
+                                    <AlertTriangle className="h-3 w-3 text-yellow-500" />
                                   )}
-                                </SelectContent>
-                              </Select>
+                                </div>
+                                <Select
+                                  value={entry.instructor_id}
+                                  onValueChange={(v) => updateEntry(dayOfWeek, entryIdx, 'instructor_id', v)}
+                                  disabled={!entry.subject_id}
+                                >
+                                  <SelectTrigger className="bg-background">
+                                    <SelectValue placeholder={
+                                      !entry.subject_id 
+                                        ? "Select subject first" 
+                                        : "Select instructor"
+                                    } />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-background z-50">
+                                    {isFallback && entry.subject_id && (
+                                      <div className="px-2 py-1.5 text-xs text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20 border-b">
+                                        No assigned instructors - showing all
+                                      </div>
+                                    )}
+                                    {instructors.map((inst) => (
+                                      <SelectItem key={inst.id} value={inst.id}>
+                                        {inst.full_name}
+                                      </SelectItem>
+                                    ))}
+                                    {instructors.length === 0 && (
+                                      <div className="p-2 text-sm text-muted-foreground text-center">
+                                        No instructors available
+                                      </div>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Time From</Label>
+                                <Input
+                                  type="time"
+                                  value={entry.start_time}
+                                  onChange={(e) => updateEntry(dayOfWeek, entryIdx, "start_time", e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Time To</Label>
+                                <Input
+                                  type="time"
+                                  value={entry.end_time}
+                                  onChange={(e) => updateEntry(dayOfWeek, entryIdx, "end_time", e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Room No.</Label>
+                                <Input
+                                  value={entry.room_number}
+                                  onChange={(e) => updateEntry(dayOfWeek, entryIdx, "room_number", e.target.value)}
+                                />
+                              </div>
+                              <div className="flex gap-1">
+                                {hasConflict && (
+                                  <ConflictBadge conflicts={conflicts} />
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => removeEntry(dayOfWeek, entryIdx)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
-                            <div>
-                              <Label className="text-xs">Time From</Label>
-                              <Input
-                                type="time"
-                                value={entry.start_time}
-                                onChange={(e) => updateEntry(dayOfWeek, entryIdx, "start_time", e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Time To</Label>
-                              <Input
-                                type="time"
-                                value={entry.end_time}
-                                onChange={(e) => updateEntry(dayOfWeek, entryIdx, "end_time", e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Room No.</Label>
-                              <Input
-                                value={entry.room_number}
-                                onChange={(e) => updateEntry(dayOfWeek, entryIdx, "room_number", e.target.value)}
-                              />
-                            </div>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => removeEntry(dayOfWeek, entryIdx)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
+                          );
+                        })}
                         
                         {(!dayEntries[dayOfWeek] || dayEntries[dayOfWeek].length === 0) && (
                           <p className="text-muted-foreground text-center py-8 text-sm">
@@ -401,8 +487,12 @@ export default function AcademicsTimetable() {
               </Tabs>
 
               <div className="flex justify-end mt-6">
-                <Button onClick={handleSaveTimetable} size="lg">
-                  Save Timetable
+                <Button 
+                  onClick={handleSaveTimetable} 
+                  size="lg"
+                  disabled={saveTimetableMutation.isPending}
+                >
+                  {saveTimetableMutation.isPending ? "Saving..." : "Save Timetable"}
                 </Button>
               </div>
             </CardContent>
