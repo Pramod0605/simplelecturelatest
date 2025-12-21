@@ -470,6 +470,92 @@ export type Database = {
           },
         ]
       }
+      class_recordings: {
+        Row: {
+          available_qualities: Json | null
+          b2_encrypted_path: string | null
+          b2_hls_1080p_path: string | null
+          b2_hls_360p_path: string | null
+          b2_hls_480p_path: string | null
+          b2_hls_720p_path: string | null
+          b2_original_path: string | null
+          bbb_recording_id: string | null
+          bunny_status: string | null
+          bunny_video_guid: string | null
+          cdn_base_url: string | null
+          cloudflare_zone_id: string | null
+          created_at: string | null
+          default_quality: string | null
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          id: string
+          original_filename: string | null
+          processed_at: string | null
+          processing_error: string | null
+          processing_status: string | null
+          scheduled_class_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          available_qualities?: Json | null
+          b2_encrypted_path?: string | null
+          b2_hls_1080p_path?: string | null
+          b2_hls_360p_path?: string | null
+          b2_hls_480p_path?: string | null
+          b2_hls_720p_path?: string | null
+          b2_original_path?: string | null
+          bbb_recording_id?: string | null
+          bunny_status?: string | null
+          bunny_video_guid?: string | null
+          cdn_base_url?: string | null
+          cloudflare_zone_id?: string | null
+          created_at?: string | null
+          default_quality?: string | null
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          scheduled_class_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          available_qualities?: Json | null
+          b2_encrypted_path?: string | null
+          b2_hls_1080p_path?: string | null
+          b2_hls_360p_path?: string | null
+          b2_hls_480p_path?: string | null
+          b2_hls_720p_path?: string | null
+          b2_original_path?: string | null
+          bbb_recording_id?: string | null
+          bunny_status?: string | null
+          bunny_video_guid?: string | null
+          cdn_base_url?: string | null
+          cloudflare_zone_id?: string | null
+          created_at?: string | null
+          default_quality?: string | null
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          scheduled_class_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_recordings_scheduled_class_id_fkey"
+            columns: ["scheduled_class_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counselor_avatars: {
         Row: {
           created_at: string | null
@@ -1660,6 +1746,53 @@ export type Database = {
           },
         ]
       }
+      network_quality_logs: {
+        Row: {
+          adapted_to_quality: string | null
+          buffer_events: number | null
+          connection_type: string | null
+          created_at: string | null
+          effective_bandwidth_mbps: number | null
+          id: string
+          initial_quality: string | null
+          latency_ms: number | null
+          recording_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          adapted_to_quality?: string | null
+          buffer_events?: number | null
+          connection_type?: string | null
+          created_at?: string | null
+          effective_bandwidth_mbps?: number | null
+          id?: string
+          initial_quality?: string | null
+          latency_ms?: number | null
+          recording_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          adapted_to_quality?: string | null
+          buffer_events?: number | null
+          connection_type?: string | null
+          created_at?: string | null
+          effective_bandwidth_mbps?: number | null
+          id?: string
+          initial_quality?: string | null
+          latency_ms?: number | null
+          recording_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_quality_logs_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "class_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notice_reads: {
         Row: {
           id: string
@@ -1789,6 +1922,71 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offline_downloads: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          download_status: string | null
+          download_url: string | null
+          downloaded_at: string | null
+          encryption_iv: string | null
+          encryption_key_encrypted: string | null
+          expires_at: string | null
+          file_size_bytes: number | null
+          id: string
+          is_revoked: boolean | null
+          quality: string | null
+          recording_id: string | null
+          revoked_at: string | null
+          revoked_reason: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          download_status?: string | null
+          download_url?: string | null
+          downloaded_at?: string | null
+          encryption_iv?: string | null
+          encryption_key_encrypted?: string | null
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_revoked?: boolean | null
+          quality?: string | null
+          recording_id?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          download_status?: string | null
+          download_url?: string | null
+          downloaded_at?: string | null
+          encryption_iv?: string | null
+          encryption_key_encrypted?: string | null
+          expires_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_revoked?: boolean | null
+          quality?: string | null
+          recording_id?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_downloads_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "class_recordings"
             referencedColumns: ["id"]
           },
         ]
@@ -3904,6 +4102,44 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_watch_progress: {
+        Row: {
+          completed: boolean | null
+          id: string
+          last_watched_at: string | null
+          progress_percent: number | null
+          progress_seconds: number | null
+          recording_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          id?: string
+          last_watched_at?: string | null
+          progress_percent?: number | null
+          progress_seconds?: number | null
+          recording_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          id?: string
+          last_watched_at?: string | null
+          progress_percent?: number | null
+          progress_seconds?: number | null
+          recording_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_watch_progress_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "class_recordings"
             referencedColumns: ["id"]
           },
         ]
