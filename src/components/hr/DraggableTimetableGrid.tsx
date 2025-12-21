@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useUpdateTimetableEntry } from "@/hooks/useInstructorTimetable";
 import { EditTimeSlotDialog } from "./EditTimeSlotDialog";
 import { cn } from "@/lib/utils";
+import { format, addDays, startOfWeek } from "date-fns";
 
 interface TimetableEntry {
   id: string;
@@ -160,6 +161,13 @@ export const DraggableTimetableGrid = ({
     })
   );
 
+  // Calculate dates for the current week
+  const weekDates = useMemo(() => {
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 0 }); // Sunday
+    return DAYS.map((_, idx) => addDays(weekStart, idx));
+  }, []);
+
   const getEntryForSlot = (day: number, time: string) => {
     return entries.find((entry) => {
       const entryTime = entry.start_time.substring(0, 5);
@@ -223,9 +231,12 @@ export const DraggableTimetableGrid = ({
       <div className="min-w-[1000px]">
         <div className="grid grid-cols-8 gap-2">
           <div className="font-semibold p-2">Time</div>
-          {DAYS.map((day) => (
+          {DAYS.map((day, idx) => (
             <div key={day} className="font-semibold p-2 text-center">
-              {day}
+              <div>{day}</div>
+              <div className="text-xs text-muted-foreground font-normal">
+                {format(weekDates[idx], "MMM d")}
+              </div>
             </div>
           ))}
         </div>

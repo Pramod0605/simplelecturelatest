@@ -9,7 +9,7 @@ import { useAllSubjects } from "@/hooks/useAllSubjects";
 import { useInstructorSubjects } from "@/hooks/useInstructors";
 import { useAdminBatches } from "@/hooks/useAdminBatches";
 import { usePaginatedCourses } from "@/hooks/usePaginatedCourses";
-import { useInstructorConflicts, checkConflicts, ConflictInfo } from "@/hooks/useInstructorConflicts";
+import { useInstructorConflicts, checkConflicts, checkSubjectConflicts, checkLiveClassConflicts, ConflictInfo } from "@/hooks/useInstructorConflicts";
 import { ConflictAlert } from "./ConflictAlert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,8 +29,8 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
   const { data: coursesData } = usePaginatedCourses({ page: 1, pageSize: 100 });
   const { data: existingEntries } = useInstructorConflicts(instructorId);
   const createEntry = useCreateTimetableEntry();
-  
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
+  const [isCheckingConflicts, setIsCheckingConflicts] = useState(false);
   const [formData, setFormData] = useState({
     course_id: "",
     subject_id: "",
@@ -49,23 +49,58 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
   const assignedSubjects = allSubjects?.filter(s => assignedSubjectIds.has(s.id)) || [];
   const otherSubjects = allSubjects?.filter(s => !assignedSubjectIds.has(s.id)) || [];
 
-  // Check for conflicts when day/time changes
+  // Check for all conflicts when day/time/subject changes
   useEffect(() => {
-    if (formData.day_of_week && formData.start_time && formData.end_time && existingEntries) {
-      const newConflicts = checkConflicts(
-        {
+    const checkAllConflicts = async () => {
+      if (!formData.day_of_week || !formData.start_time || !formData.end_time) {
+        setConflicts([]);
+        return;
+      }
+
+      setIsCheckingConflicts(true);
+      const allConflicts: ConflictInfo[] = [];
+
+      // 1. Check instructor time conflicts
+      if (existingEntries) {
+        const instructorConflicts = checkConflicts(
+          {
+            day_of_week: parseInt(formData.day_of_week),
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            instructor_id: instructorId,
+          },
+          existingEntries
+        );
+        allConflicts.push(...instructorConflicts);
+      }
+
+      // 2. Check subject conflicts (same subject at same time)
+      if (formData.subject_id) {
+        const subjectConflicts = await checkSubjectConflicts({
           day_of_week: parseInt(formData.day_of_week),
           start_time: formData.start_time,
           end_time: formData.end_time,
           instructor_id: instructorId,
-        },
-        existingEntries
+          subject_id: formData.subject_id,
+        });
+        allConflicts.push(...subjectConflicts);
+      }
+
+      // 3. Check live class conflicts
+      const liveClassConflicts = await checkLiveClassConflicts(
+        instructorId,
+        parseInt(formData.day_of_week),
+        formData.start_time,
+        formData.end_time
       );
-      setConflicts(newConflicts);
-    } else {
-      setConflicts([]);
-    }
-  }, [formData.day_of_week, formData.start_time, formData.end_time, existingEntries, instructorId]);
+      allConflicts.push(...liveClassConflicts);
+
+      setConflicts(allConflicts);
+      setIsCheckingConflicts(false);
+    };
+
+    checkAllConflicts();
+  }, [formData.day_of_week, formData.start_time, formData.end_time, formData.subject_id, existingEntries, instructorId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,9 +349,9 @@ export const AddTimeSlotDialog = ({ open, onOpenChange, instructorId }: AddTimeS
             </Button>
             <Button 
               type="submit" 
-              disabled={createEntry.isPending || conflicts.some(c => c.type === "hard")}
+              disabled={createEntry.isPending || isCheckingConflicts || conflicts.some(c => c.type === "hard")}
             >
-              {createEntry.isPending ? "Adding..." : "Add Time Slot"}
+              {createEntry.isPending ? "Adding..." : isCheckingConflicts ? "Checking..." : "Add Time Slot"}
             </Button>
           </div>
         </form>

@@ -188,9 +188,15 @@ const LivePage = () => {
                     const dayClasses = week.filter(c => c.day_of_week === dayIndex);
                     if (dayClasses.length === 0) return null;
 
+                    // Get the date for this day from the first class
+                    const dayDate = dayClasses[0]?.scheduled_date;
+                    const dateLabel = dayDate ? format(dayDate, "MMMM d, yyyy") : "";
+
                     return (
                       <div key={day}>
-                        <h3 className="text-lg font-semibold mb-3 text-muted-foreground">{day}</h3>
+                        <h3 className="text-lg font-semibold mb-3 text-muted-foreground">
+                          {day}{dateLabel && <span className="font-normal ml-2">({dateLabel})</span>}
+                        </h3>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {dayClasses.map((classItem) => (
                             <ClassCard key={classItem.id} classItem={classItem} showDate />
