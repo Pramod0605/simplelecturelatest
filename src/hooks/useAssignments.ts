@@ -15,17 +15,7 @@ export interface Assignment {
   submitted_at?: string;
 }
 
-// Mock assignments data
-const mockAssignments: Assignment[] = [
-  { id: 'a1', title: 'Computer Assignment 1', description: 'Programming exercises', due_date: '2025-10-27', total_marks: 100, passing_marks: 40, course_id: 'c1', course_name: 'Computer (00220)', status: 'pending' },
-  { id: 'a2', title: 'English Essay', description: 'Write about climate change', due_date: '2025-10-28', total_marks: 50, passing_marks: 20, course_id: 'c2', course_name: 'English (210)', status: 'pending' },
-  { id: 'a3', title: 'Mathematics Problem Set', description: 'Calculus problems', due_date: '2025-10-25', total_marks: 100, passing_marks: 40, course_id: 'c3', course_name: 'Mathematics (110)', status: 'submitted', submitted_at: '2025-10-24' },
-  { id: 'a4', title: 'Physics Lab Report', description: 'Experiment analysis', due_date: '2025-10-20', total_marks: 100, passing_marks: 40, course_id: 'c4', course_name: 'Physics (101)', status: 'graded', score: 85, submitted_at: '2025-10-19' },
-  { id: 'a5', title: 'Chemistry Homework', description: 'Organic chemistry questions', due_date: '2025-10-30', total_marks: 50, passing_marks: 20, course_id: 'c5', course_name: 'Chemistry (102)', status: 'pending' },
-  { id: 'a6', title: 'Hindi Literature', description: 'Poetry analysis', due_date: '2025-10-26', total_marks: 50, passing_marks: 20, course_id: 'c6', course_name: 'Hindi (230)', status: 'pending' },
-  { id: 'a7', title: 'Biology Assignment', description: 'Cell biology', due_date: '2025-10-29', total_marks: 100, passing_marks: 40, course_id: 'c7', course_name: 'Biology (101)', status: 'pending' },
-  { id: 'a8', title: 'Mathematics Quiz', description: 'Trigonometry', due_date: '2025-10-22', total_marks: 50, passing_marks: 20, course_id: 'c3', course_name: 'Mathematics (110)', status: 'graded', score: 92, submitted_at: '2025-10-21' },
-];
+const emptyStats = { pending: 0, submitted: 0, graded: 0 };
 
 export const useAssignments = () => {
   const { data, isLoading } = useQuery({
@@ -33,14 +23,8 @@ export const useAssignments = () => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Return mock data if no user
       if (!user) {
-        const stats = {
-          pending: mockAssignments.filter(a => a.status === 'pending').length,
-          submitted: mockAssignments.filter(a => a.status === 'submitted').length,
-          graded: mockAssignments.filter(a => a.status === 'graded').length,
-        };
-        return { assignments: mockAssignments, stats };
+        return { assignments: [], stats: emptyStats };
       }
 
       // Get enrolled courses
@@ -52,18 +36,13 @@ export const useAssignments = () => {
 
       if (enrollError) {
         console.error('Error fetching enrollments:', enrollError);
-        const stats = {
-          pending: mockAssignments.filter(a => a.status === 'pending').length,
-          submitted: mockAssignments.filter(a => a.status === 'submitted').length,
-          graded: mockAssignments.filter(a => a.status === 'graded').length,
-        };
-        return { assignments: mockAssignments, stats };
+        return { assignments: [], stats: emptyStats };
       }
 
       const courseIds = enrollments?.map(e => e.course_id) || [];
 
       if (courseIds.length === 0) {
-        return { assignments: [], stats: { pending: 0, submitted: 0, graded: 0 } };
+        return { assignments: [], stats: emptyStats };
       }
 
       // Get assignments for enrolled courses
@@ -76,16 +55,16 @@ export const useAssignments = () => {
 
       if (assignError) {
         console.error('Error fetching assignments:', assignError);
-        const stats = {
-          pending: mockAssignments.filter(a => a.status === 'pending').length,
-          submitted: mockAssignments.filter(a => a.status === 'submitted').length,
-          graded: mockAssignments.filter(a => a.status === 'graded').length,
-        };
-        return { assignments: mockAssignments, stats };
+        return { assignments: [], stats: emptyStats };
       }
 
       // Get submissions
       const assignmentIds = assignments?.map(a => a.id) || [];
+      
+      if (assignmentIds.length === 0) {
+        return { assignments: [], stats: emptyStats };
+      }
+
       const { data: submissions, error: subError } = await supabase
         .from('assignment_submissions')
         .select('*')
@@ -128,23 +107,13 @@ export const useAssignments = () => {
         graded: processedAssignments.filter(a => a.status === 'graded').length,
       };
 
-      // Return mock data if no assignments found
-      if (processedAssignments.length === 0) {
-        const mockStats = {
-          pending: mockAssignments.filter(a => a.status === 'pending').length,
-          submitted: mockAssignments.filter(a => a.status === 'submitted').length,
-          graded: mockAssignments.filter(a => a.status === 'graded').length,
-        };
-        return { assignments: mockAssignments, stats: mockStats };
-      }
-
       return { assignments: processedAssignments, stats };
     },
   });
 
   return {
     assignments: data?.assignments || [],
-    stats: data?.stats || { pending: 0, submitted: 0, graded: 0 },
+    stats: data?.stats || emptyStats,
     isLoading,
   };
 };
