@@ -163,8 +163,8 @@ export const useDashboardCourseDetails = () => {
       return coursesWithSubjects;
     },
     enabled: !!user && courseIds.length > 0,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   return {
