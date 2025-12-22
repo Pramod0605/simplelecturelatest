@@ -18,9 +18,9 @@ export const SUPPORTED_LANGUAGES = {
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
-// Global request queue to prevent rate limiting - serializes ALL TTS requests
+// Global request queue to prevent rate limiting - minimal gap for fast batch processing
 let lastTTSRequestTime = 0;
-const MIN_REQUEST_GAP = 2000; // 2 seconds minimum between TTS API calls (faster for batch pre-caching)
+const MIN_REQUEST_GAP = 300; // 300ms minimum between TTS API calls for fast batch pre-caching
 
 // Global request queue - ensures only ONE request at a time across ALL components
 let requestQueue: Promise<any> = Promise.resolve();
@@ -43,6 +43,7 @@ const queueTTSRequest = async <T>(fn: () => Promise<T>): Promise<T> => {
 
 interface UseGoogleTTSReturn {
   speak: (text: string, languageCode?: SupportedLanguage, gender?: "female" | "male", onComplete?: () => void) => Promise<void>;
+  speakFromCache: (text: string, languageCode?: SupportedLanguage, gender?: "female" | "male", onComplete?: () => void) => Promise<boolean>;
   stopSpeaking: () => void;
   isSpeaking: boolean;
   isLoading: boolean;
@@ -493,8 +494,103 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     }
   }, [stopSpeaking, toast]);
 
+  // Play audio directly from cache - no API calls, for seamless presentation playback
+  const speakFromCache = useCallback(async (
+    text: string,
+    languageCode: SupportedLanguage = 'en-IN',
+    gender: "female" | "male" = "female",
+    onComplete?: () => void
+  ): Promise<boolean> => {
+    const cleanText = cleanTextForTTS(text);
+    if (!cleanText) {
+      console.log("No text to speak from cache");
+      onComplete?.();
+      return false;
+    }
+
+    // Stop any currently playing audio
+    stopSpeaking();
+    stoppedRef.current = false;
+
+    // Check cache
+    const cacheKey = getCacheKey(cleanText, languageCode, gender);
+    const cached = audioCache.get(cacheKey);
+
+    if (!cached || Date.now() - cached.timestamp >= CACHE_TTL) {
+      console.warn(`⚠️ Cache miss for: "${cleanText.substring(0, 30)}..."`);
+      onComplete?.();
+      return false;
+    }
+
+    console.log(`▶️ Playing from cache: "${cleanText.substring(0, 30)}..." (${cached.audioContents.length} segments)`);
+
+    try {
+      setIsSpeaking(true);
+
+      // Play all audio segments from cache
+      for (let j = 0; j < cached.audioContents.length; j++) {
+        if (stoppedRef.current) {
+          setIsSpeaking(false);
+          return false;
+        }
+
+        const audioContent = cached.audioContents[j];
+        const audioBlob = base64ToBlob(audioContent, cached.mimeType);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        await new Promise<void>((resolve, reject) => {
+          audio.onplay = () => {
+            console.log(`▶️ Cache segment ${j + 1}/${cached.audioContents.length} playing`);
+          };
+
+          audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            audioRef.current = null;
+            resolve();
+          };
+
+          audio.onerror = (e) => {
+            console.error(`❌ Cache segment error`, e);
+            URL.revokeObjectURL(audioUrl);
+            audioRef.current = null;
+            if (stoppedRef.current) {
+              resolve();
+            } else {
+              reject(new Error('Audio playback failed'));
+            }
+          };
+
+          audio.play().catch((err) => {
+            if (stoppedRef.current) {
+              resolve();
+            } else {
+              reject(err);
+            }
+          });
+        });
+
+        // Tiny pause between segments
+        if (j < cached.audioContents.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+
+      setIsSpeaking(false);
+      onComplete?.();
+      return true;
+    } catch (err) {
+      console.error("❌ Cache playback error:", err);
+      setIsSpeaking(false);
+      onComplete?.();
+      return false;
+    }
+  }, [stopSpeaking]);
+
   return {
     speak,
+    speakFromCache,
     stopSpeaking,
     isSpeaking,
     precacheAudio,
