@@ -18,10 +18,7 @@ export const SUPPORTED_LANGUAGES = {
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
-// Global request throttling to prevent rate limiting.
-// Allows fetching multiple slide audios concurrently (up to 3), while spacing request starts.
-let lastTTSRequestTime = 0;
-const MIN_REQUEST_GAP = 300; // ms minimum between TTS request starts
+// Parallel TTS requests with concurrency limit (no artificial delays)
 const MAX_CONCURRENT_TTS_REQUESTS = 3;
 
 let activeTTSRequests = 0;
@@ -32,7 +29,6 @@ const acquireTTSSlot = async () => {
     activeTTSRequests++;
     return;
   }
-
   await new Promise<void>((resolve) => {
     ttsWaitQueue.push(() => {
       activeTTSRequests++;
@@ -47,18 +43,10 @@ const releaseTTSSlot = () => {
   if (next) next();
 };
 
+// No artificial delays - just concurrency limit
 const queueTTSRequest = async <T>(fn: () => Promise<T>): Promise<T> => {
   await acquireTTSSlot();
-
   try {
-    const timeSinceLastRequest = Date.now() - lastTTSRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_GAP) {
-      const waitTime = MIN_REQUEST_GAP - timeSinceLastRequest;
-      console.log(`⏳ TTS throttle: waiting ${waitTime}ms before next request...`);
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-    }
-
-    lastTTSRequestTime = Date.now();
     return await fn();
   } finally {
     releaseTTSSlot();
