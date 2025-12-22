@@ -176,17 +176,9 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
-      // Minimal delay between chunks: 500ms to avoid rate limiting while staying fast
-      if (i > 0) {
-        const delay = 500;
-        console.log(`  Waiting ${delay}ms before chunk ${i + 1}...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-
       const result = await makeTTSRequest(chunk, sarvamLangCode, speaker, apiKey);
       
       if (!result.success) {
-        // Return error but with 503 so frontend knows to fallback
         return new Response(
           JSON.stringify({ error: 'Sarvam TTS failed', details: result.error, fallback: true }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
