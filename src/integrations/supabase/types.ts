@@ -1499,6 +1499,47 @@ export type Database = {
           },
         ]
       }
+      instructor_activity_log: {
+        Row: {
+          action: string
+          action_type: string
+          created_at: string | null
+          id: string
+          instructor_id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          action_type: string
+          created_at?: string | null
+          id?: string
+          instructor_id: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          instructor_id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_activity_log_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instructor_subjects: {
         Row: {
           course_id: string | null
