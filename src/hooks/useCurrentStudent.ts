@@ -121,121 +121,57 @@ export const useCurrentStudent = () => {
         throw new Error("Not authenticated");
       }
 
-      // Fetch profile data
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Fetch all data in parallel for maximum speed
+      const [
+        profileResult,
+        enrollmentsResult,
+        studentProgressResult,
+        attendanceResult,
+        doubtLogsResult,
+        dptSubmissionsResult,
+        assignmentSubmissionsResult
+      ] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+        supabase.from('enrollments').select(`
+          id, enrolled_at, is_active, course_id, batch_id,
+          courses (id, name, description, course_subjects (subject_id, popular_subjects (id, name))),
+          batches (id, name)
+        `).eq('student_id', user.id).eq('is_active', true),
+        supabase.from('student_progress').select('*').eq('student_id', user.id),
+        supabase.from('class_attendance').select('id, status, marked_at, scheduled_class_id')
+          .eq('student_id', user.id).order('marked_at', { ascending: false }).limit(20),
+        supabase.from('doubt_logs').select('*').eq('student_id', user.id)
+          .order('created_at', { ascending: false }).limit(50),
+        supabase.from('dpt_submissions').select('*').eq('student_id', user.id)
+          .order('submitted_at', { ascending: false }),
+        supabase.from('assignment_submissions').select('*').eq('student_id', user.id)
+          .order('submitted_at', { ascending: false })
+      ]);
 
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
+      const profile = profileResult.data;
+      const enrollments = enrollmentsResult.data;
+      const studentProgress = studentProgressResult.data;
+      const attendance = attendanceResult.data;
+      const doubtLogs = doubtLogsResult.data;
+      const dptSubmissions = dptSubmissionsResult.data;
+      const assignmentSubmissions = assignmentSubmissionsResult.data;
+
+      if (profileResult.error) {
+        console.error("Error fetching profile:", profileResult.error);
         throw new Error("Failed to fetch profile");
       }
 
-      // Fetch enrollments with course details and subjects
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('enrollments')
-        .select(`
-          id,
-          enrolled_at,
-          is_active,
-          course_id,
-          batch_id,
-          courses (
-            id,
-            name,
-            description,
-            course_subjects (
-              subject_id,
-              popular_subjects (
-                id,
-                name
-              )
-            )
-          ),
-          batches (
-            id,
-            name
-          )
-        `)
-        .eq('student_id', user.id)
-        .eq('is_active', true);
-
-      if (enrollmentsError) {
-        console.error("Error fetching enrollments:", enrollmentsError);
-      }
-
-      // Fetch student progress for completion percentages
-      const { data: studentProgress, error: progressError } = await supabase
-        .from('student_progress')
-        .select('*')
-        .eq('student_id', user.id);
-
-      if (progressError) {
-        console.error("Error fetching progress:", progressError);
-      }
-
-      // Fetch class attendance (simplified - no nested joins)
-      const { data: attendance, error: attendanceError } = await supabase
-        .from('class_attendance')
-        .select('id, status, marked_at, scheduled_class_id')
-        .eq('student_id', user.id)
-        .order('marked_at', { ascending: false })
-        .limit(20);
-
-      if (attendanceError) {
-        console.error("Error fetching attendance:", attendanceError);
-      }
-
-      // Fetch doubt logs
-      const { data: doubtLogs, error: doubtError } = await supabase
-        .from('doubt_logs')
-        .select('*')
-        .eq('student_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (doubtError) {
-        console.error("Error fetching doubt logs:", doubtError);
-      }
-
-      // Fetch DPT submissions (tests)
-      const { data: dptSubmissions, error: dptError } = await supabase
-        .from('dpt_submissions')
-        .select('*')
-        .eq('student_id', user.id)
-        .order('submitted_at', { ascending: false });
-
-      if (dptError) {
-        console.error("Error fetching DPT submissions:", dptError);
-      }
-
-      // Fetch assignment submissions
-      const { data: assignmentSubmissions, error: assignmentError } = await supabase
-        .from('assignment_submissions')
-        .select('*')
-        .eq('student_id', user.id)
-        .order('submitted_at', { ascending: false });
-
-      if (assignmentError) {
-        console.error("Error fetching assignment submissions:", assignmentError);
-      }
-
-      // Fetch timetable from instructor_timetables for enrolled batches (simplified)
+      // Fetch timetable only if we have batch IDs
       const batchIds = enrollments?.map(e => e.batch_id).filter(Boolean) || [];
       let timetableData: any[] = [];
       
       if (batchIds.length > 0) {
-        const { data: timetable, error: timetableError } = await supabase
+        const { data: timetable } = await supabase
           .from('instructor_timetables')
           .select('id, day_of_week, start_time, end_time, is_active, subject_id, chapter_id, instructor_id')
           .in('batch_id', batchIds)
           .eq('is_active', true);
-
-        if (!timetableError && timetable) {
-          timetableData = timetable;
-        }
+        timetableData = timetable || [];
       }
 
       // Process enrollments into courses
@@ -407,7 +343,7 @@ export const useCurrentStudent = () => {
 
       return studentData;
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
   });
 };
