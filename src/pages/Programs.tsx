@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SEOHead } from "@/components/SEO";
@@ -11,14 +11,20 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Users, Clock, Search, Home, ChevronRight as ChevronRightIcon, CheckCircle } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ChevronLeft, ChevronRight, Users, Clock, Search, Home, ChevronRight as ChevronRightIcon, CheckCircle, Star, ArrowLeft } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePaginatedCourses } from "@/hooks/usePaginatedCourses";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useEnrolledCourseIds } from "@/hooks/useEnrolledCoursesWithCategories";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BottomNav } from "@/components/mobile/BottomNav";
+import { formatINR } from "@/lib/utils";
 
 const Programs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   const categorySlug = searchParams.get("category");
   const subcategorySlug = searchParams.get("subcategory");
@@ -149,6 +155,203 @@ const Programs = () => {
     return pages;
   };
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <>
+        <SEOHead
+          title="Programs & Courses"
+          description="Explore our comprehensive programs for board exams, NEET, JEE, and more"
+          keywords="online courses, board exams, NEET, JEE, integrated programs"
+        />
+        
+        {/* Mobile Header */}
+        <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-violet-400 px-4 pt-10 pb-6 rounded-b-[1.5rem]">
+          <div className="flex items-center gap-3 mb-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-white text-lg font-bold">Browse Courses</h1>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 h-11 bg-white border-0 rounded-full shadow-lg text-foreground placeholder:text-muted-foreground text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="min-h-screen bg-background pb-24">
+          {/* Category Pills */}
+          <div className="px-4 py-4">
+            <ScrollArea className="w-full whitespace-nowrap -mx-4 px-4">
+              <div className="flex gap-2 pb-2">
+                <Button
+                  variant={!categorySlug ? "default" : "outline"}
+                  size="sm"
+                  className={`rounded-full text-xs ${!categorySlug ? 'bg-violet-500 hover:bg-violet-600' : ''}`}
+                  onClick={() => setSearchParams({})}
+                >
+                  All
+                </Button>
+                {parentCategories.map((category) => (
+                  <Button
+                    key={category.id}
+                    variant={categorySlug === category.slug ? "default" : "outline"}
+                    size="sm"
+                    className={`rounded-full text-xs whitespace-nowrap ${categorySlug === category.slug ? 'bg-violet-500 hover:bg-violet-600' : ''}`}
+                    onClick={() => setSearchParams({ category: category.slug })}
+                  >
+                    {category.icon} {category.name}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
+          </div>
+
+          {/* Results Count & Sort */}
+          <div className="px-4 flex items-center justify-between mb-3">
+            <span className="text-xs text-muted-foreground">
+              {isFetching ? "Loading..." : `${totalCount} courses`}
+            </span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[120px] h-8 text-xs">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="popular">Popular</SelectItem>
+                <SelectItem value="price-low">Price ↑</SelectItem>
+                <SelectItem value="price-high">Price ↓</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Course List */}
+          <div className="px-4 space-y-3">
+            {coursesLoading || categoriesLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden">
+                  <div className="flex gap-3 p-2">
+                    <Skeleton className="h-20 w-20 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <Skeleton className="h-3 w-3/4" />
+                      <Skeleton className="h-2 w-1/2" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : courses.length > 0 ? (
+              courses.map((course) => (
+                <Link key={course.id} to={`/programs/${course.slug}`}>
+                  <Card className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99] border-0 shadow-sm">
+                    <div className="flex gap-3 p-2">
+                      {/* Course Image */}
+                      <div className="relative h-20 w-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                        {course.thumbnail_url && (
+                          <img
+                            src={course.thumbnail_url}
+                            alt={course.name}
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        {enrolledCourseIds?.has(course.id) && (
+                          <div className="absolute top-1 left-1 bg-green-500 text-white px-1 py-0.5 rounded text-[8px] font-medium">
+                            ✓ Enrolled
+                          </div>
+                        )}
+                        {!enrolledCourseIds?.has(course.id) && course.rating && (
+                          <div className="absolute top-1 left-1 bg-black/60 text-white px-1 py-0.5 rounded text-[9px] font-medium flex items-center gap-0.5">
+                            <Star className="h-2 w-2 fill-yellow-400 text-yellow-400" />
+                            {course.rating.toFixed(1)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Course Info */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                        <div>
+                          <h3 className="font-medium text-foreground line-clamp-2 text-xs leading-tight">
+                            {course.name}
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">
+                            {course.short_description || course.instructor_name || "Expert Instructor"}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {course.price_inr > 0 ? (
+                            <>
+                              <span className="font-bold text-violet-600 text-sm">
+                                {formatINR(course.price_inr)}
+                              </span>
+                              {course.original_price_inr && course.original_price_inr > course.price_inr && (
+                                <span className="text-[10px] text-muted-foreground line-through">
+                                  {formatINR(course.original_price_inr)}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="font-bold text-green-600 text-sm">Free</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <p className="font-medium mb-2">No courses found</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Try adjusting your search or filters
+                </p>
+                <Button 
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchParams({});
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              </Card>
+            )}
+          </div>
+
+          {/* Load More */}
+          {totalPages > 1 && currentPage < totalPages && (
+            <div className="px-4 py-6 text-center">
+              <Button
+                variant="outline"
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="w-full"
+              >
+                Load More
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <BottomNav />
+      </>
+    );
+  }
+
+  // Desktop layout
   return (
     <>
       <SEOHead

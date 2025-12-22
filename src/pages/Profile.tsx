@@ -10,14 +10,17 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Phone, Calendar, Save } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Save, ArrowLeft, Camera } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { BottomNav } from '@/components/mobile/BottomNav';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { data: userData, isLoading, refetch } = useCurrentUser();
   const [isSaving, setIsSaving] = useState(false);
+  const isMobile = useIsMobile();
 
   const [formData, setFormData] = useState({
     fullName: userData?.profile?.full_name || '',
@@ -61,11 +64,11 @@ const Profile = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <DashboardHeader />
+        {!isMobile && <DashboardHeader />}
         <main className="flex-1 container mx-auto px-4 py-12">
           <Skeleton className="h-96 mb-8" />
         </main>
-        <Footer />
+        {isMobile ? <BottomNav /> : <Footer />}
       </div>
     );
   }
@@ -73,18 +76,144 @@ const Profile = () => {
   if (!userData) {
     return (
       <div className="min-h-screen flex flex-col">
-            <DashboardHeader />
+        {!isMobile && <DashboardHeader />}
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold">Please Login</h1>
             <Button onClick={() => navigate('/auth')}>Go to Login</Button>
           </div>
         </main>
-        <Footer />
+        {isMobile ? <BottomNav /> : <Footer />}
       </div>
     );
   }
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SEOHead
+          title="My Profile | SimpleLecture"
+          description="Manage your profile settings"
+        />
+        
+        {/* Mobile Header with Avatar */}
+        <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-violet-400 px-4 pt-10 pb-16 rounded-b-[2rem]">
+          <div className="flex items-center gap-3 mb-6">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-white text-lg font-bold">My Profile</h1>
+          </div>
+          
+          {/* Centered Avatar */}
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
+                <AvatarImage src={userData.profile?.avatar_url || undefined} />
+                <AvatarFallback className="text-2xl bg-white text-violet-600">
+                  {userData.profile?.full_name?.charAt(0) || userData.email?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <Button 
+                size="icon" 
+                className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white text-violet-600 hover:bg-gray-100 shadow-md"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </div>
+            <h2 className="text-white text-xl font-bold mt-3">{userData.profile?.full_name || 'User'}</h2>
+            <p className="text-white/80 text-sm">{userData.email}</p>
+          </div>
+        </div>
+
+        {/* Profile Form */}
+        <main className="flex-1 bg-background px-4 -mt-8 pb-24">
+          <Card className="border-0 shadow-lg">
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="fullName" className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
+                    <User className="h-4 w-4" />
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    placeholder="Enter your full name"
+                    className="h-11"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email" className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
+                    <Mail className="h-4 w-4" />
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={userData.email || ''}
+                    disabled
+                    className="bg-muted h-11"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone" className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
+                    <Phone className="h-4 w-4" />
+                    Phone Number
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+91 XXXXX XXXXX"
+                    className="h-11"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="dateOfBirth" className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
+                    <Calendar className="h-4 w-4" />
+                    Date of Birth
+                  </Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="h-11"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full bg-violet-500 hover:bg-violet-600 mt-4"
+                  disabled={isSaving}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </main>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="min-h-screen flex flex-col">
       <SEOHead

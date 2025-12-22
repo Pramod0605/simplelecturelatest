@@ -8,8 +8,13 @@ import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEO";
 import { generateOrganizationSchema, generateWebsiteSchema } from "@/lib/seo/structuredData";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileHomeContent } from "@/components/mobile/MobileHomeContent";
+import { BottomNav } from "@/components/mobile/BottomNav";
 
 const Index = () => {
+  const isMobile = useIsMobile();
+  
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -18,6 +23,24 @@ const Index = () => {
     ]
   };
 
+  // Mobile-native layout
+  if (isMobile) {
+    return (
+      <>
+        <SEOHead
+          title="AI-Powered Learning Platform | Master Your Future"
+          description="India's first AI-powered learning platform for board exams, entrance tests, and skill development. Learn from AI tutors at 99% less cost. Join 50,000+ students mastering their future."
+          keywords="AI tutoring, online learning, NEET, JEE, board exams, entrance exams, skill development, mastery-based learning, affordable education"
+          canonicalUrl="https://9b289e9b-2c66-4e4a-8ec5-e3ca4d126fbb.lovableproject.com"
+          structuredData={structuredData}
+        />
+        <MobileHomeContent />
+        <BottomNav />
+      </>
+    );
+  }
+
+  // Desktop layout
   return (
     <>
       <SEOHead

@@ -8,10 +8,12 @@ import { Separator } from '@/components/ui/separator';
 import { SEOHead } from '@/components/SEO';
 import { SmartHeader } from '@/components/SmartHeader';
 import { Footer } from '@/components/Footer';
+import { BottomNav } from '@/components/mobile/BottomNav';
 import { useCart } from '@/hooks/useCart';
 import { formatINR } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Cart = () => {
   const { items, loading, removeFromCart, total } = useCart();
@@ -22,9 +24,9 @@ const Cart = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Check authentication status
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
@@ -33,7 +35,6 @@ const Cart = () => {
 
     checkAuth();
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
     });
@@ -79,11 +80,11 @@ const Cart = () => {
   if (checkingAuth || loading) {
     return (
       <>
-        <SmartHeader />
+        {!isMobile && <SmartHeader />}
         <div className="min-h-screen flex items-center justify-center">
           <p>Loading...</p>
         </div>
-        <Footer />
+        {isMobile ? <BottomNav /> : <Footer />}
       </>
     );
   }
@@ -93,8 +94,8 @@ const Cart = () => {
     return (
       <>
         <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
-        <SmartHeader />
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        {!isMobile && <SmartHeader />}
+        <div className={`min-h-screen bg-background flex items-center justify-center ${isMobile ? 'pb-24' : ''}`}>
           <div className="container mx-auto px-4 py-16">
             <Card className="max-w-md mx-auto p-8 text-center">
               <LogIn className="h-16 w-16 mx-auto mb-4 text-primary" />
@@ -113,7 +114,7 @@ const Cart = () => {
             </Card>
           </div>
         </div>
-        <Footer />
+        {isMobile ? <BottomNav /> : <Footer />}
       </>
     );
   }
@@ -122,8 +123,8 @@ const Cart = () => {
     return (
       <>
         <SEOHead title="Shopping Cart | SimpleLecture" description="Your shopping cart" />
-        <SmartHeader />
-        <div className="min-h-screen bg-background">
+        {!isMobile && <SmartHeader />}
+        <div className={`min-h-screen bg-background ${isMobile ? 'pb-24' : ''}`}>
           <div className="container mx-auto px-4 py-16">
             <Card className="max-w-md mx-auto p-8 text-center">
               <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -135,11 +136,118 @@ const Cart = () => {
             </Card>
           </div>
         </div>
-        <Footer />
+        {isMobile ? <BottomNav /> : <Footer />}
       </>
     );
   }
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <>
+        <SEOHead title="Shopping Cart | SimpleLecture" description="Review your selected programs" />
+        
+        {/* Mobile Header */}
+        <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-violet-400 px-4 pt-10 pb-6 rounded-b-[1.5rem]">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-white text-lg font-bold">Shopping Cart</h1>
+          </div>
+        </div>
+
+        <div className="min-h-screen bg-background pb-40 px-4 pt-4">
+          {/* Cart Items */}
+          <div className="space-y-3 mb-6">
+            {items.map((item) => (
+              <Card key={item.id} className="p-3 border-0 shadow-sm">
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 bg-muted rounded-lg flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm line-clamp-2">{item.course_name}</h3>
+                    <p className="text-base font-bold text-violet-600 mt-1">{formatINR(item.course_price)}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8"
+                    onClick={() => removeFromCart(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Discount Code */}
+          <Card className="p-4 mb-4 border-0 shadow-sm">
+            <label className="text-sm font-medium mb-2 block">Discount Code</label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter code"
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value)}
+                disabled={discountApplied}
+                className="text-sm"
+              />
+              <Button
+                onClick={applyDiscount}
+                disabled={discountApplied || !discountCode}
+                variant="outline"
+                size="sm"
+              >
+                Apply
+              </Button>
+            </div>
+          </Card>
+
+          {/* Order Summary */}
+          <Card className="p-4 border-0 shadow-sm">
+            <h2 className="font-bold mb-3">Order Summary</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium">{formatINR(total)}</span>
+              </div>
+              {discountApplied && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount</span>
+                  <span>-{formatINR(discount)}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between font-bold text-base">
+                <span>Total</span>
+                <span className="text-violet-600">{formatINR(finalAmount)}</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Sticky Checkout Button */}
+        <div className="fixed bottom-16 left-0 right-0 bg-background border-t p-4 z-40">
+          <Button
+            className="w-full bg-violet-500 hover:bg-violet-600"
+            size="lg"
+            onClick={() => navigate('/checkout', { state: { discount, discountCode } })}
+          >
+            Proceed to Checkout • {formatINR(finalAmount)}
+          </Button>
+        </div>
+
+        <BottomNav />
+      </>
+    );
+  }
+
+  // Desktop layout
   return (
     <>
       <SEOHead title="Shopping Cart | SimpleLecture" description="Review your selected programs" />
