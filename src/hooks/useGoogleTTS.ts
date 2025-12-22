@@ -253,7 +253,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     return null;
   }, []);
 
-  // Batch pre-cache all slides audio with progress callback
+  // Batch pre-cache all slides audio with progress callback - processes 3 slides in parallel
   const precacheAllSlides = useCallback(async (
     slides: Array<{ narration?: string; content?: string }>,
     languageCode: SupportedLanguage = 'en-IN',
@@ -261,30 +261,38 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     onProgress?: (current: number, total: number) => void
   ): Promise<boolean> => {
     const total = slides.length;
-    let success = true;
+    const BATCH_SIZE = 3;
+    let completed = 0;
     
-    console.log(`🎵 Pre-caching audio for ${total} slides...`);
+    console.log(`🎵 Pre-caching audio for ${total} slides (${BATCH_SIZE} at a time)...`);
     
-    for (let i = 0; i < slides.length; i++) {
-      const slide = slides[i];
-      const text = slide.narration || slide.content || '';
+    // Process slides in batches of 3
+    for (let i = 0; i < slides.length; i += BATCH_SIZE) {
+      const batch = slides.slice(i, i + BATCH_SIZE);
       
-      if (text.trim()) {
-        console.log(`🔄 Pre-caching slide ${i + 1}/${total}`);
-        onProgress?.(i + 1, total);
-        
-        const result = await precacheAudio(text, languageCode, gender);
-        if (!result) {
-          console.warn(`⚠️ Failed to cache audio for slide ${i + 1}`);
-          // Continue anyway - will use fallback during playback
-        }
-      } else {
-        onProgress?.(i + 1, total);
-      }
+      console.log(`🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(slides.length / BATCH_SIZE)}`);
+      
+      // Fetch audio for all slides in this batch in parallel
+      await Promise.all(
+        batch.map(async (slide, batchIndex) => {
+          const slideIndex = i + batchIndex;
+          const text = slide.narration || slide.content || '';
+          
+          if (text.trim()) {
+            const result = await precacheAudio(text, languageCode, gender);
+            if (!result) {
+              console.warn(`⚠️ Failed to cache audio for slide ${slideIndex + 1}`);
+            }
+          }
+          
+          completed++;
+          onProgress?.(completed, total);
+        })
+      );
     }
     
     console.log(`✅ Audio pre-caching complete for ${total} slides`);
-    return success;
+    return true;
   }, [precacheAudio]);
 
   const speak = useCallback(async (
