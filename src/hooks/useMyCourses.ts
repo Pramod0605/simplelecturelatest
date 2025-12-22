@@ -24,7 +24,6 @@ export const useMyCourses = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        // Return mock data for preview
         return generateMockCourseData();
       }
 
@@ -47,47 +46,86 @@ export const useMyCourses = () => {
         return [];
       }
 
-      const courseSubjects: SubjectWithProgress[] = [];
-
-      for (const enrollment of enrollments) {
-        const course = enrollment.courses;
-        if (!course) continue;
-
-        // Fetch chapters for this course
-        const { data: chapters } = await supabase
+      // Extract all course IDs for bulk queries
+      const courseIds = enrollments.map(e => e.course_id).filter(Boolean);
+      
+      // Bulk fetch all chapters and teachers in parallel
+      const [chaptersResult, teachersResult] = await Promise.all([
+        supabase
           .from('chapters')
-          .select('id, title, subject')
-          .eq('course_id', course.id);
+          .select('id, title, subject, course_id')
+          .in('course_id', courseIds),
+        supabase
+          .from('course_teachers')
+          .select('course_id, subject, teacher_profiles(full_name, avatar_url)')
+          .in('course_id', courseIds)
+      ]);
 
-        const subjects = course.subjects as string[] || [];
-        
-        for (const subject of subjects) {
-          const subjectChapters = chapters?.filter(ch => ch.subject === subject) || [];
-          const totalChapters = subjectChapters.length;
+      const allChapters = chaptersResult.data || [];
+      const allTeachers = teachersResult.data || [];
 
-          // Fetch progress for this subject
-          const { data: progress } = await supabase
+      // Get all chapter IDs for bulk progress fetch
+      const allChapterIds = allChapters.map(ch => ch.id);
+      
+      // Bulk fetch progress for all chapters at once
+      const { data: allProgress } = allChapterIds.length > 0
+        ? await supabase
             .from('student_progress')
             .select('chapter_id, is_completed, updated_at')
             .eq('student_id', user.id)
-            .in('chapter_id', subjectChapters.map(ch => ch.id));
+            .in('chapter_id', allChapterIds)
+        : { data: [] };
 
-          const completedChapters = progress?.filter(p => p.is_completed).length || 0;
-          const progressPercentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
-          
-          const lastAccessedDate = progress && progress.length > 0
-            ? new Date(Math.max(...progress.map(p => new Date(p.updated_at).getTime())))
-            : null;
+      // Build lookup maps for O(1) access
+      const chaptersByCourseSubject: Record<string, typeof allChapters> = {};
+      allChapters.forEach(ch => {
+        const key = `${ch.course_id}-${ch.subject}`;
+        if (!chaptersByCourseSubject[key]) chaptersByCourseSubject[key] = [];
+        chaptersByCourseSubject[key].push(ch);
+      });
 
-          // Get instructor for this subject
-          const { data: courseTeacher } = await supabase
-            .from('course_teachers')
-            .select('teacher_id, teacher_profiles(full_name, avatar_url)')
-            .eq('course_id', course.id)
-            .eq('subject', subject)
-            .maybeSingle();
+      const progressByChapter: Record<string, { is_completed: boolean; updated_at: string }> = {};
+      (allProgress || []).forEach(p => {
+        progressByChapter[p.chapter_id] = p;
+      });
 
-          const instructor = courseTeacher?.teacher_profiles as any;
+      const teachersByCourseSubject: Record<string, any> = {};
+      allTeachers.forEach(t => {
+        const key = `${t.course_id}-${t.subject}`;
+        teachersByCourseSubject[key] = t.teacher_profiles;
+      });
+
+      // Build course subjects using in-memory lookups (no more DB calls)
+      const courseSubjects: SubjectWithProgress[] = [];
+
+      for (const enrollment of enrollments) {
+        const course = enrollment.courses as any;
+        if (!course) continue;
+
+        const subjects = (course.subjects as string[]) || [];
+        
+        for (const subject of subjects) {
+          const key = `${course.id}-${subject}`;
+          const subjectChapters = chaptersByCourseSubject[key] || [];
+          const totalChapters = subjectChapters.length;
+
+          let completedChapters = 0;
+          let latestDate: Date | null = null;
+
+          subjectChapters.forEach(ch => {
+            const prog = progressByChapter[ch.id];
+            if (prog?.is_completed) completedChapters++;
+            if (prog?.updated_at) {
+              const d = new Date(prog.updated_at);
+              if (!latestDate || d > latestDate) latestDate = d;
+            }
+          });
+
+          const progressPercentage = totalChapters > 0 
+            ? Math.round((completedChapters / totalChapters) * 100) 
+            : 0;
+
+          const instructor = teachersByCourseSubject[key];
 
           courseSubjects.push({
             id: `${course.id}-${subject}`,
@@ -102,13 +140,15 @@ export const useMyCourses = () => {
             progress: progressPercentage,
             chaptersCompleted: completedChapters,
             totalChapters,
-            lastAccessed: lastAccessedDate,
+            lastAccessed: latestDate,
           });
         }
       }
 
       return courseSubjects;
     },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
   });
 };
 
