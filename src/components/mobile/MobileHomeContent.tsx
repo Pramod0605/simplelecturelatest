@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,25 +12,71 @@ import {
   ShoppingCart,
   Menu,
   Star,
-  Clock
+  Clock,
+  CheckCircle2,
+  ArrowRight
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useFeaturedCourses } from "@/hooks/useFeaturedCourses";
 import { formatINR } from "@/lib/utils";
+import heroBoardExams from "@/assets/hero-board-exams.jpg";
+import heroNeet from "@/assets/hero-neet.jpg";
+import heroJee from "@/assets/hero-jee.jpg";
+import heroIntegrated from "@/assets/hero-integrated.jpg";
+
+const heroSlides = [
+  {
+    title: "Score 90+ in Board Exams",
+    subtitle: "AI-Powered Coaching for 10th, I & II PUC",
+    points: ["All subjects covered", "24/7 AI doubt clearing", "Unlimited practice tests"],
+    cta: "Start at ₹2000/Year",
+    image: heroBoardExams,
+  },
+  {
+    title: "Crack NEET with AI",
+    subtitle: "99% Cost Reduction. 100% Success.",
+    points: ["Complete PCB coverage", "Mock tests matching NEET", "Personalized learning"],
+    cta: "Join 50,000+ Aspirants",
+    image: heroNeet,
+  },
+  {
+    title: "IIT Dreams Made Affordable",
+    subtitle: "Complete JEE Main & Advanced Prep",
+    points: ["PCM problem-solving", "AI explains until mastery", "Previous years' solved"],
+    cta: "Begin JEE Journey",
+    image: heroJee,
+  },
+  {
+    title: "Board + Entrance Combo",
+    subtitle: "PUC + NEET or PUC + JEE",
+    points: ["Dual preparation", "Same syllabus, smarter", "2-year access"],
+    cta: "Get Combo - ₹2000",
+    image: heroIntegrated,
+  },
+];
 
 export const MobileHomeContent = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentSlide, setCurrentSlide] = useState(0);
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const { data: featuredCourses, isLoading: coursesLoading } = useFeaturedCourses("bestsellers");
   const { data: newestCourses, isLoading: newestLoading } = useFeaturedCourses("top_courses");
 
   const userName = user?.profile?.full_name || "Learner";
 
+  // Auto-rotate hero slides
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Native App Header - Purple Gradient */}
-      <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-violet-400 px-4 pt-10 pb-6 rounded-b-[1.5rem]">
+      <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-violet-400 px-4 pt-10 pb-6">
         {/* Top Row - Menu, Greeting & Icons */}
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-start gap-3">
@@ -88,6 +134,63 @@ export const MobileHomeContent = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-11 h-11 bg-white border-0 rounded-full shadow-lg text-foreground placeholder:text-muted-foreground text-sm"
           />
+        </div>
+      </div>
+
+      {/* Mobile Hero Section */}
+      <div className="relative h-64 overflow-hidden">
+        {heroSlides.map((slide, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-700 ${
+              currentSlide === index ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
+            
+            {/* Hero Content */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+              <h2 className="text-xl font-bold leading-tight mb-1">{slide.title}</h2>
+              <p className="text-white/80 text-xs mb-2">{slide.subtitle}</p>
+              
+              <div className="space-y-1 mb-3">
+                {slide.points.map((point, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                    <span className="text-[11px] text-white/90">{point}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <Button 
+                size="sm"
+                className="bg-white text-violet-600 hover:bg-white/90 text-xs h-8 px-4"
+                onClick={() => navigate("/programs")}
+              >
+                {slide.cta}
+                <ArrowRight className="ml-1 w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        {/* Slide Indicators */}
+        <div className="absolute bottom-2 right-4 flex gap-1">
+          {heroSlides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`h-1 rounded-full transition-all ${
+                currentSlide === index ? "bg-white w-4" : "bg-white/40 w-2"
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
         </div>
       </div>
 
