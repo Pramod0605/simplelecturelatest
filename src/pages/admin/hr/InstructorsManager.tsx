@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, UserPlus } from "lucide-react";
+import { Plus, Edit, UserPlus, Key, Copy, Check } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useInstructors, useCreateInstructor, useUpdateInstructor, useInstructor } from "@/hooks/useInstructors";
+import { useResetInstructorPassword } from "@/hooks/useResetInstructorPassword";
 import { DepartmentSelector } from "@/components/hr/DepartmentSelector";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,11 +18,19 @@ import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
 import { AddTimeSlotDialog } from "@/components/hr/AddTimeSlotDialog";
 import { InstructorTimetableView } from "@/components/hr/InstructorTimetableView";
 import { useInstructorTimetable } from "@/hooks/useInstructorTimetable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function InstructorsManager() {
   const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [showTimeSlotDialog, setShowTimeSlotDialog] = useState(false);
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -33,32 +42,94 @@ export default function InstructorsManager() {
     experience_years: "",
     bio: "",
     avatar_url: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const { data: instructors, isLoading } = useInstructors();
   const { data: selectedInstructor } = useInstructor(selectedInstructorId || "");
   const createInstructor = useCreateInstructor();
   const updateInstructor = useUpdateInstructor();
+  const resetPassword = useResetInstructorPassword();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate password for new instructors
+    if (!selectedInstructorId && !editMode) {
+      // This shouldn't happen, but just in case
+    }
+    
+    if (!selectedInstructorId && formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
+      if (formData.password.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        return;
+      }
+    }
+    
     const data = {
-      ...formData,
-      experience_years: formData.experience_years ? parseInt(formData.experience_years) : null,
+      full_name: formData.full_name,
+      email: formData.email,
+      phone_number: formData.phone_number,
+      employee_id: formData.employee_id,
+      date_of_joining: formData.date_of_joining,
       department_id: formData.department_id || null,
+      qualification: formData.qualification,
+      experience_years: formData.experience_years ? parseInt(formData.experience_years) : null,
+      bio: formData.bio,
+      avatar_url: formData.avatar_url,
+      password: formData.password || undefined, // Include password for new instructor
     };
 
     if (selectedInstructorId && editMode) {
-      await updateInstructor.mutateAsync({ id: selectedInstructorId, data });
+      const { password, ...updateData } = data;
+      await updateInstructor.mutateAsync({ id: selectedInstructorId, data: updateData });
     } else {
       const result = await createInstructor.mutateAsync(data);
       if (result) {
         setSelectedInstructorId(result.id);
+        // Show credentials dialog with email and password
+        if (formData.password) {
+          setCreatedCredentials({ email: formData.email, password: formData.password });
+          setShowCredentialsDialog(true);
+        }
       }
     }
     
     setEditMode(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedInstructorId) return;
+    
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    
+    await resetPassword.mutateAsync({ instructorId: selectedInstructorId, newPassword });
+    setShowResetPasswordDialog(false);
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
+  const copyCredentials = () => {
+    if (createdCredentials) {
+      navigator.clipboard.writeText(
+        `Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nLogin URL: ${window.location.origin}/auth`
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Credentials copied to clipboard");
+    }
   };
 
   const handleEdit = (inst: any) => {
@@ -74,6 +145,8 @@ export default function InstructorsManager() {
       experience_years: inst.experience_years?.toString() || "",
       bio: inst.bio || "",
       avatar_url: inst.avatar_url || "",
+      password: "",
+      confirmPassword: "",
     });
     setEditMode(true);
   };

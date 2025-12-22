@@ -87,6 +87,15 @@ import Live from "./pages/Live";
 import WatchRecording from "./pages/WatchRecording";
 import RecordingsManager from "./pages/admin/RecordingsManager";
 import Recordings from "./pages/Recordings";
+
+// Instructor Panel
+import { InstructorProtectedRoute } from "./components/instructor/InstructorProtectedRoute";
+import { InstructorLayout } from "./components/instructor/InstructorLayout";
+import InstructorDashboard from "./pages/instructor/InstructorDashboard";
+import InstructorLiveClasses from "./pages/instructor/InstructorLiveClasses";
+import InstructorSubjects from "./pages/instructor/InstructorSubjects";
+import InstructorActivityLog from "./pages/instructor/InstructorActivityLog";
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -188,6 +197,16 @@ const App = () => (
                 <Route path="hr/bulk-assign-instructors" element={<BulkAssignInstructors />} />
                 <Route path="hr/live-classes" element={<LiveClassesManager />} />
                 <Route path="hr/recordings" element={<RecordingsManager />} />
+              </Route>
+            </Route>
+            
+            {/* Instructor Routes */}
+            <Route path="/instructor" element={<InstructorProtectedRoute />}>
+              <Route element={<InstructorLayout />}>
+                <Route index element={<InstructorDashboard />} />
+                <Route path="classes" element={<InstructorLiveClasses />} />
+                <Route path="subjects" element={<InstructorSubjects />} />
+                <Route path="activity" element={<InstructorActivityLog />} />
               </Route>
             </Route>
             
