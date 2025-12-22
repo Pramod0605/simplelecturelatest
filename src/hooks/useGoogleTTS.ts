@@ -20,7 +20,7 @@ export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
 // Global request queue to prevent rate limiting - serializes ALL TTS requests
 let lastTTSRequestTime = 0;
-const MIN_REQUEST_GAP = 10000; // 10 seconds minimum between TTS API calls (very aggressive for Sarvam rate limits)
+const MIN_REQUEST_GAP = 2000; // 2 seconds minimum between TTS API calls (faster for batch pre-caching)
 
 // Global request queue - ensures only ONE request at a time across ALL components
 let requestQueue: Promise<any> = Promise.resolve();
@@ -49,6 +49,13 @@ interface UseGoogleTTSReturn {
   error: string | null;
   // Pre-cache function for audio pre-generation
   precacheAudio: (text: string, languageCode?: SupportedLanguage, gender?: "female" | "male") => Promise<string[] | null>;
+  // Batch pre-cache all slides audio with progress callback
+  precacheAllSlides: (
+    slides: Array<{ narration?: string; content?: string }>,
+    languageCode?: SupportedLanguage,
+    gender?: "female" | "male",
+    onProgress?: (current: number, total: number) => void
+  ) => Promise<boolean>;
 }
 
 // Audio cache for pre-generated audio
@@ -245,6 +252,40 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     }
     return null;
   }, []);
+
+  // Batch pre-cache all slides audio with progress callback
+  const precacheAllSlides = useCallback(async (
+    slides: Array<{ narration?: string; content?: string }>,
+    languageCode: SupportedLanguage = 'en-IN',
+    gender: "female" | "male" = "male",
+    onProgress?: (current: number, total: number) => void
+  ): Promise<boolean> => {
+    const total = slides.length;
+    let success = true;
+    
+    console.log(`🎵 Pre-caching audio for ${total} slides...`);
+    
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      const text = slide.narration || slide.content || '';
+      
+      if (text.trim()) {
+        console.log(`🔄 Pre-caching slide ${i + 1}/${total}`);
+        onProgress?.(i + 1, total);
+        
+        const result = await precacheAudio(text, languageCode, gender);
+        if (!result) {
+          console.warn(`⚠️ Failed to cache audio for slide ${i + 1}`);
+          // Continue anyway - will use fallback during playback
+        }
+      } else {
+        onProgress?.(i + 1, total);
+      }
+    }
+    
+    console.log(`✅ Audio pre-caching complete for ${total} slides`);
+    return success;
+  }, [precacheAudio]);
 
   const speak = useCallback(async (
     text: string,
@@ -449,6 +490,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
     stopSpeaking,
     isSpeaking,
     precacheAudio,
+    precacheAllSlides,
     isLoading,
     error,
   };

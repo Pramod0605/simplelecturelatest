@@ -51,6 +51,10 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [isPresentationReady, setIsPresentationReady] = useState(false);
   const [infographicPhase, setInfographicPhase] = useState<'hidden' | 'zooming' | 'zoomed' | 'returning'>('hidden');
   
+  // Audio pre-caching states
+  const [isPreparingAudio, setIsPreparingAudio] = useState(false);
+  const [audioPrepareProgress, setAudioPrepareProgress] = useState({ current: 0, total: 0 });
+  
   // UI States
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -73,7 +77,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   } = useWebSpeech();
   
   // Use Google TTS hook for audio pre-caching
-  const { precacheAudio } = useGoogleTTS();
+  const { precacheAllSlides } = useGoogleTTS();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }>>([]);
@@ -156,31 +160,53 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     ]);
   }, []);
 
-  // Prepare presentation when response is received - NON-BLOCKING
+  // Prepare presentation when response is received - Pre-cache ALL audio first
   useEffect(() => {
-    if (currentResponse?.presentationSlides && currentResponse.presentationSlides.length > 0) {
+    if (currentResponse?.presentationSlides && currentResponse.presentationSlides.length > 0 && !isPresentationReady && !isPreparingAudio) {
       console.log('[AITeachingAssistant] Response received with', currentResponse.presentationSlides.length, 'slides');
       
-      // Mark ready IMMEDIATELY - preload images in background (non-blocking)
-      setIsPresentationReady(true);
-      console.log('[AITeachingAssistant] isPresentationReady set to true IMMEDIATELY');
+      // Start pre-caching all audio
+      const preparePresentation = async () => {
+        setIsPreparingAudio(true);
+        setAudioPrepareProgress({ current: 0, total: currentResponse.presentationSlides.length });
+        
+        // Preload images in parallel with audio
+        preloadImages(currentResponse.presentationSlides);
+        
+        // Pre-cache ALL audio for all slides
+        if (!isMuted) {
+          console.log('[AITeachingAssistant] Pre-caching audio for all slides...');
+          await precacheAllSlides(
+            currentResponse.presentationSlides,
+            narrationLanguage,
+            'male',
+            (current, total) => {
+              setAudioPrepareProgress({ current, total });
+            }
+          );
+        }
+        
+        setIsPreparingAudio(false);
+        setIsPresentationReady(true);
+        console.log('[AITeachingAssistant] All audio pre-cached, presentation ready!');
+      };
       
-      // Preload images in background (don't block narration)
-      preloadImages(currentResponse.presentationSlides);
+      preparePresentation();
     }
-  }, [currentResponse, preloadImages]);
+  }, [currentResponse, preloadImages, precacheAllSlides, narrationLanguage, isMuted, isPresentationReady, isPreparingAudio]);
 
-  // Start narration IMMEDIATELY when presentation is ready
+  // Start narration when presentation is ready (all audio pre-cached)
   useEffect(() => {
     if (
       currentResponse?.presentationSlides && 
       !isMuted && 
       !isNarratingRef.current && 
-      isPresentationReady
+      isPresentationReady &&
+      !isPreparingAudio
     ) {
-      console.log('[AITeachingAssistant] Starting narration immediately');
+      console.log('[AITeachingAssistant] Starting narration - all audio pre-cached');
       
-      // Build queue and start immediately - NO DELAY
+      // Build queue and start immediately - audio is already cached
       const queue: Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }> = [];
       
       currentResponse.presentationSlides.forEach((slide, index) => {
@@ -203,7 +229,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
         startNarration();
       }
     }
-  }, [currentResponse, isMuted, isPresentationReady]);
+  }, [currentResponse, isMuted, isPresentationReady, isPreparingAudio]);
 
   const startNarration = async () => {
     if (isNarratingRef.current || narrationQueueRef.current.length === 0) return;
@@ -328,13 +354,12 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       
       narrationQueueRef.current = narrationQueueRef.current.slice(1);
       
-      // Longer pause before next slide to prevent TTS rate limiting - 3 seconds
+      // Smooth transition to next slide - minimal delay since audio is pre-cached
       if (narrationQueueRef.current.length > 0) {
         setCurrentSubtitle('');
         
-        // No pre-caching - causes parallel requests that hit rate limits
-        // Just wait before next slide
-        await new Promise(resolve => setTimeout(resolve, 4000)); // 4 second delay between slides
+        // Very short delay for smooth visual transition only (audio is already cached)
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Check pause again after delay
         if (isPausedRef.current) {
@@ -442,6 +467,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     setProgress(0);
     setCurrentTime(0);
     setIsPresentationReady(false);
+    setIsPreparingAudio(false);
+    setAudioPrepareProgress({ current: 0, total: 0 });
     
     const question = inputText.trim();
     setInputText('');
@@ -681,16 +708,37 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
           )}>
             {/* Presentation Display */}
             <div className="flex-1 relative min-h-0">
-              {isLoading || (activeResponse && !isPresentationReady) ? (
+              {isLoading || isPreparingAudio || (activeResponse && !isPresentationReady) ? (
                 <Card className="h-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
                   <CardContent className="text-center py-12">
                     <Loader2 className="h-16 w-16 animate-spin mx-auto text-primary mb-4" />
-                    <p className="text-lg text-muted-foreground">
+                    <p className="text-lg text-muted-foreground mb-2">
                       {isLoading 
                         ? (narrationLanguage === 'hi-IN' ? 'प्रेजेंटेशन तैयार कर रहा हूं...' : 'Preparing your presentation...')
-                        : (narrationLanguage === 'hi-IN' ? 'स्लाइड्स लोड हो रही हैं...' : 'Loading slides...')
+                        : isPreparingAudio
+                          ? (narrationLanguage === 'hi-IN' ? 'ऑडियो तैयार कर रहा हूं...' : 'Generating audio narration...')
+                          : (narrationLanguage === 'hi-IN' ? 'स्लाइड्स लोड हो रही हैं...' : 'Loading slides...')
                       }
                     </p>
+                    {isPreparingAudio && audioPrepareProgress.total > 0 && (
+                      <div className="w-64 mx-auto">
+                        <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                          <span>
+                            {narrationLanguage === 'hi-IN' 
+                              ? `स्लाइड ${audioPrepareProgress.current} / ${audioPrepareProgress.total}`
+                              : `Slide ${audioPrepareProgress.current} / ${audioPrepareProgress.total}`
+                            }
+                          </span>
+                          <span>{Math.round((audioPrepareProgress.current / audioPrepareProgress.total) * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${(audioPrepareProgress.current / audioPrepareProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ) : activeResponse && currentSlide && isPresentationReady ? (
