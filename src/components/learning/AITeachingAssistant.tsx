@@ -76,8 +76,8 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     isSupported 
   } = useWebSpeech();
   
-  // Use Google TTS hook for audio pre-caching
-  const { precacheAllSlides } = useGoogleTTS();
+  // Use Google TTS hook for audio pre-caching and playback
+  const { precacheAllSlides, speakFromCache, stopSpeaking: stopTTSSpeaking, isSpeaking: isTTSSpeaking } = useGoogleTTS();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const narrationQueueRef = useRef<Array<{ text: string; slideIndex: number; subtitleChunks: string[]; hasInfographic: boolean }>>([]);
@@ -125,6 +125,12 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       setIsPresentationReady(false);
     }
   }, [isLoading]);
+
+  // Combined stop function that stops both Web Speech and TTS
+  const stopAllSpeech = useCallback(() => {
+    stopSpeaking();     // Stop Web Speech
+    stopTTSSpeaking();  // Stop TTS audio
+  }, [stopSpeaking, stopTTSSpeaking]);
 
   // Preload infographic images when response arrives
   const preloadImages = useCallback(async (slides: PresentationSlide[]): Promise<void> => {
@@ -278,12 +284,13 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       let chunkIndex = 0;
       setCurrentSubtitle(item.subtitleChunks[0] || item.text);
       
-      // Start speech and track completion
+      // Start speech from pre-cached audio and track completion
       let speechCompleted = false;
       let wasStopped = false;
       let speechStartTime = Date.now();
       
-      speak(item.text, narrationLanguage, 'male', () => {
+      // Use speakFromCache for seamless playback without API calls
+      speakFromCache(item.text, narrationLanguage, 'male', () => {
         speechCompleted = true;
       });
       
@@ -405,7 +412,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
       console.log('[PlayPause] Pausing');
       setIsPaused(true);
       isPausedRef.current = true;
-      stopSpeaking();
+      stopAllSpeech();
       clearTimers();
       
       // Clear queue so processNarrationQueue exits
@@ -418,7 +425,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const handleReplaySlide = (slideIndex: number) => {
     if (!activeResponse) return;
     
-    stopSpeaking();
+    stopAllSpeech();
     clearTimers();
     
     const slide = activeResponse.presentationSlides[slideIndex];
@@ -458,7 +465,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return;
     
-    stopSpeaking();
+    stopAllSpeech();
     clearTimers();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;
@@ -491,7 +498,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
 
   const handleLanguageChange = (lang: 'en-IN' | 'hi-IN' | 'kn-IN' | 'ta-IN' | 'te-IN' | 'ml-IN') => {
     setNarrationLanguage(lang);
-    stopSpeaking();
+    stopAllSpeech();
     clearTimers();
     isNarratingRef.current = false;
     setIsNarrating(false);
@@ -525,7 +532,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     if (newMuted) {
-      stopSpeaking();
+      stopAllSpeech();
       clearTimers();
       narrationQueueRef.current = [];
       isNarratingRef.current = false;
@@ -576,7 +583,7 @@ export function AITeachingAssistant({ topicId, chapterId, topicTitle, subjectNam
   const [replayResponse, setReplayResponse] = useState<TeachingResponse | null>(null);
 
   const handleReplay = (slides: PresentationSlide[], narrationText: string) => {
-    stopSpeaking();
+    stopAllSpeech();
     clearTimers();
     narrationQueueRef.current = [];
     isNarratingRef.current = false;

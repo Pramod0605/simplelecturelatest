@@ -88,8 +88,8 @@ async function makeTTSRequest(
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (attempt > 0) {
-      // Very long exponential backoff: 15s, 30s, 60s for aggressive rate limit recovery
-      const delay = Math.min(15000 * Math.pow(2, attempt - 1), 60000);
+      // Short backoff: 1s, 2s, 4s for rate limit recovery
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
       console.log(`  Retry ${attempt}/${maxRetries}, waiting ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -176,11 +176,11 @@ serve(async (req) => {
       const chunk = chunks[i];
       console.log(`  Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
 
-// Progressive delay between chunks: 5s base + 2s per chunk to prevent rate limiting
+      // Minimal delay between chunks: 500ms to avoid rate limiting while staying fast
       if (i > 0) {
-        const progressiveDelay = 5000 + (i * 2000);
-        console.log(`  Waiting ${progressiveDelay}ms before chunk ${i + 1}...`);
-        await new Promise(resolve => setTimeout(resolve, progressiveDelay));
+        const delay = 500;
+        console.log(`  Waiting ${delay}ms before chunk ${i + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
 
       const result = await makeTTSRequest(chunk, sarvamLangCode, speaker, apiKey);
