@@ -165,6 +165,8 @@ export default function InstructorsManager() {
       experience_years: "",
       bio: "",
       avatar_url: "",
+      password: "",
+      confirmPassword: "",
     });
   };
 
