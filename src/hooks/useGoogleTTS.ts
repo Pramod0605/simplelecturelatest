@@ -18,27 +18,51 @@ export const SUPPORTED_LANGUAGES = {
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
-// Global request queue to prevent rate limiting - minimal gap for fast batch processing
+// Global request throttling to prevent rate limiting.
+// Allows fetching multiple slide audios concurrently (up to 3), while spacing request starts.
 let lastTTSRequestTime = 0;
-const MIN_REQUEST_GAP = 300; // 300ms minimum between TTS API calls for fast batch pre-caching
+const MIN_REQUEST_GAP = 300; // ms minimum between TTS request starts
+const MAX_CONCURRENT_TTS_REQUESTS = 3;
 
-// Global request queue - ensures only ONE request at a time across ALL components
-let requestQueue: Promise<any> = Promise.resolve();
+let activeTTSRequests = 0;
+const ttsWaitQueue: Array<() => void> = [];
+
+const acquireTTSSlot = async () => {
+  if (activeTTSRequests < MAX_CONCURRENT_TTS_REQUESTS) {
+    activeTTSRequests++;
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    ttsWaitQueue.push(() => {
+      activeTTSRequests++;
+      resolve();
+    });
+  });
+};
+
+const releaseTTSSlot = () => {
+  activeTTSRequests = Math.max(0, activeTTSRequests - 1);
+  const next = ttsWaitQueue.shift();
+  if (next) next();
+};
+
 const queueTTSRequest = async <T>(fn: () => Promise<T>): Promise<T> => {
-  // Chain this request to the end of the queue
-  const result = requestQueue.then(async () => {
-    // Enforce minimum gap
+  await acquireTTSSlot();
+
+  try {
     const timeSinceLastRequest = Date.now() - lastTTSRequestTime;
     if (timeSinceLastRequest < MIN_REQUEST_GAP) {
       const waitTime = MIN_REQUEST_GAP - timeSinceLastRequest;
-      console.log(`⏳ Queue: waiting ${waitTime}ms before TTS request...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      console.log(`⏳ TTS throttle: waiting ${waitTime}ms before next request...`);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
+
     lastTTSRequestTime = Date.now();
-    return fn();
-  });
-  requestQueue = result.catch(() => {}); // Don't break queue on errors
-  return result;
+    return await fn();
+  } finally {
+    releaseTTSSlot();
+  }
 };
 
 interface UseGoogleTTSReturn {
@@ -189,7 +213,7 @@ export const useGoogleTTS = (): UseGoogleTTSReturn => {
   const getCacheKey = (text: string, lang: string, gender: string) => 
     `${lang}:${gender}:${text.substring(0, 100)}`;
 
-  // Fetch audio from Sarvam with queue-based throttling (serializes ALL requests)
+  // Fetch audio from Sarvam with throttling (up to 3 concurrent requests)
   const fetchAudioFromSarvam = async (
     chunk: string, 
     languageCode: SupportedLanguage, 
