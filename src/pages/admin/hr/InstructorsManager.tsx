@@ -420,6 +420,12 @@ export default function InstructorsManager() {
                         <Button type="button" variant="outline" onClick={() => setEditMode(false)}>
                           Cancel
                         </Button>
+                        {selectedInstructorId && (
+                          <Button type="button" variant="secondary" onClick={() => setShowResetPasswordDialog(true)}>
+                            <Key className="mr-2 h-4 w-4" />
+                            Change Password
+                          </Button>
+                        )}
                       </div>
                     )}
                     {!editMode && selectedInstructorId && (
