@@ -47,11 +47,11 @@ export const MyCoursesTab = ({ student }: { student: any }) => {
             name,
             subject_chapters (
               id,
-              name,
-              display_order,
+              title,
+              sequence_order,
               subject_topics (
                 id,
-                name
+                title
               )
             )
           )
@@ -100,16 +100,16 @@ export const MyCoursesTab = ({ student }: { student: any }) => {
         if (!subjectData || !coursesMap[cs.course_id]) return;
 
         const chapters = (subjectData.subject_chapters || []).map((chapter: any) => {
-          const topics = (chapter.subject_topics || []).map((t: any) => t.name);
+          const topics = (chapter.subject_topics || []).map((t: any) => t.title);
           const isCompleted = progressMap[chapter.id] || false;
           
           return {
             id: chapter.id,
-            name: chapter.name,
+            name: chapter.title,
             progress: isCompleted ? 100 : 0,
             topics
           };
-        }).sort((a: CourseChapter, b: CourseChapter) => a.name.localeCompare(b.name));
+        }).sort((a: CourseChapter, b: CourseChapter) => (a.name || '').localeCompare(b.name || ''));
 
         coursesMap[cs.course_id].subjects.push({
           id: subjectData.id,
