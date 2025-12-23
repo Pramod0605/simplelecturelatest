@@ -23,6 +23,7 @@ export const EngagementTab = ({ student }: { student: any }) => {
   const {
     activity_score = 0,
     activity_breakdown = {},
+    activity_trends = [],
     live_classes = {},
     ai_video_usage = {},
     podcast_usage = {},
@@ -30,27 +31,44 @@ export const EngagementTab = ({ student }: { student: any }) => {
     doubt_clearing = {},
   } = student;
 
-  // Mock trend data for last 30 days
-  const activityTrend = Array.from({ length: 30 }, (_, i) => ({
-    day: `Day ${i + 1}`,
-    score: Math.max(0, activity_score + Math.random() * 20 - 10),
-  }));
+  // Use real activity trend data from daily_activity_logs
+  const activityTrend = activity_trends.length > 0 
+    ? activity_trends.map((t: any, i: number) => ({
+        day: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        score: t.score,
+      }))
+    : Array.from({ length: 30 }, (_, i) => ({
+        day: `Day ${i + 1}`,
+        score: 0,
+      }));
 
-  // Attendance by week (mock data)
-  const weeklyAttendance = Array.from({ length: 4 }, (_, i) => ({
-    week: `Week ${i + 1}`,
-    attended: Math.floor(Math.random() * 10) + 5,
-    total: 15,
-  }));
+  // Calculate weekly attendance from activity trends
+  const weeklyAttendance = (() => {
+    if (activity_trends.length === 0) return [];
+    const weeks: { week: string; attended: number; total: number }[] = [];
+    for (let i = 0; i < Math.min(4, Math.ceil(activity_trends.length / 7)); i++) {
+      const weekData = activity_trends.slice(i * 7, (i + 1) * 7);
+      const attended = weekData.filter((d: any) => d.live_class_minutes > 0).length;
+      weeks.push({
+        week: `Week ${i + 1}`,
+        attended,
+        total: weekData.length,
+      });
+    }
+    return weeks.reverse();
+  })();
 
-  // Video completion distribution
+  // Video completion distribution - use real data
+  const totalVideos = ai_video_usage.total_videos || 0;
+  const watchedCount = ai_video_usage.watched_count || 0;
+  const partiallyWatched = Math.max(0, totalVideos - watchedCount);
+  
   const videoCompletionData = [
-    { name: "Fully Watched", value: ai_video_usage.watched_count || 0, color: "hsl(var(--chart-2))" },
-    { name: "Partially Watched", value: Math.floor((ai_video_usage.total_videos || 0) * 0.3), color: "hsl(var(--chart-3))" },
-    { name: "Not Watched", value: (ai_video_usage.total_videos || 0) - (ai_video_usage.watched_count || 0), color: "hsl(var(--muted))" },
-  ];
+    { name: "Completed", value: watchedCount, color: "hsl(var(--chart-2))" },
+    { name: "In Progress", value: partiallyWatched, color: "hsl(var(--chart-3))" },
+  ].filter(d => d.value > 0);
 
-  // Doubts by subject
+  // Doubts by subject from real data
   const doubtsBySubject = Object.entries(doubt_clearing.by_subject || {}).map(([subject, count]) => ({
     subject,
     count,
@@ -157,19 +175,25 @@ export const EngagementTab = ({ student }: { student: any }) => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Weekly Attendance</CardTitle>
+            <CardTitle>Weekly Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={weeklyAttendance}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="attended" fill="hsl(var(--chart-2))" name="Attended" />
-                <Bar dataKey="total" fill="hsl(var(--muted))" name="Total" />
-              </BarChart>
-            </ResponsiveContainer>
+            {weeklyAttendance.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={weeklyAttendance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="attended" fill="hsl(var(--chart-2))" name="Active Days" />
+                  <Bar dataKey="total" fill="hsl(var(--muted))" name="Total Days" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                No activity data available yet
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

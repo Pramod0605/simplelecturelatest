@@ -30,18 +30,24 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
     return Array.from(allSubjects);
   }, [student.courses]);
 
-  // Generate progress trend data based on available data
+  // Use real activity trends data for progress chart
   const progressTrendData = useMemo(() => {
+    const activityTrends = student.activity_trends || [];
+    if (activityTrends.length > 0) {
+      return activityTrends.map((t: any) => ({
+        month: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        progress: t.score || 0
+      }));
+    }
+    // Fallback: create trend from current progress
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentMonth = new Date().getMonth();
     const currentProgress = student.total_progress || 0;
-    
-    // Create a realistic trend leading to current progress
     return months.slice(0, currentMonth + 1).map((month, index) => ({
       month,
       progress: Math.round((currentProgress / (currentMonth + 1)) * (index + 1))
     }));
-  }, [student.total_progress]);
+  }, [student.activity_trends, student.total_progress]);
 
   // Empty state
   if (!hasCourses) {
