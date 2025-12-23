@@ -25,8 +25,6 @@ const Forum = () => {
   });
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
-  const joinGroup = useJoinGroup();
-  const leaveGroup = useLeaveGroup();
   
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
