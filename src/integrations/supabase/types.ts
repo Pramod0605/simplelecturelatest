@@ -41,6 +41,70 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_video_watch_logs: {
+        Row: {
+          chapter_id: string | null
+          completion_percentage: number
+          created_at: string | null
+          duration_seconds: number
+          id: string
+          student_id: string
+          subject_id: string | null
+          topic_id: string | null
+          updated_at: string | null
+          video_title: string
+          watched_seconds: number
+        }
+        Insert: {
+          chapter_id?: string | null
+          completion_percentage?: number
+          created_at?: string | null
+          duration_seconds?: number
+          id?: string
+          student_id: string
+          subject_id?: string | null
+          topic_id?: string | null
+          updated_at?: string | null
+          video_title: string
+          watched_seconds?: number
+        }
+        Update: {
+          chapter_id?: string | null
+          completion_percentage?: number
+          created_at?: string | null
+          duration_seconds?: number
+          id?: string
+          student_id?: string
+          subject_id?: string | null
+          topic_id?: string | null
+          updated_at?: string | null
+          video_title?: string
+          watched_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_video_watch_logs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_video_watch_logs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_video_watch_logs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approvals: {
         Row: {
           approved_at: string | null
@@ -946,6 +1010,45 @@ export type Database = {
           subjects?: Json | null
           thumbnail_url?: string | null
           what_you_learn?: Json | null
+        }
+        Relationships: []
+      }
+      daily_activity_logs: {
+        Row: {
+          activity_date: string
+          activity_score: number
+          created_at: string | null
+          doubts_asked: number | null
+          id: string
+          live_class_minutes: number | null
+          mcq_attempts: number | null
+          podcast_listen_minutes: number | null
+          student_id: string
+          video_watch_minutes: number | null
+        }
+        Insert: {
+          activity_date?: string
+          activity_score?: number
+          created_at?: string | null
+          doubts_asked?: number | null
+          id?: string
+          live_class_minutes?: number | null
+          mcq_attempts?: number | null
+          podcast_listen_minutes?: number | null
+          student_id: string
+          video_watch_minutes?: number | null
+        }
+        Update: {
+          activity_date?: string
+          activity_score?: number
+          created_at?: string | null
+          doubts_asked?: number | null
+          id?: string
+          live_class_minutes?: number | null
+          mcq_attempts?: number | null
+          podcast_listen_minutes?: number | null
+          student_id?: string
+          video_watch_minutes?: number | null
         }
         Relationships: []
       }
@@ -2307,6 +2410,54 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      podcast_listen_logs: {
+        Row: {
+          chapter_id: string | null
+          created_at: string | null
+          duration_seconds: number
+          id: string
+          listened_seconds: number
+          podcast_title: string
+          student_id: string
+          subject_id: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number
+          id?: string
+          listened_seconds?: number
+          podcast_title: string
+          student_id: string
+          subject_id?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number
+          id?: string
+          listened_seconds?: number
+          podcast_title?: string
+          student_id?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_listen_logs_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "podcast_listen_logs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       popular_subjects: {
         Row: {
