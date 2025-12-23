@@ -384,6 +384,34 @@ export default function InstructorsManager() {
                       />
                     </div>
 
+                    {/* Password fields - only for new instructor creation */}
+                    {editMode && !selectedInstructorId && (
+                      <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+                        <div>
+                          <Label htmlFor="password">Password *</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="Min 6 characters"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                          <Input
+                            id="confirmPassword"
+                            type="password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            placeholder="Re-enter password"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {editMode && (
                       <div className="flex gap-2">
                         <Button type="submit">
@@ -395,10 +423,16 @@ export default function InstructorsManager() {
                       </div>
                     )}
                     {!editMode && selectedInstructorId && (
-                      <Button type="button" onClick={() => setEditMode(true)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Details
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button type="button" onClick={() => setEditMode(true)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Details
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setShowResetPasswordDialog(true)}>
+                          <Key className="mr-2 h-4 w-4" />
+                          Reset Password
+                        </Button>
+                      </div>
                     )}
                   </form>
                 </CardContent>
@@ -436,6 +470,73 @@ export default function InstructorsManager() {
           </Tabs>
         </TabsContent>
       </Tabs>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Instructor Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min 6 characters"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirmNewPassword">Confirm Password</Label>
+              <Input
+                id="confirmNewPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetPasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetPassword} disabled={resetPassword.isPending}>
+              {resetPassword.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials Dialog - shown after creating new instructor */}
+      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Instructor Created Successfully</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Share these credentials with the instructor to allow them to login:
+            </p>
+            <div className="p-4 bg-muted rounded-lg space-y-2 font-mono text-sm">
+              <p><strong>Email:</strong> {createdCredentials?.email}</p>
+              <p><strong>Password:</strong> {createdCredentials?.password}</p>
+              <p><strong>Login URL:</strong> {window.location.origin}/auth</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCredentialsDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={copyCredentials}>
+              {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {copied ? "Copied!" : "Copy Credentials"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
