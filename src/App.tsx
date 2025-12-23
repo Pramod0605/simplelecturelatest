@@ -87,6 +87,10 @@ import Live from "./pages/Live";
 import WatchRecording from "./pages/WatchRecording";
 import RecordingsManager from "./pages/admin/RecordingsManager";
 import Recordings from "./pages/Recordings";
+import Forum from "./pages/Forum";
+import ForumCategory from "./pages/ForumCategory";
+import ForumPost from "./pages/ForumPost";
+import ForumModeration from "./pages/admin/ForumModeration";
 
 // Instructor Panel
 import { InstructorProtectedRoute } from "./components/instructor/InstructorProtectedRoute";
@@ -129,6 +133,9 @@ const App = () => (
             <Route path="/live" element={<Live />} />
             <Route path="/recordings" element={<Recordings />} />
             <Route path="/watch/:recordingId" element={<WatchRecording />} />
+            <Route path="/forum" element={<Forum />} />
+            <Route path="/forum/category/:slug" element={<ForumCategory />} />
+            <Route path="/forum/post/:id" element={<ForumPost />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />
@@ -197,6 +204,7 @@ const App = () => (
                 <Route path="hr/bulk-assign-instructors" element={<BulkAssignInstructors />} />
                 <Route path="hr/live-classes" element={<LiveClassesManager />} />
                 <Route path="hr/recordings" element={<RecordingsManager />} />
+                <Route path="forum-moderation" element={<ForumModeration />} />
               </Route>
             </Route>
             

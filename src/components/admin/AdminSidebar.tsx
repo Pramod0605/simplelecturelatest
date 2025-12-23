@@ -28,7 +28,8 @@ import {
   Folder,
   Home,
   Star,
-  ShoppingCart
+  ShoppingCart,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -448,6 +449,22 @@ export const AdminSidebar = () => {
         >
           <Calendar className="h-4 w-4" />
           <span>Manage Academics</span>
+        </NavLink>
+
+        {/* Forum Moderation */}
+        <NavLink
+          to="/admin/forum-moderation"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-medium",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )
+          }
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>Forum Moderation</span>
         </NavLink>
 
         {/* Documentation */}
