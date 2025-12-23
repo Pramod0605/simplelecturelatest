@@ -152,7 +152,7 @@ export const useCurrentStudent = () => {
         supabase.from('student_progress').select('*').eq('student_id', user.id),
         supabase.from('class_attendance').select(`
           id, status, marked_at, scheduled_class_id, duration_seconds,
-          scheduled_classes (id, topic, course_id, instructor_id, start_time)
+          scheduled_classes (id, subject, course_id, teacher_id, scheduled_at, duration_minutes)
         `).eq('student_id', user.id).order('marked_at', { ascending: false }).limit(20),
         supabase.from('doubt_logs').select(`
           id, question, answer, created_at, response_time_ms, topic_id,
@@ -271,11 +271,11 @@ export const useCurrentStudent = () => {
         const scheduledClass = a.scheduled_classes;
         return {
           id: a.id,
-          subject: scheduledClass?.topic || 'Class Session',
-          topic: scheduledClass?.topic || 'Session',
+          subject: scheduledClass?.subject || 'Class Session',
+          topic: scheduledClass?.subject || 'Session',
           date: a.marked_at,
           attended: a.status === 'present',
-          duration_minutes: Math.round((a.duration_seconds || 3600) / 60)
+          duration_minutes: scheduledClass?.duration_minutes || Math.round((a.duration_seconds || 3600) / 60)
         };
       });
 
