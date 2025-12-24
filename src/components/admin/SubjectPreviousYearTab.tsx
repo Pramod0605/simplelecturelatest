@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle, Brain } from "lucide-react";
 import { PDFPreview } from "./PDFPreview";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,10 +42,10 @@ import {
 } from "@/hooks/useSubjectChaptersTopics";
 import {
   useBulkInsertPreviousYearQuestions,
-  extractQuestionsFromParsedJson,
   type ExtractedQuestion,
 } from "@/hooks/usePreviousYearQuestions";
 import { useDatalab } from "@/hooks/useDatalab";
+import { useExtractQuestionsAI } from "@/hooks/useExtractQuestionsAI";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +64,7 @@ interface SubjectPreviousYearTabProps {
   subjectName: string;
 }
 
-type Step = "form" | "parsing" | "preview" | "saving";
+type Step = "form" | "parsing" | "extracting" | "preview" | "saving";
 
 export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPreviousYearTabProps) {
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -91,6 +91,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const uploadPDF = useUploadPaperPDF();
   const bulkInsertQuestions = useBulkInsertPreviousYearQuestions();
   const { parsePdfFile, isLoading: isParsing, progress: parseProgress } = useDatalab();
+  const extractQuestionsAI = useExtractQuestionsAI();
 
   const resetForm = () => {
     setFormData({
@@ -110,16 +111,35 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const handleParsePDF = async () => {
     if (!selectedFile) return;
 
-    setCurrentStep("parsing");
-    const result = await parsePdfFile(selectedFile);
+    try {
+      // Step 1: Parse PDF with Datalab
+      setCurrentStep("parsing");
+      const result = await parsePdfFile(selectedFile);
 
-    if (result && result.success) {
+      if (!result || !result.success) {
+        setCurrentStep("form");
+        return;
+      }
+
       setParsedJson(result.content_json);
-      const questions = extractQuestionsFromParsedJson(result.content_json);
-      setExtractedQuestions(questions);
-      setFormData((prev) => ({ ...prev, total_questions: questions.length }));
+
+      // Step 2: Extract questions using AI
+      setCurrentStep("extracting");
+      const aiResult = await extractQuestionsAI.mutateAsync({
+        contentJson: result.content_json,
+        examName: formData.exam_name,
+        year: formData.year,
+        paperType: formData.paper_type,
+      });
+
+      if (aiResult.success && aiResult.questions) {
+        setExtractedQuestions(aiResult.questions);
+        setFormData((prev) => ({ ...prev, total_questions: aiResult.questionsCount }));
+      }
+      
       setCurrentStep("preview");
-    } else {
+    } catch (error) {
+      console.error("Error in PDF parsing/extraction:", error);
       setCurrentStep("form");
     }
   };
@@ -335,6 +355,17 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                     <p className="text-lg font-medium">Parsing PDF...</p>
                     <p className="text-sm text-muted-foreground">{parseProgress}</p>
                     <Progress value={50} className="w-64" />
+                  </div>
+                )}
+
+                {currentStep === "extracting" && (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                    <Brain className="h-12 w-12 animate-pulse text-primary" />
+                    <p className="text-lg font-medium">Extracting Questions with AI...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Gemini is identifying questions, options, and correct answers
+                    </p>
+                    <Progress value={75} className="w-64" />
                   </div>
                 )}
 

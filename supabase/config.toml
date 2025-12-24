@@ -146,3 +146,6 @@ verify_jwt = true
 
 [functions.forum-ai-reply]
 verify_jwt = true
+
+[functions.extract-questions-preview]
+verify_jwt = true
