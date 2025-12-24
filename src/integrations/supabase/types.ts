@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_assistant_documents: {
+        Row: {
+          content_preview: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          file_name: string | null
+          id: string
+          source_type: string
+          source_url: string | null
+          status: string | null
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_preview?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          file_name?: string | null
+          id?: string
+          source_type?: string
+          source_url?: string | null
+          status?: string | null
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_preview?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          file_name?: string | null
+          id?: string
+          source_type?: string
+          source_url?: string | null
+          status?: string | null
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assistant_documents_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           description: string | null
