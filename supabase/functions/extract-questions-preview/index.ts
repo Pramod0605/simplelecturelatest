@@ -29,118 +29,27 @@ type ExtractResponse = {
   chunksProcessed?: number;
 };
 
-function safeJsonParse(input: unknown): unknown | null {
-  if (typeof input !== "string") return null;
-  try {
-    return JSON.parse(input);
-  } catch {
-    return null;
-  }
-}
-
-function looksLikeBase64(s: string) {
-  return s.length > 200 && /^[A-Za-z0-9+/=\s]+$/.test(s);
-}
-
-function looksLikeUrl(s: string) {
-  return /^https?:\/\//i.test(s) || /^data:/i.test(s);
-}
-
-function shouldKeepText(s: string) {
-  const t = s.trim();
-  if (t.length < 3) return false;
-  // Avoid runaway payloads, but keep longer blocks that clearly contain questions.
-  if (t.length > 30_000) return false;
-  if (looksLikeUrl(t)) return false;
-  if (looksLikeBase64(t)) return false;
-  // Keep lines/blocks that look like questions/options/answers
-  return /\?|\bQ\s*\d+\b|\bAns\b|\([A-D]\)|\bA\.|\bB\.|\bC\.|\bD\.|\bOption\b|<\s*b\s*>\s*Q\d+\s*\.|<\s*ol\b|<\s*li\b/i.test(t) || t.length >= 12;
-}
-
-function collectText(node: unknown, out: string[], depth = 0) {
-  if (depth > 12) return;
-  if (typeof node === "string") {
-    const t = node.trim();
-    if (!shouldKeepText(t)) return;
-
-    // If we get a big HTML block (common in Marker output), keep both head+tail.
-    if (t.length > 6000) {
-      out.push(t.slice(0, 6000));
-      out.push(t.slice(-6000));
-      return;
-    }
-
-    out.push(t);
-    return;
-  }
-  if (typeof node !== "object" || node === null) return;
-
-  if (Array.isArray(node)) {
-    for (const item of node) collectText(item, out, depth + 1);
-    return;
-  }
-
-  const obj = node as Record<string, unknown>;
-  // Prioritize common text keys
-  const priorityKeys = ["html", "text", "content", "value", "title", "raw_text", "plain_text"];
-  for (const k of priorityKeys) {
-    const v = obj[k];
-    if (typeof v === "string") {
-      const t = v.trim();
-      if (shouldKeepText(t)) out.push(t.length > 6000 ? t.slice(0, 6000) : t);
-    }
-  }
-  for (const v of Object.values(obj)) collectText(v, out, depth + 1);
-}
-
-function buildExtractionText(contentJson: unknown) {
-  const parsed = safeJsonParse(contentJson);
-  const root = parsed ?? contentJson;
-
-  const lines: string[] = [];
-  collectText(root, lines);
-
-  const uniq: string[] = [];
-  const seen = new Set<string>();
-  for (const l of lines) {
-    const key = l.replace(/\s+/g, " ").trim();
-    if (!key) continue;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    uniq.push(l);
-  }
-
-  const joined = uniq.join("\n");
-
-  // Include start + end so we capture both questions and answer key
-  const head = joined.slice(0, 120_000);
-  const tail = joined.length > 180_000 ? joined.slice(-80_000) : "";
-
-  return tail
-    ? `${head}\n\n--- END OF DOCUMENT (answer key often here) ---\n${tail}`
-    : head;
-}
-
 function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
   const normalized = raw
     .map((q, index) => {
       let options: Record<string, ExtractedOption> = {};
 
-      if (Array.isArray(q.options)) {
-        const keys = ["A", "B", "C", "D"];
-        q.options.forEach((opt: any, i: number) => {
-          if (i < 4) {
-            options[keys[i]] = {
-              text: typeof opt === "string" ? opt : opt?.text || String(opt),
-            };
-          }
-        });
-      } else if (q.options && typeof q.options === "object") {
+      if (q.options && typeof q.options === "object" && !Array.isArray(q.options)) {
+        // Handle { "A": "...", "B": "...", ... } format
         Object.entries(q.options).forEach(([key, val]: [string, any]) => {
           const normalizedKey = key.toUpperCase().replace(/[()]/g, "").trim();
           if (["A", "B", "C", "D"].includes(normalizedKey)) {
             options[normalizedKey] = {
               text: typeof val === "string" ? val : val?.text || String(val),
+            };
+          }
+        });
+      } else if (Array.isArray(q.options)) {
+        const keys = ["A", "B", "C", "D"];
+        q.options.forEach((opt: any, i: number) => {
+          if (i < 4) {
+            options[keys[i]] = {
+              text: typeof opt === "string" ? opt : opt?.text || String(opt),
             };
           }
         });
@@ -153,13 +62,22 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
         if (numMap[correctAnswer]) correctAnswer = numMap[correctAnswer];
       }
 
+      // Map difficulty from Document Tab format to Previous Year format
+      let difficulty: "easy" | "medium" | "hard" = "medium";
+      const rawDifficulty = String(q.difficulty || "").toLowerCase();
+      if (rawDifficulty === "low" || rawDifficulty === "easy") {
+        difficulty = "easy";
+      } else if (rawDifficulty === "advanced" || rawDifficulty === "hard") {
+        difficulty = "hard";
+      }
+
       return {
         question_number: Number(q.question_number ?? index + 1),
         question_text: String(q.question_text ?? q.question ?? ""),
         options,
         correct_answer: correctAnswer,
         explanation: String(q.explanation ?? ""),
-        difficulty: (q.difficulty === "easy" || q.difficulty === "hard" ? q.difficulty : "medium"),
+        difficulty,
         marks: Number(q.marks ?? 4),
       } satisfies ExtractedQuestion;
     })
@@ -174,145 +92,39 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
   return Array.from(map.values()).sort((a, b) => a.question_number - b.question_number);
 }
 
-async function callGatewayWithTool({
-  apiKey,
-  examName,
-  year,
-  paperType,
-  extractionText,
-}: {
-  apiKey: string;
-  examName: string;
-  year: number;
-  paperType?: string;
-  extractionText: string;
-}): Promise<{ questions: any[]; usedTool: boolean; rawPreview: string }> {
-  const system =
-    "You extract MCQs from exam papers. Never answer academic questions; just extract MCQs. Return structured output via the provided tool call.";
-
-  const user = `EXAM CONTEXT: ${examName} ${year} ${paperType || ""}\n\n` +
-    "Extract ALL multiple-choice questions (MCQs) you can find. " +
-    "For each question, return options in the same order they appear (usually 4 options). " +
-    "If an answer key exists, match it. If unsure about an answer, leave correct_answer as an empty string.\n\n" +
-    "Content (condensed from parsed PDF):\n" +
-    extractionText;
-
-  const body: any = {
-    model: "google/gemini-2.5-flash",
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    max_tokens: 6000,
-    tools: [
-      {
-        type: "function",
-        function: {
-          name: "extract_mcqs",
-          description: "Extract MCQs with options and answers from exam text.",
-          parameters: {
-            type: "object",
-            properties: {
-              questions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    question_number: { type: "number" },
-                    question_text: { type: "string" },
-                    options: {
-                      type: "array",
-                      description: "Options in order as they appear (usually 4 items)",
-                      minItems: 2,
-                      maxItems: 6,
-                      items: { type: "string" },
-                    },
-                    correct_answer: {
-                      type: "string",
-                      description: "A, B, C, D or 1, 2, 3, 4 or empty string if unknown",
-                    },
-                    explanation: { type: "string" },
-                    difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
-                    marks: { type: "number" },
-                  },
-                  required: [
-                    "question_number",
-                    "question_text",
-                    "options",
-                    "correct_answer",
-                    "explanation",
-                    "difficulty",
-                    "marks",
-                  ],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["questions"],
-            additionalProperties: false,
-          },
-        },
-      },
-    ],
-    tool_choice: { type: "function", function: { name: "extract_mcqs" } },
-  };
-
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const text = await resp.text();
-  const rawPreview = text.slice(0, 500);
-
-  if (!resp.ok) {
-    throw { status: resp.status, bodyText: text };
-  }
-
-  const data = JSON.parse(text);
-  const toolArgs = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments as
-    | string
-    | Record<string, unknown>
-    | undefined;
-
-  if (toolArgs) {
-    const args = typeof toolArgs === "string" ? JSON.parse(toolArgs) : toolArgs;
-    const questions = Array.isArray((args as any)?.questions) ? (args as any).questions : [];
-    return { questions, usedTool: true, rawPreview };
-  }
-
-  // Fallback: sometimes providers return plain JSON content
-  const content = data?.choices?.[0]?.message?.content as string | undefined;
-  if (content) {
-    try {
-      const parsed = JSON.parse(content);
-      return { questions: Array.isArray(parsed) ? parsed : [parsed], usedTool: false, rawPreview };
-    } catch {
-      return { questions: [], usedTool: false, rawPreview };
-    }
-  }
-
-  return { questions: [], usedTool: false, rawPreview };
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { contentJson, examName, year, paperType } = await req.json();
+    const { contentJson, contentMarkdown, examName, year, paperType } = await req.json();
 
-    if (!contentJson) {
+    // Prefer markdown (clean text) over JSON
+    let extractionText = "";
+    
+    if (contentMarkdown && typeof contentMarkdown === "string" && contentMarkdown.trim().length > 100) {
+      extractionText = contentMarkdown.trim();
+      console.log("Using contentMarkdown directly, length:", extractionText.length);
+    } else if (contentJson) {
+      // Try to get markdown from Datalab JSON structure
+      const parsed = typeof contentJson === "string" ? JSON.parse(contentJson) : contentJson;
+      if (parsed?.markdown && typeof parsed.markdown === "string") {
+        extractionText = parsed.markdown.trim();
+        console.log("Extracted markdown from contentJson.markdown, length:", extractionText.length);
+      } else {
+        // Fallback: stringify the JSON for LLM
+        extractionText = JSON.stringify(parsed, null, 2);
+        console.log("Using stringified contentJson, length:", extractionText.length);
+      }
+    }
+
+    if (!extractionText || extractionText.length < 100) {
       const res: ExtractResponse = {
         success: false,
         questions: [],
         questionsCount: 0,
-        error: "Missing required field: contentJson",
+        error: "No content provided or content too short",
         errorCode: "BAD_REQUEST",
       };
       return new Response(JSON.stringify(res), {
@@ -324,47 +136,87 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    console.log("=== Starting MCQ Extraction (tool-calling) ===");
+    console.log("=== Starting MCQ Extraction ===");
     console.log("Exam:", examName, "Year:", year, "Type:", paperType);
+    console.log("Extraction text length:", extractionText.length);
 
-    const extractionText = buildExtractionText(contentJson);
-    console.log("Condensed content length:", extractionText.length);
+    // Use the proven system prompt from process-llm-extraction (Document Tab)
+    const systemPrompt = `You are an expert at parsing educational questions from JEE/NEET examination papers.
 
-    // Sanity check: if text is too short, likely a scanned PDF with no OCR
-    const MIN_TEXT_LENGTH = 1500;
-    if (extractionText.length < MIN_TEXT_LENGTH) {
-      console.warn("Extraction text too short, likely scanned/image PDF");
-      const res: ExtractResponse = {
-        success: false,
-        questions: [],
-        questionsCount: 0,
-        error: `PDF text extraction is too small (${extractionText.length} chars). This may be a scanned PDF. Try enabling OCR or uploading a text-based PDF.`,
-        errorCode: "TEXT_TOO_SHORT",
-      };
-      return new Response(JSON.stringify(res), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+**Your Task:**
+Extract each question as a separate object with:
+- question_number: The question number (1, 2, 3, etc.)
+- question_text: Full question with LaTeX formulas preserved (e.g., \\( x^2 + 5x + 6 = 0 \\))
+- options: { "A": "...", "B": "...", "C": "...", "D": "..." } for MCQs
+- correct_answer: The correct option letter (A, B, C, or D). If answer key is at the end of document, use it.
+- explanation: Solution/explanation if present (use empty string if not available)
+- difficulty: "easy", "medium", or "hard" based on complexity
+- marks: Usually 4 for JEE/NEET questions
+
+**Question Boundary Detection:**
+- Look for question numbers: "Q1", "Q2", "1.", "2.", "(1)", "(2)", etc.
+- Each MCQ typically has 4 options (A, B, C, D or 1, 2, 3, 4)
+- Questions may span multiple lines
+- Options may contain LaTeX formulas
+
+**LaTeX Preservation:**
+- Keep all LaTeX exactly as written: \\( ... \\) for inline, \\[ ... \\] for display
+- Common symbols: \\sqrt{}, \\frac{}{}, \\int, \\sum, \\alpha, \\beta, etc.
+
+**Answer Key Detection:**
+- Look for answer key section at the end of the document
+- Common formats: "1. (A)", "1-A", "Answers: 1.A, 2.B, ..."
+- Match answers to question numbers
+
+**Output Format:**
+Return a valid JSON object with this structure:
+{
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "...",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "correct_answer": "A",
+      "explanation": "",
+      "difficulty": "medium",
+      "marks": 4
     }
+  ]
+}
 
-    let rawQuestions: any[] = [];
-    let usedTool = false;
+IMPORTANT: Return ONLY valid JSON. No markdown code blocks, no explanations, just the JSON object.`;
 
-    try {
-      const result = await callGatewayWithTool({
-        apiKey: LOVABLE_API_KEY,
-        examName,
-        year,
-        paperType,
-        extractionText,
-      });
-      rawQuestions = result.questions;
-      usedTool = result.usedTool;
-      console.log("Gateway response preview:", JSON.stringify(result.rawPreview));
-    } catch (err: any) {
-      const status = Number(err?.status || 0);
-      const bodyText = String(err?.bodyText || "");
-      console.error("AI gateway error:", status, bodyText.slice(0, 500));
+    const userPrompt = `EXAM: ${examName} ${year} ${paperType || ""}
+
+Extract ALL multiple-choice questions from this document:
+
+${extractionText.slice(0, 150000)}`;
+
+    console.log("Calling Gemini with prompt length:", userPrompt.length);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.3, // More deterministic output (same as Document Tab)
+      }),
+    });
+
+    const responseText = await response.text();
+    console.log("Gateway response status:", response.status);
+    console.log("Gateway response preview:", responseText.slice(0, 500));
+
+    if (!response.ok) {
+      const status = response.status;
+      console.error("AI gateway error:", status, responseText.slice(0, 500));
 
       const res: ExtractResponse = {
         success: false,
@@ -384,7 +236,72 @@ serve(async (req) => {
               : "AI_GATEWAY_ERROR",
       };
 
-      // Always return 200 so supabase.functions.invoke doesn't throw
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const data = JSON.parse(responseText);
+    const llmResponse = data?.choices?.[0]?.message?.content;
+
+    if (!llmResponse) {
+      console.error("No content in AI response");
+      const res: ExtractResponse = {
+        success: false,
+        questions: [],
+        questionsCount: 0,
+        error: "No response from AI",
+        errorCode: "EMPTY_RESPONSE",
+      };
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("LLM response length:", llmResponse.length);
+    console.log("LLM response preview:", llmResponse.slice(0, 300));
+
+    // Parse JSON response (handle markdown code blocks if present)
+    let extractedData: any;
+    try {
+      let jsonText = llmResponse.trim();
+
+      // Remove markdown code blocks if present
+      if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+      }
+
+      extractedData = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", parseError);
+      console.error("Response was:", llmResponse.slice(0, 1000));
+
+      const res: ExtractResponse = {
+        success: false,
+        questions: [],
+        questionsCount: 0,
+        error: "Failed to parse AI response as JSON",
+        errorCode: "PARSE_ERROR",
+      };
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const rawQuestions = extractedData?.questions || [];
+
+    if (!Array.isArray(rawQuestions)) {
+      console.error("Invalid response format: questions is not an array");
+      const res: ExtractResponse = {
+        success: false,
+        questions: [],
+        questionsCount: 0,
+        error: "Invalid response format from AI",
+        errorCode: "INVALID_FORMAT",
+      };
       return new Response(JSON.stringify(res), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -393,16 +310,15 @@ serve(async (req) => {
 
     const normalized = normalizeQuestions(rawQuestions);
 
+    console.log(`Extracted ${normalized.length} questions`);
+
     const res: ExtractResponse = {
       success: normalized.length > 0,
       questions: normalized,
       questionsCount: normalized.length,
-      partial: !usedTool && normalized.length > 0,
       error: normalized.length === 0 ? "No MCQs could be extracted from this PDF." : undefined,
       errorCode: normalized.length === 0 ? "NO_QUESTIONS" : undefined,
     };
-
-    console.log(`Extracted ${normalized.length} questions`);
 
     return new Response(JSON.stringify(res), {
       status: 200,
