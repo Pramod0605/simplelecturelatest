@@ -88,6 +88,11 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         errorCode?: string;
         errors?: string[];
         chunksProcessed?: number;
+        answerKeyStats?: {
+          found: number;
+          applied: number;
+          missing: number[];
+        };
       }
     | null
   >(null);
@@ -154,6 +159,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
           errorCode: aiResult.errorCode,
           errors: aiResult.errors,
           chunksProcessed: aiResult.chunksProcessed,
+          answerKeyStats: aiResult.answerKeyStats,
         });
 
         if (aiResult.questions && aiResult.questions.length > 0) {
@@ -454,7 +460,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                   Q{q.question_number || index + 1}
                                 </Badge>
                                 <div className="flex-1">
-                                  <p className="text-sm line-clamp-2">
+                                  <p className="text-sm">
                                     {q.question_text}
                                   </p>
                                   {Object.keys(q.options).length > 0 && (
