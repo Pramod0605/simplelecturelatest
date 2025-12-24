@@ -49,17 +49,28 @@ function looksLikeUrl(s: string) {
 function shouldKeepText(s: string) {
   const t = s.trim();
   if (t.length < 3) return false;
-  if (t.length > 2000) return false;
+  // Avoid runaway payloads, but keep longer blocks that clearly contain questions.
+  if (t.length > 30_000) return false;
   if (looksLikeUrl(t)) return false;
   if (looksLikeBase64(t)) return false;
-  // Keep lines that look like questions/options/answers
-  return /\?|\bQ\s*\d+\b|\bAns\b|\([A-D]\)|\bA\.|\bB\.|\bC\.|\bD\.|\bOption\b/i.test(t) || t.length >= 12;
+  // Keep lines/blocks that look like questions/options/answers
+  return /\?|\bQ\s*\d+\b|\bAns\b|\([A-D]\)|\bA\.|\bB\.|\bC\.|\bD\.|\bOption\b|<\s*b\s*>\s*Q\d+\s*\.|<\s*ol\b|<\s*li\b/i.test(t) || t.length >= 12;
 }
 
 function collectText(node: unknown, out: string[], depth = 0) {
   if (depth > 12) return;
   if (typeof node === "string") {
-    if (shouldKeepText(node)) out.push(node.trim());
+    const t = node.trim();
+    if (!shouldKeepText(t)) return;
+
+    // If we get a big HTML block (common in Marker output), keep both head+tail.
+    if (t.length > 6000) {
+      out.push(t.slice(0, 6000));
+      out.push(t.slice(-6000));
+      return;
+    }
+
+    out.push(t);
     return;
   }
   if (typeof node !== "object" || node === null) return;
@@ -71,10 +82,13 @@ function collectText(node: unknown, out: string[], depth = 0) {
 
   const obj = node as Record<string, unknown>;
   // Prioritize common text keys
-  const priorityKeys = ["text", "content", "value", "title", "raw_text", "plain_text"];
+  const priorityKeys = ["html", "text", "content", "value", "title", "raw_text", "plain_text"];
   for (const k of priorityKeys) {
     const v = obj[k];
-    if (typeof v === "string" && shouldKeepText(v)) out.push(v.trim());
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (shouldKeepText(t)) out.push(t.length > 6000 ? t.slice(0, 6000) : t);
+    }
   }
   for (const v of Object.values(obj)) collectText(v, out, depth + 1);
 }
@@ -177,7 +191,8 @@ async function callGatewayWithTool({
     "You extract MCQs from exam papers. Never answer academic questions; just extract MCQs. Return structured output via the provided tool call.";
 
   const user = `EXAM CONTEXT: ${examName} ${year} ${paperType || ""}\n\n` +
-    "Extract ALL multiple-choice questions (MCQs) you can find, with options A-D and the correct answer. " +
+    "Extract ALL multiple-choice questions (MCQs) you can find. " +
+    "For each question, return options in the same order they appear (usually 4 options). " +
     "If an answer key exists, match it. If unsure about an answer, leave correct_answer as an empty string.\n\n" +
     "Content (condensed from parsed PDF):\n" +
     extractionText;
@@ -206,17 +221,16 @@ async function callGatewayWithTool({
                     question_number: { type: "number" },
                     question_text: { type: "string" },
                     options: {
-                      type: "object",
-                      properties: {
-                        A: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
-                        B: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
-                        C: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
-                        D: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
-                      },
-                      required: ["A", "B", "C", "D"],
-                      additionalProperties: false,
+                      type: "array",
+                      description: "Options in order as they appear (usually 4 items)",
+                      minItems: 2,
+                      maxItems: 6,
+                      items: { type: "string" },
                     },
-                    correct_answer: { type: "string", description: "One of A, B, C, D or empty string if unknown" },
+                    correct_answer: {
+                      type: "string",
+                      description: "A, B, C, D or 1, 2, 3, 4 or empty string if unknown",
+                    },
                     explanation: { type: "string" },
                     difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
                     marks: { type: "number" },
@@ -260,12 +274,14 @@ async function callGatewayWithTool({
   }
 
   const data = JSON.parse(text);
-  const toolArgsStr =
-    data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments as string | undefined;
+  const toolArgs = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments as
+    | string
+    | Record<string, unknown>
+    | undefined;
 
-  if (toolArgsStr) {
-    const args = JSON.parse(toolArgsStr);
-    const questions = Array.isArray(args?.questions) ? args.questions : [];
+  if (toolArgs) {
+    const args = typeof toolArgs === "string" ? JSON.parse(toolArgs) : toolArgs;
+    const questions = Array.isArray((args as any)?.questions) ? (args as any).questions : [];
     return { questions, usedTool: true, rawPreview };
   }
 
@@ -344,7 +360,7 @@ serve(async (req) => {
       });
       rawQuestions = result.questions;
       usedTool = result.usedTool;
-      console.log("Gateway response preview:", result.rawPreview);
+      console.log("Gateway response preview:", JSON.stringify(result.rawPreview));
     } catch (err: any) {
       const status = Number(err?.status || 0);
       const bodyText = String(err?.bodyText || "");
