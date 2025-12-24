@@ -10,11 +10,15 @@ interface ExtractQuestionsParams {
   paperType?: string;
 }
 
-interface ExtractQuestionsResponse {
+export interface ExtractQuestionsResponse {
   success: boolean;
   questions: ExtractedQuestion[];
   questionsCount: number;
+  partial?: boolean;
   error?: string;
+  errorCode?: string;
+  errors?: string[];
+  chunksProcessed?: number;
 }
 
 export function useExtractQuestionsAI() {
@@ -34,21 +38,37 @@ export function useExtractQuestionsAI() {
         throw new Error(error.message || "Failed to extract questions");
       }
 
-      if (!data.success && data.error) {
-        throw new Error(data.error);
+      return (data || {
+        success: false,
+        questions: [],
+        questionsCount: 0,
+        error: "Empty response from server",
+        errorCode: "EMPTY_RESPONSE",
+      }) as ExtractQuestionsResponse;
+    },
+    onSuccess: (data) => {
+      if (!data.success) {
+        if (data.errorCode === "RATE_LIMIT") {
+          toast.error("Rate limit exceeded. Please wait a moment and try again.");
+        } else if (data.errorCode === "CREDITS_EXHAUSTED") {
+          toast.error("AI credits exhausted. Please add credits to continue.");
+        } else if (data.errorCode === "NO_QUESTIONS") {
+          toast.info("No MCQs were detected in this PDF.");
+        } else if (data.error) {
+          toast.error(data.error);
+        }
+        return;
       }
 
-      return data;
+      if (data.partial) {
+        toast.warning(`Extracted ${data.questionsCount} questions (partial result).`);
+      } else {
+        toast.success(`Extracted ${data.questionsCount} questions.`);
+      }
     },
     onError: (error: Error) => {
       console.error("AI extraction error:", error);
-      if (error.message.includes("Rate limit")) {
-        toast.error("Rate limit exceeded. Please wait a moment and try again.");
-      } else if (error.message.includes("credits")) {
-        toast.error("API credits exhausted. Please contact support.");
-      } else {
-        toast.error(`Failed to extract questions: ${error.message}`);
-      }
+      toast.error(`Failed to extract questions: ${error.message}`);
     },
   });
 }

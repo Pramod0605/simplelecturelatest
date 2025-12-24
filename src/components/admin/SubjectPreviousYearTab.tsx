@@ -81,6 +81,16 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
   const [parsedJson, setParsedJson] = useState<any>(null);
+  const [extractionMeta, setExtractionMeta] = useState<
+    | {
+        partial?: boolean;
+        error?: string;
+        errorCode?: string;
+        errors?: string[];
+        chunksProcessed?: number;
+      }
+    | null
+  >(null);
 
   const { data: papers, isLoading } = usePreviousYearPapers(subjectId);
   const { data: chapters } = useSubjectChapters(subjectId);
@@ -105,6 +115,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
     setSelectedFile(null);
     setExtractedQuestions([]);
     setParsedJson(null);
+    setExtractionMeta(null);
     setCurrentStep("form");
   };
 
@@ -124,7 +135,10 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       setParsedJson(result.content_json);
 
       // Step 2: Extract questions using AI
+      setExtractionMeta(null);
+      setExtractedQuestions([]);
       setCurrentStep("extracting");
+
       try {
         const aiResult = await extractQuestionsAI.mutateAsync({
           contentJson: result.content_json,
@@ -133,16 +147,26 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
           paperType: formData.paper_type,
         });
 
+        setExtractionMeta({
+          partial: aiResult.partial,
+          error: aiResult.error,
+          errorCode: aiResult.errorCode,
+          errors: aiResult.errors,
+          chunksProcessed: aiResult.chunksProcessed,
+        });
+
         if (aiResult.questions && aiResult.questions.length > 0) {
           setExtractedQuestions(aiResult.questions);
           setFormData((prev) => ({ ...prev, total_questions: aiResult.questionsCount }));
         }
-        
-        // Show preview even with partial results
+
         setCurrentStep("preview");
       } catch (aiError) {
         console.error("AI extraction failed:", aiError);
-        // Still show preview with empty questions - user can save paper without questions
+        setExtractionMeta({
+          error: aiError instanceof Error ? aiError.message : "AI extraction failed",
+          errorCode: "CLIENT_ERROR",
+        });
         setCurrentStep("preview");
       }
     } catch (error) {
@@ -378,12 +402,27 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
 
                 {currentStep === "preview" && (
                   <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="h-5 w-5" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      {extractedQuestions.length > 0 ? (
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-destructive" />
+                      )}
                       <span className="font-medium">
                         Extracted {extractedQuestions.length} questions
                       </span>
+                      {extractionMeta?.partial && (
+                        <Badge variant="outline">Partial</Badge>
+                      )}
+                      {extractionMeta?.chunksProcessed && (
+                        <Badge variant="secondary">AI pass</Badge>
+                      )}
                     </div>
+                    {extractionMeta?.error && (
+                      <p className="text-sm text-muted-foreground">
+                        {extractionMeta.error}
+                      </p>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
