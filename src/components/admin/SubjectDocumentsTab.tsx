@@ -6,14 +6,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Upload, FileJson, FileText, Loader2, Check, Copy, Eye, EyeOff
+  Upload, FileJson, FileText, Loader2, Check, Copy, Eye, EyeOff,
+  Clock, Trash2, Link as LinkIcon
 } from "lucide-react";
 import { useDatalab } from "@/hooks/useDatalab";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAIAssistantDocuments, useAddAIAssistantDocument, useDeleteAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
+import { format } from "date-fns";
 
 interface SubjectDocumentsTabProps {
   subjectId: string;
@@ -33,10 +37,17 @@ export function SubjectDocumentsTab({
   const [pdfUrl, setPdfUrl] = useState<string>(currentPdfUrl || "");
   const [showPreview, setShowPreview] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAllDocuments, setShowAllDocuments] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
   
   const { parsePdfFile, parsePdfFromUrl, isLoading, progress } = useDatalab();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Fetch AI assistant documents for this subject
+  const { data: documents, isLoading: isLoadingDocuments } = useAIAssistantDocuments(subjectId);
+  const addDocument = useAddAIAssistantDocument();
+  const deleteDocument = useDeleteAIAssistantDocument();
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,6 +62,7 @@ export function SubjectDocumentsTab({
       return;
     }
 
+    setUploadedFileName(file.name);
     const result = await parsePdfFile(file);
     if (result) {
       setJsonContent(result.content_json);
@@ -68,6 +80,7 @@ export function SubjectDocumentsTab({
       return;
     }
 
+    setUploadedFileName("");
     const result = await parsePdfFromUrl(pdfUrl);
     if (result) {
       setJsonContent(result.content_json);
@@ -84,6 +97,7 @@ export function SubjectDocumentsTab({
       const parsed = JSON.parse(text);
       setJsonContent(parsed);
       setJsonText(JSON.stringify(parsed, null, 2));
+      setUploadedFileName(file.name);
       toast({
         title: "JSON Loaded",
         description: "JSON file loaded successfully",
@@ -129,12 +143,29 @@ export function SubjectDocumentsTab({
 
       if (error) throw error;
 
+      // Track the document in ai_assistant_documents
+      const sourceType = pdfUrl ? "url" : uploadedFileName?.endsWith(".json") ? "json" : "pdf";
+      await addDocument.mutateAsync({
+        subjectId,
+        displayName: uploadedFileName || (pdfUrl ? new URL(pdfUrl).pathname.split('/').pop() : "Pasted JSON"),
+        sourceType,
+        sourceUrl: pdfUrl || undefined,
+        fileName: uploadedFileName || undefined,
+        contentPreview: JSON.stringify(jsonContent).substring(0, 500),
+      });
+
       toast({
         title: "Saved",
         description: "Document content saved to subject",
       });
       
       queryClient.invalidateQueries({ queryKey: ["admin-subject", subjectId] });
+      
+      // Reset form
+      setJsonContent(null);
+      setJsonText("");
+      setPdfUrl("");
+      setUploadedFileName("");
     } catch (error: any) {
       toast({
         title: "Save Failed",
@@ -154,17 +185,125 @@ export function SubjectDocumentsTab({
     });
   };
 
+  const handleDeleteDocument = (docId: string) => {
+    deleteDocument.mutate({ documentId: docId, subjectId });
+  };
+
+  const getSourceIcon = (sourceType: string) => {
+    switch (sourceType) {
+      case "url":
+        return <LinkIcon className="h-4 w-4 text-blue-500" />;
+      case "json":
+        return <FileJson className="h-4 w-4 text-yellow-500" />;
+      default:
+        return <FileText className="h-4 w-4 text-red-500" />;
+    }
+  };
+
+  const displayedDocuments = showAllDocuments ? documents : documents?.slice(0, 5);
+
   return (
     <div className="space-y-6">
-      {/* Document Content (JSON) Card */}
+      {/* Uploaded AI Documents List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileJson className="h-5 w-5" />
+            <FileText className="h-5 w-5" />
             AI Assistant Documents
           </CardTitle>
           <CardDescription>
-            Upload a PDF to parse with AI or directly upload a JSON file. This content will be used by the AI Teaching Assistant.
+            Documents parsed and uploaded for the AI Teaching Assistant for {subjectName}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDocuments ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !documents || documents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No documents uploaded for AI Assistant yet.</p>
+              <p className="text-sm mt-1">Upload a PDF or JSON below to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Upload Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedDocuments?.map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {getSourceIcon(doc.source_type)}
+                            <span className="truncate max-w-[200px]">
+                              {doc.display_name || doc.file_name || "Untitled Document"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {doc.source_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                            <Clock className="h-3 w-3" />
+                            {doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {documents.length > 5 && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllDocuments(!showAllDocuments)}
+                  >
+                    {showAllDocuments 
+                      ? "Show Less" 
+                      : `See More (${documents.length - 5} more)`
+                    }
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upload New Document Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Upload New Document
+          </CardTitle>
+          <CardDescription>
+            Upload a PDF to parse with AI or directly upload a JSON file for the AI Teaching Assistant.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -181,7 +320,6 @@ export function SubjectDocumentsTab({
             </TabsList>
 
             <TabsContent value="pdf" className="space-y-4 mt-4">
-              {/* Upload PDF File */}
               <div className="space-y-2">
                 <Label>Upload PDF File</Label>
                 <div className="flex gap-2">
@@ -195,7 +333,6 @@ export function SubjectDocumentsTab({
                 </div>
               </div>
 
-              {/* Or Parse from URL */}
               <div className="space-y-2">
                 <Label>Or Parse from PDF URL</Label>
                 <div className="flex gap-2">
@@ -221,7 +358,6 @@ export function SubjectDocumentsTab({
                 </div>
               </div>
 
-              {/* Progress indicator */}
               {isLoading && (
                 <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,7 +389,6 @@ export function SubjectDocumentsTab({
             </TabsContent>
           </Tabs>
 
-          {/* JSON Preview */}
           {jsonContent && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -292,7 +427,6 @@ export function SubjectDocumentsTab({
             </div>
           )}
 
-          {/* Save Button */}
           <div className="flex justify-end">
             <Button 
               onClick={handleSave} 
@@ -304,22 +438,9 @@ export function SubjectDocumentsTab({
               ) : (
                 <Check className="h-4 w-4" />
               )}
-              Save to Subject
+              Save to AI Assistant
             </Button>
           </div>
-
-          {/* Current Status */}
-          {currentJson && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Check className="h-4 w-4 text-green-500" />
-              This subject has existing JSON content stored for AI Assistant
-              {currentPdfUrl && (
-                <span className="text-xs">
-                  (from: {currentPdfUrl.substring(0, 50)}...)
-                </span>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
