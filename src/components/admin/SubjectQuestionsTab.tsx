@@ -89,7 +89,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     topic_id: "",
     question_text: "",
     question_format: "single_choice",
-    difficulty: "medium",
+    difficulty: "Medium",
     options: {} as Record<string, any>,
     correct_answer: "",
     explanation: "",
@@ -232,7 +232,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       topic_id: "",
       question_text: "",
       question_format: "single_choice",
-      difficulty: "medium",
+      difficulty: "Medium",
       options: {},
       correct_answer: "",
       explanation: "",
@@ -463,7 +463,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
         correct_answer: row.correct_answer,
         explanation: row.explanation || "",
         marks: parseInt(row.marks) || 1,
-        difficulty: row.difficulty || "medium",
+        difficulty: row.difficulty || "Medium",
         is_verified: false,
         is_ai_generated: false,
         contains_formula: row.contains_formula === "TRUE" || row.contains_formula === true,
@@ -925,9 +925,10 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="easy">Easy</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="hard">Hard</SelectItem>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="Intermediate">Intermediate</SelectItem>
+                              <SelectItem value="Advanced">Advanced</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

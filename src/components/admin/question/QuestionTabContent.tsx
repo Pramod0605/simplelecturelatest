@@ -131,12 +131,8 @@ export const QuestionTabContent: React.FC<QuestionTabContentProps> = ({
             <Label htmlFor="tf" className="font-normal cursor-pointer">True/False</Label>
           </div>
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="fill_blank" id="fill" />
-            <Label htmlFor="fill" className="font-normal cursor-pointer">Fill in the Blank</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="short_answer" id="short" />
-            <Label htmlFor="short" className="font-normal cursor-pointer">Short Answer</Label>
+            <RadioGroupItem value="subjective" id="subjective" />
+            <Label htmlFor="subjective" className="font-normal cursor-pointer">Subjective</Label>
           </div>
         </RadioGroup>
       </div>

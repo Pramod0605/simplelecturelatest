@@ -26,9 +26,10 @@ export const DetailsTabContent: React.FC<DetailsTabContentProps> = ({
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
+              <SelectItem value="Low">Low</SelectItem>
+              <SelectItem value="Medium">Medium</SelectItem>
+              <SelectItem value="Intermediate">Intermediate</SelectItem>
+              <SelectItem value="Advanced">Advanced</SelectItem>
             </SelectContent>
           </Select>
         </div>

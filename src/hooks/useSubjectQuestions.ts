@@ -114,9 +114,27 @@ export const useCreateQuestion = () => {
         return "subjective";
       };
 
+      const normalizeFormat = (qf?: string) => {
+        const allowed = ["single_choice", "multiple_choice", "true_false", "subjective"];
+        if (qf && allowed.includes(qf)) return qf;
+        return "subjective";
+      };
+
+      const normalizeDifficulty = (d?: string) => {
+        const allowed = ["Low", "Medium", "Intermediate", "Advanced"];
+        if (d && allowed.includes(d)) return d;
+        // Map legacy values
+        if (d === "easy") return "Low";
+        if (d === "medium") return "Medium";
+        if (d === "hard") return "Advanced";
+        return "Medium";
+      };
+
       const payload = {
         ...question,
         question_type: normalizeType(question.question_format, question.question_type),
+        question_format: normalizeFormat(question.question_format),
+        difficulty: normalizeDifficulty(question.difficulty),
       };
 
       const { data, error } = await supabase
@@ -282,10 +300,27 @@ export const useBulkImportQuestions = () => {
           return "subjective";
         };
 
+        const normalizeBatchFormat = (qf?: string) => {
+          const allowed = ["single_choice", "multiple_choice", "true_false", "subjective"];
+          if (qf && allowed.includes(qf)) return qf;
+          return "subjective";
+        };
+
+        const normalizeBatchDifficulty = (d?: string) => {
+          const allowed = ["Low", "Medium", "Intermediate", "Advanced"];
+          if (d && allowed.includes(d)) return d;
+          if (d === "easy") return "Low";
+          if (d === "medium") return "Medium";
+          if (d === "hard") return "Advanced";
+          return "Medium";
+        };
+
         try {
           const normalizedBatch = batch.map((q) => ({
             ...q,
             question_type: normalizeBatchType(q.question_format, (q as any).question_type),
+            question_format: normalizeBatchFormat(q.question_format),
+            difficulty: normalizeBatchDifficulty(q.difficulty),
           }));
 
           const { error } = await supabase.from("questions").insert(normalizedBatch);
