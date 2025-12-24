@@ -436,7 +436,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       </div>
                     </div>
 
-                    <ScrollArea className="flex-1 border rounded-md p-4">
+                    <ScrollArea className="h-[400px] border rounded-md p-4">
                       <div className="space-y-4">
                         {extractedQuestions.length === 0 ? (
                           <div className="text-center py-8 text-muted-foreground">
@@ -447,7 +447,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                             </p>
                           </div>
                         ) : (
-                          extractedQuestions.slice(0, 10).map((q, index) => (
+                          extractedQuestions.map((q, index) => (
                             <div key={index} className="border-b pb-3 last:border-0">
                               <div className="flex items-start gap-2">
                                 <Badge variant="outline" className="shrink-0">
@@ -481,11 +481,6 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                               </div>
                             </div>
                           ))
-                        )}
-                        {extractedQuestions.length > 10 && (
-                          <p className="text-center text-sm text-muted-foreground">
-                            ... and {extractedQuestions.length - 10} more questions
-                          </p>
                         )}
                       </div>
                     </ScrollArea>
