@@ -314,6 +314,23 @@ serve(async (req) => {
     const extractionText = buildExtractionText(contentJson);
     console.log("Condensed content length:", extractionText.length);
 
+    // Sanity check: if text is too short, likely a scanned PDF with no OCR
+    const MIN_TEXT_LENGTH = 1500;
+    if (extractionText.length < MIN_TEXT_LENGTH) {
+      console.warn("Extraction text too short, likely scanned/image PDF");
+      const res: ExtractResponse = {
+        success: false,
+        questions: [],
+        questionsCount: 0,
+        error: `PDF text extraction is too small (${extractionText.length} chars). This may be a scanned PDF. Try enabling OCR or uploading a text-based PDF.`,
+        errorCode: "TEXT_TOO_SHORT",
+      };
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let rawQuestions: any[] = [];
     let usedTool = false;
 
