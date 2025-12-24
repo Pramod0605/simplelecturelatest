@@ -39,6 +39,7 @@ export function SubjectDocumentsTab({
   const [showPreview, setShowPreview] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [showAllDocuments, setShowAllDocuments] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ id: string; name: string } | null>(null);
   
   const { parsePdfFile, parsePdfFromUrl, isLoading, progress } = useDatalab();
@@ -382,70 +383,88 @@ export function SubjectDocumentsTab({
               <p className="text-sm mt-1">Upload documents from the Questions tab.</p>
             </div>
           ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Document Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Questions</TableHead>
-                    <TableHead>Upload Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {uploadedDocuments.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate max-w-[200px]">
-                            {getDocumentName(doc)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                      <TableCell>
-                        {doc.questions_count != null ? (
-                          <span className="font-medium">{doc.questions_count}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                          <Clock className="h-3 w-3" />
-                          {doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRenameClick(doc)}
-                            className="gap-1"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Rename
-                          </Button>
-                          {doc.questions_file_url && (
+            <div className="space-y-4">
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Questions</TableHead>
+                      <TableHead>Upload Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(showAllDocuments ? uploadedDocuments : uploadedDocuments.slice(0, 5)).map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="truncate max-w-[200px]">
+                              {getDocumentName(doc)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        <TableCell>
+                          {doc.questions_count != null ? (
+                            <span className="font-medium">{doc.questions_count}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                            <Clock className="h-3 w-3" />
+                            {doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              asChild
+                              onClick={() => handleRenameClick(doc)}
+                              className="gap-1"
                             >
-                              <a href={doc.questions_file_url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
+                              <Pencil className="h-3 w-3" />
+                              Rename
                             </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                            {doc.questions_file_url && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                asChild
+                              >
+                                <a href={doc.questions_file_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* See More / See Less Button */}
+              {uploadedDocuments.length > 5 && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllDocuments(!showAllDocuments)}
+                  >
+                    {showAllDocuments 
+                      ? `Show Less` 
+                      : `See More (${uploadedDocuments.length - 5} more)`
+                    }
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
