@@ -11,10 +11,9 @@ interface DatalabResponse {
   markdown?: string;
   json?: any;
   images?: Record<string, string>;
-  // Datalab returns page_count at the top level, not in metadata
   page_count?: number;
   metadata?: {
-    pages?: number; // legacy/fallback
+    pages?: number;
     ocr_stats?: any;
   };
 }
@@ -22,7 +21,7 @@ interface DatalabResponse {
 // Helper function to get B2 signed download URL
 async function getB2DownloadUrl(filePath: string): Promise<string> {
   const B2_KEY_ID = Deno.env.get("B2_KEY_ID");
-  const B2_APP_KEY = Deno.env.get("B2_APPLICATION_KEY"); // Correct secret name
+  const B2_APP_KEY = Deno.env.get("B2_APPLICATION_KEY");
   const B2_BUCKET_NAME = Deno.env.get("B2_BUCKET_NAME") || "Simplelecture";
   
   console.log("B2 credentials check - KEY_ID exists:", !!B2_KEY_ID, "APP_KEY exists:", !!B2_APP_KEY);
@@ -31,7 +30,6 @@ async function getB2DownloadUrl(filePath: string): Promise<string> {
     throw new Error("B2 credentials not configured");
   }
   
-  // Authorize with B2
   const authResponse = await fetch("https://api.backblazeb2.com/b2api/v2/b2_authorize_account", {
     method: "GET",
     headers: {
@@ -46,7 +44,6 @@ async function getB2DownloadUrl(filePath: string): Promise<string> {
   const authData = await authResponse.json();
   const { authorizationToken, apiUrl, downloadUrl } = authData;
   
-  // Get download authorization
   const downloadAuthResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_download_authorization`, {
     method: "POST",
     headers: {
@@ -112,14 +109,14 @@ serve(async (req) => {
       datalabFormData.append("file_url", pdfUrl);
     }
 
-    // Configure output options per Datalab docs
-    datalabFormData.append("output_format", "json");
+    // Configure output options - USE MARKDOWN for cleaner text extraction
+    datalabFormData.append("output_format", "markdown");
     datalabFormData.append("use_llm", "true");
-    datalabFormData.append("force_ocr", "false");
-    datalabFormData.append("paginate", "false"); // Correct param name per docs
+    datalabFormData.append("force_ocr", "true"); // Force OCR for better answer key extraction
+    datalabFormData.append("paginate", "false");
 
     // Submit to Datalab Marker API
-    console.log("Submitting to Datalab Marker API...");
+    console.log("Submitting to Datalab Marker API with markdown output...");
     const submitResponse = await fetch("https://www.datalab.to/api/v1/marker", {
       method: "POST",
       headers: {
@@ -148,7 +145,7 @@ serve(async (req) => {
     let result: DatalabResponse | null = null;
 
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+      await new Promise(resolve => setTimeout(resolve, 3000));
       attempts++;
 
       console.log(`Polling attempt ${attempts}/${maxAttempts}...`);
@@ -174,23 +171,22 @@ serve(async (req) => {
       } else if (statusResult.status === "failed") {
         throw new Error("Datalab processing failed");
       }
-      // Continue polling for 'pending' or 'processing' status
     }
 
     if (!result) {
       throw new Error("Datalab processing timed out after 5 minutes");
     }
 
-    // Use page_count from top-level (per Datalab docs), fallback to metadata.pages
     const pageCount = result.page_count ?? result.metadata?.pages ?? 0;
 
     console.log("Datalab processing complete!");
     console.log("Page count:", pageCount);
     console.log("Has JSON:", !!result.json);
     console.log("Has Markdown:", !!result.markdown);
+    console.log("Markdown length:", result.markdown?.length || 0);
     console.log("Images count:", result.images ? Object.keys(result.images).length : 0);
 
-    // Return the parsed content
+    // Return parsed content - prioritize markdown for question extraction
     return new Response(
       JSON.stringify({
         success: true,

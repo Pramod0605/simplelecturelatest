@@ -20,6 +20,11 @@ export interface ExtractQuestionsResponse {
   errorCode?: string;
   errors?: string[];
   chunksProcessed?: number;
+  answerKeyStats?: {
+    found: number;
+    applied: number;
+    missing: number[];
+  };
 }
 
 export function useExtractQuestionsAI() {
