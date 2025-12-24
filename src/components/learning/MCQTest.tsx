@@ -1,44 +1,68 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Clock, Flag, CheckCircle, XCircle, Trophy } from "lucide-react";
-import { getQuestionsByTopic } from "@/data/mockLearning";
-import type { MockQuestion } from "@/data/mockLearning";
+import { Clock, Flag, CheckCircle, XCircle, Trophy, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMCQQuestions, useMCQQuestionCounts, type MCQQuestion, type DifficultyLevel } from "@/hooks/useMCQQuestions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MCQTestProps {
   topicId: string;
 }
 
 export const MCQTest = ({ topicId }: MCQTestProps) => {
-  const allQuestions = getQuestionsByTopic(topicId);
+  const { data: allQuestions = [], isLoading, error } = useMCQQuestions(topicId);
+  const { data: questionCounts } = useMCQQuestionCounts(topicId);
   
   const [testState, setTestState] = useState<'setup' | 'testing' | 'results'>('setup');
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('all');
   const [questionCount, setQuestionCount] = useState(5);
   const [timerMinutes, setTimerMinutes] = useState(15);
-  const [questions, setQuestions] = useState<MockQuestion[]>([]);
+  const [questions, setQuestions] = useState<MCQQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState(0);
 
-  const startTest = () => {
-    const filteredQuestions = allQuestions
-      .filter(q => q.difficulty === difficulty)
-      .slice(0, questionCount);
+  // Timer effect
+  useEffect(() => {
+    if (testState !== 'testing' || timerMinutes === 999) return;
     
-    if (filteredQuestions.length === 0) {
-      // Fallback to all questions if no match
-      setQuestions(allQuestions.slice(0, questionCount));
-    } else {
-      setQuestions(filteredQuestions);
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setTestState('results');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [testState, timerMinutes]);
+
+  const startTest = () => {
+    let filteredQuestions = allQuestions;
+    
+    // Filter by difficulty if not "all"
+    if (difficulty !== 'all') {
+      filteredQuestions = allQuestions.filter(q => q.difficulty === difficulty);
     }
     
+    // Shuffle and limit to question count
+    const shuffled = [...filteredQuestions].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, questionCount);
+    
+    if (selected.length === 0) {
+      return;
+    }
+    
+    setQuestions(selected);
     setTimeRemaining(timerMinutes * 60);
     setTestState('testing');
     setAnswers({});
@@ -50,8 +74,8 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
     setTestState('results');
   };
 
-  const handleAnswer = (answer: string) => {
-    setAnswers({ ...answers, [currentQuestionIndex]: answer });
+  const handleAnswer = (answerKey: string) => {
+    setAnswers({ ...answers, [currentQuestionIndex]: answerKey });
   };
 
   const toggleFlag = () => {
@@ -71,11 +95,47 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
         correct++;
       }
     });
-    return { correct, total: questions.length, percentage: (correct / questions.length) * 100 };
+    return { correct, total: questions.length, percentage: questions.length > 0 ? (correct / questions.length) * 100 : 0 };
   };
+
+  const getOptionText = (question: MCQQuestion, key: string): string => {
+    const option = question.options.find(o => o.key === key);
+    return option ? option.text : key;
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-destructive">Failed to load questions. Please try again.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Setup Screen
   if (testState === 'setup') {
+    const availableCount = difficulty === 'all' 
+      ? questionCounts?.all || allQuestions.length
+      : questionCounts?.[difficulty] || 0;
+
     return (
       <Card>
         <CardHeader>
@@ -84,29 +144,31 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>Difficulty Level</Label>
-            <Select value={difficulty} onValueChange={(v: any) => setDifficulty(v)}>
+            <Select value={difficulty} onValueChange={(v: DifficultyLevel) => setDifficulty(v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
+                <SelectItem value="all">All Levels ({questionCounts?.all || 0})</SelectItem>
+                <SelectItem value="Low">Low ({questionCounts?.Low || 0})</SelectItem>
+                <SelectItem value="Medium">Medium ({questionCounts?.Medium || 0})</SelectItem>
+                <SelectItem value="Intermediate">Intermediate ({questionCounts?.Intermediate || 0})</SelectItem>
+                <SelectItem value="Advanced">Advanced ({questionCounts?.Advanced || 0})</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Number of Questions</Label>
+            <Label>Number of Questions (Available: {availableCount})</Label>
             <Select value={questionCount.toString()} onValueChange={(v) => setQuestionCount(Number(v))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="5">5 Questions</SelectItem>
-                <SelectItem value="10">10 Questions</SelectItem>
-                <SelectItem value="15">15 Questions</SelectItem>
-                <SelectItem value="20">20 Questions</SelectItem>
+                <SelectItem value="5" disabled={availableCount < 5}>5 Questions</SelectItem>
+                <SelectItem value="10" disabled={availableCount < 10}>10 Questions</SelectItem>
+                <SelectItem value="15" disabled={availableCount < 15}>15 Questions</SelectItem>
+                <SelectItem value="20" disabled={availableCount < 20}>20 Questions</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -126,8 +188,13 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
             </Select>
           </div>
 
-          <Button onClick={startTest} className="w-full" size="lg">
-            Start Test
+          <Button 
+            onClick={startTest} 
+            className="w-full" 
+            size="lg"
+            disabled={availableCount === 0}
+          >
+            {availableCount === 0 ? "No Questions Available" : "Start Test"}
           </Button>
         </CardContent>
       </Card>
@@ -147,7 +214,9 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                <span className="font-semibold">{Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}</span>
+                <span className="font-semibold">
+                  {timerMinutes === 999 ? "Unlimited" : `${Math.floor(timeRemaining / 60)}:${(timeRemaining % 60).toString().padStart(2, '0')}`}
+                </span>
               </div>
               <Badge variant="secondary">
                 Question {currentQuestionIndex + 1} of {questions.length}
@@ -161,7 +230,16 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
         <Card>
           <CardHeader>
             <div className="flex items-start justify-between">
-              <CardTitle className="text-lg flex-1">{currentQuestion.question_text}</CardTitle>
+              <div className="flex-1">
+                <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
+                {currentQuestion.question_image_url && (
+                  <img 
+                    src={currentQuestion.question_image_url} 
+                    alt="Question" 
+                    className="mt-4 max-w-full rounded-lg"
+                  />
+                )}
+              </div>
               <Button
                 variant={flagged.has(currentQuestionIndex) ? "destructive" : "outline"}
                 size="icon"
@@ -173,11 +251,15 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <RadioGroup value={answers[currentQuestionIndex] || ""} onValueChange={handleAnswer}>
-              {currentQuestion.options.map((option, idx) => (
-                <div key={idx} className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer">
-                  <RadioGroupItem value={option} id={`option-${idx}`} />
-                  <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
-                    {option}
+              {currentQuestion.options.map((option) => (
+                <div 
+                  key={option.key} 
+                  className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer"
+                >
+                  <RadioGroupItem value={option.key} id={`option-${option.key}`} />
+                  <Label htmlFor={`option-${option.key}`} className="flex-1 cursor-pointer">
+                    <span className="font-medium mr-2">{option.key}.</span>
+                    {option.text}
                   </Label>
                 </div>
               ))}
@@ -262,9 +344,6 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
               <Button className="flex-1" onClick={() => setTestState('setup')}>
                 Retake Test
               </Button>
-              <Button variant="outline" className="flex-1">
-                Save Results
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -294,13 +373,15 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
                   <div>
                     <span className="font-semibold">Your Answer: </span>
                     <span className={isCorrect ? "text-green-600" : "text-red-600"}>
-                      {userAnswer || "Not answered"}
+                      {userAnswer ? `${userAnswer}. ${getOptionText(question, userAnswer)}` : "Not answered"}
                     </span>
                   </div>
                   {!isCorrect && (
                     <div>
                       <span className="font-semibold">Correct Answer: </span>
-                      <span className="text-green-600">{question.correct_answer}</span>
+                      <span className="text-green-600">
+                        {question.correct_answer}. {getOptionText(question, question.correct_answer)}
+                      </span>
                     </div>
                   )}
                   <div className="pt-2 border-t">
