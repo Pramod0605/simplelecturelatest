@@ -26,7 +26,7 @@ export const useBulkInsertPreviousYearQuestions = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ questions, paperId, topicId, subjectId, chapterId }: BulkInsertParams) => {
+    mutationFn: async ({ questions, paperId, topicId }: BulkInsertParams) => {
       const formattedQuestions = questions.map((q, index) => ({
         question_text: q.question_text,
         question_type: q.question_type,
@@ -37,12 +37,9 @@ export const useBulkInsertPreviousYearQuestions = () => {
         difficulty: q.difficulty,
         marks: q.marks || 1,
         topic_id: topicId,
-        chapter_id: chapterId,
-        subject_id: subjectId,
         previous_year_paper_id: paperId,
         is_verified: false,
         is_ai_generated: true,
-        display_order: q.question_number || index + 1,
       }));
 
       // Insert in batches of 50
