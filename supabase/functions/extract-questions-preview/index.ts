@@ -494,7 +494,80 @@ ${chunk}`;
           // Try to find JSON object or array in response
           const objectMatch = jsonText.match(/\{[\s\S]*\}/);
           if (objectMatch) {
-            parsed = JSON.parse(objectMatch[0]);
+            let jsonStr = objectMatch[0];
+            
+            // Sanitize JSON to fix common escape issues from LLM responses
+            // Fix invalid escape sequences: \x, \', etc.
+            jsonStr = jsonStr
+              // Fix \" inside strings that should be escaped quotes - leave alone
+              // Fix \n, \r, \t - these are valid, leave alone
+              // Fix invalid escapes like \p, \d, \s, etc. - remove the backslash
+              .replace(/\\([^"\\\/bfnrtu])/g, '$1')
+              // Fix unescaped control characters
+              .replace(/[\x00-\x1F\x7F]/g, (char: string) => {
+                if (char === '\n') return '\\n';
+                if (char === '\r') return '\\r';
+                if (char === '\t') return '\\t';
+                return ''; // Remove other control characters
+              });
+            
+            try {
+              parsed = JSON.parse(jsonStr);
+            } catch (firstParseErr) {
+              // Second attempt: more aggressive cleanup
+              console.log(`Chunk ${i + 1} - First parse failed, trying aggressive cleanup...`);
+              
+              // Remove all backslashes before non-standard escape chars
+              jsonStr = objectMatch[0]
+                .replace(/\\(?!["\\/bfnrtu])/g, '')
+                .replace(/[\x00-\x1F\x7F]/g, '');
+              
+              try {
+                parsed = JSON.parse(jsonStr);
+                console.log(`Chunk ${i + 1} - Aggressive cleanup succeeded`);
+              } catch (secondParseErr) {
+                // Third attempt: extract questions array directly with regex
+                console.log(`Chunk ${i + 1} - Second parse failed, trying regex extraction...`);
+                
+                const questionsMatch = jsonText.match(/"questions"\s*:\s*\[/);
+                if (questionsMatch) {
+                  // Find the matching closing bracket
+                  const startIdx = jsonText.indexOf('[', questionsMatch.index);
+                  let bracketCount = 0;
+                  let endIdx = startIdx;
+                  
+                  for (let j = startIdx; j < jsonText.length; j++) {
+                    if (jsonText[j] === '[') bracketCount++;
+                    else if (jsonText[j] === ']') {
+                      bracketCount--;
+                      if (bracketCount === 0) {
+                        endIdx = j + 1;
+                        break;
+                      }
+                    }
+                  }
+                  
+                  if (endIdx > startIdx) {
+                    const arrStr = jsonText.slice(startIdx, endIdx)
+                      .replace(/\\(?!["\\/bfnrtu])/g, '')
+                      .replace(/[\x00-\x1F\x7F]/g, '');
+                    try {
+                      const arr = JSON.parse(arrStr);
+                      if (Array.isArray(arr)) {
+                        parsed = { questions: arr };
+                        console.log(`Chunk ${i + 1} - Regex extraction succeeded with ${arr.length} questions`);
+                      }
+                    } catch (e) {
+                      // Give up on this chunk
+                    }
+                  }
+                }
+                
+                if (!parsed) {
+                  throw secondParseErr;
+                }
+              }
+            }
           }
         } catch (parseErr) {
           console.error(`Chunk ${i + 1} - JSON parse error:`, parseErr);
