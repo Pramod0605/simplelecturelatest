@@ -11,8 +11,10 @@ interface DatalabResponse {
   markdown?: string;
   json?: any;
   images?: Record<string, string>;
+  // Datalab returns page_count at the top level, not in metadata
+  page_count?: number;
   metadata?: {
-    pages: number;
+    pages?: number; // legacy/fallback
     ocr_stats?: any;
   };
 }
@@ -110,11 +112,11 @@ serve(async (req) => {
       datalabFormData.append("file_url", pdfUrl);
     }
 
-    // Configure output options
+    // Configure output options per Datalab docs
     datalabFormData.append("output_format", "json");
     datalabFormData.append("use_llm", "true");
     datalabFormData.append("force_ocr", "false");
-    datalabFormData.append("paginate_output", "false");
+    datalabFormData.append("paginate", "false"); // Correct param name per docs
 
     // Submit to Datalab Marker API
     console.log("Submitting to Datalab Marker API...");
@@ -179,8 +181,11 @@ serve(async (req) => {
       throw new Error("Datalab processing timed out after 5 minutes");
     }
 
+    // Use page_count from top-level (per Datalab docs), fallback to metadata.pages
+    const pageCount = result.page_count ?? result.metadata?.pages ?? 0;
+
     console.log("Datalab processing complete!");
-    console.log("Pages:", result.metadata?.pages);
+    console.log("Page count:", pageCount);
     console.log("Has JSON:", !!result.json);
     console.log("Has Markdown:", !!result.markdown);
     console.log("Images count:", result.images ? Object.keys(result.images).length : 0);
@@ -194,7 +199,7 @@ serve(async (req) => {
         content_markdown: result.markdown || null,
         images: result.images || {},
         metadata: {
-          pages: result.metadata?.pages || 0,
+          pages: pageCount,
           ocr_stats: result.metadata?.ocr_stats || null,
         },
       }),
