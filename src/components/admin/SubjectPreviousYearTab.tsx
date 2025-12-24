@@ -142,6 +142,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       try {
         const aiResult = await extractQuestionsAI.mutateAsync({
           contentJson: result.content_json,
+          contentMarkdown: result.content_markdown, // Pass markdown for better extraction
           examName: formData.exam_name,
           year: formData.year,
           paperType: formData.paper_type,

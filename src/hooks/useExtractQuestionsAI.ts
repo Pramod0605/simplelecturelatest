@@ -5,6 +5,7 @@ import type { ExtractedQuestion } from "./usePreviousYearQuestions";
 
 interface ExtractQuestionsParams {
   contentJson: any;
+  contentMarkdown?: string;
   examName: string;
   year: number;
   paperType?: string;
@@ -25,12 +26,13 @@ export function useExtractQuestionsAI() {
   return useMutation({
     mutationFn: async ({
       contentJson,
+      contentMarkdown,
       examName,
       year,
       paperType,
     }: ExtractQuestionsParams): Promise<ExtractQuestionsResponse> => {
       const { data, error } = await supabase.functions.invoke("extract-questions-preview", {
-        body: { contentJson, examName, year, paperType },
+        body: { contentJson, contentMarkdown, examName, year, paperType },
       });
 
       if (error) {
