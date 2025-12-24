@@ -431,7 +431,53 @@ Return ONLY valid JSON, no other text.`;
     const allQuestions: ExtractedQuestion[] = [];
     const errors: string[] = [];
     let chunksProcessed = 0;
-    
+
+    // Use tool-calling so the model returns structured data (avoids invalid JSON escapes from LaTeX like \\underline)
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "extract_questions",
+          description: "Extract multiple choice questions from exam paper content.",
+          parameters: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question_number: { type: "number" },
+                    question_text: { type: "string" },
+                    options: {
+                      type: "object",
+                      properties: {
+                        A: { type: "string" },
+                        B: { type: "string" },
+                        C: { type: "string" },
+                        D: { type: "string" },
+                      },
+                      required: ["A", "B", "C", "D"],
+                      additionalProperties: true,
+                    },
+                    difficulty: { type: "string" },
+                    marks: { type: "number" },
+                    explanation: { type: "string" },
+                  },
+                  required: ["question_number", "question_text", "options"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["questions"],
+            additionalProperties: false,
+          },
+        },
+      },
+    ];
+
+    const tool_choice = { type: "function", function: { name: "extract_questions" } };
+
     // Process each chunk
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -456,6 +502,8 @@ ${chunk}`;
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
             ],
+            tools,
+            tool_choice,
             temperature: 0.1,
           }),
         });
@@ -480,12 +528,32 @@ ${chunk}`;
         }
 
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "";
-        console.log(`Chunk ${i + 1} - LLM response length: ${content.length}`);
+        const message = data.choices?.[0]?.message;
+        const toolArgs = message?.tool_calls?.[0]?.function?.arguments as string | undefined;
+        const content = (message?.content as string | undefined) || "";
+
+        if (toolArgs) {
+          console.log(`Chunk ${i + 1} - Tool args length: ${toolArgs.length}`);
+        } else {
+          console.log(`Chunk ${i + 1} - LLM response length: ${content.length}`);
+        }
 
         // Parse JSON from response
         let parsed: any = null;
-        try {
+
+        // Preferred: tool calling output
+        if (toolArgs) {
+          try {
+            parsed = JSON.parse(toolArgs);
+          } catch (e) {
+            console.error(`Chunk ${i + 1} - Tool args JSON parse error:`, e);
+            errors.push(`Chunk ${i + 1}: Failed to parse tool output`);
+          }
+        }
+
+        // Fallback: parse from message.content
+        if (!parsed) {
+          try {
           // Clean up response - remove markdown code blocks if present
           let jsonText = content.trim();
           if (jsonText.startsWith("```")) {
@@ -576,9 +644,10 @@ ${chunk}`;
               }
             }
           }
-        } catch (parseErr) {
-          console.error(`Chunk ${i + 1} - JSON parse error:`, parseErr);
-          errors.push(`Chunk ${i + 1}: Failed to parse response`);
+          } catch (parseErr) {
+            console.error(`Chunk ${i + 1} - JSON parse error:`, parseErr);
+            errors.push(`Chunk ${i + 1}: Failed to parse response`);
+          }
         }
 
         if (parsed) {
