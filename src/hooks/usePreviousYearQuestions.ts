@@ -27,6 +27,15 @@ export const useBulkInsertPreviousYearQuestions = () => {
 
   return useMutation({
     mutationFn: async ({ questions, paperId, topicId }: BulkInsertParams) => {
+      // Normalize difficulty to match DB constraint: 'Low', 'Medium', 'Intermediate', 'Advanced'
+      const normalizeDifficulty = (diff: string): string => {
+        const d = (diff || "medium").toLowerCase();
+        if (d.includes("easy") || d.includes("simple") || d === "low") return "Low";
+        if (d.includes("hard") || d.includes("difficult") || d === "advanced") return "Advanced";
+        if (d.includes("intermediate")) return "Intermediate";
+        return "Medium";
+      };
+
       const formattedQuestions = questions.map((q, index) => ({
         question_text: q.question_text,
         question_type: q.question_type,
@@ -34,7 +43,7 @@ export const useBulkInsertPreviousYearQuestions = () => {
         options: q.options,
         correct_answer: q.correct_answer,
         explanation: q.explanation || null,
-        difficulty: q.difficulty,
+        difficulty: normalizeDifficulty(q.difficulty),
         marks: q.marks || 1,
         topic_id: topicId,
         previous_year_paper_id: paperId,

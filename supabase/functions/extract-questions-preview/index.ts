@@ -329,11 +329,12 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
       }
     }
     
-    // Map difficulty
-    let difficulty = "medium";
+    // Map difficulty to match DB constraint: 'Low', 'Medium', 'Intermediate', 'Advanced'
+    let difficulty = "Medium";
     const rawDiff = String(q.difficulty || "medium").toLowerCase();
-    if (rawDiff.includes("easy") || rawDiff.includes("simple")) difficulty = "easy";
-    else if (rawDiff.includes("hard") || rawDiff.includes("difficult")) difficulty = "hard";
+    if (rawDiff.includes("easy") || rawDiff.includes("simple") || rawDiff.includes("low")) difficulty = "Low";
+    else if (rawDiff.includes("hard") || rawDiff.includes("difficult") || rawDiff.includes("advanced")) difficulty = "Advanced";
+    else if (rawDiff.includes("intermediate")) difficulty = "Intermediate";
     
     result.push({
       question_number: num,
