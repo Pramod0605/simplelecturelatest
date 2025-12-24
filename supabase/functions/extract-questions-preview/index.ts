@@ -37,8 +37,44 @@ interface ExtractResponse {
 }
 
 /**
+ * Convert numeric answer (1-4) to letter (A-D)
+ */
+function numericToLetter(num: string): string | null {
+  const map: Record<string, string> = { "1": "A", "2": "B", "3": "C", "4": "D" };
+  return map[num] || null;
+}
+
+/**
+ * Parse markdown table rows for answer key
+ */
+function parseTableAnswers(text: string): Map<number, string> {
+  const answers = new Map<number, string>();
+  
+  // Match table rows: | 1 | A | or | 1 | 2 | (numeric)
+  const tableRowPattern = /\|\s*(\d{1,3})\s*\|\s*([A-Da-d1-4])\s*\|/g;
+  let match;
+  
+  while ((match = tableRowPattern.exec(text)) !== null) {
+    const qNum = parseInt(match[1], 10);
+    let answer = match[2].toUpperCase();
+    
+    // Convert numeric to letter if needed
+    if (/^[1-4]$/.test(answer)) {
+      const converted = numericToLetter(answer);
+      if (converted) answer = converted;
+    }
+    
+    if (qNum >= 1 && qNum <= 200 && /^[A-D]$/.test(answer)) {
+      answers.set(qNum, answer);
+    }
+  }
+  
+  return answers;
+}
+
+/**
  * Extract answer key from the document text using robust token-based parsing.
- * Searches for answer key section or falls back to last portion of document.
+ * Handles tables, numeric answers (1-4), and various text formats.
  */
 function extractAnswerKey(text: string): Map<number, string> {
   const answerMap = new Map<number, string>();
@@ -46,9 +82,10 @@ function extractAnswerKey(text: string): Map<number, string> {
   // Look for answer key section headers
   const answerKeyHeaders = [
     /ANSWER\s*KEY/i,
-    /ANSWERS?:/i,
+    /ANSWERS?\s*:/i,
     /SOLUTION\s*KEY/i,
-    /KEY:/i,
+    /CORRECT\s*ANSWERS?/i,
+    /KEY\s*:/i,
     /उत्तर\s*कुंजी/i, // Hindi
   ];
   
@@ -67,49 +104,83 @@ function extractAnswerKey(text: string): Map<number, string> {
   if (answerKeyStart !== -1) {
     searchText = text.slice(answerKeyStart);
     console.log(`Found answer key section at position ${answerKeyStart}`);
+    console.log(`Answer key section length: ${searchText.length} chars`);
+    console.log(`Answer key sample (first 500 chars): ${searchText.substring(0, 500)}`);
   } else {
     // Fallback: search in last 80K characters (roughly last 3-5 pages)
     searchText = text.slice(-80000);
     console.log("No answer key header found, searching last 80K chars...");
   }
   
-  // Multiple regex patterns for different answer key formats
+  // Count table-like lines for debugging
+  const tableLines = (searchText.match(/\|.*\|/g) || []).length;
+  console.log(`Found ${tableLines} table-like lines in answer key section`);
+  
+  // Strategy 1: Try to parse as markdown table first
+  if (tableLines > 5) {
+    const tableAnswers = parseTableAnswers(searchText);
+    console.log(`Table parsing found ${tableAnswers.size} answers`);
+    for (const [k, v] of tableAnswers) {
+      answerMap.set(k, v);
+    }
+  }
+  
+  // Strategy 2: Multiple regex patterns for different answer key formats
   const patterns = [
     // Format: "1. (A)" or "1.(A)" or "1 (A)"
-    /(\d+)\s*\.?\s*\(([A-Da-d])\)/g,
+    /(\d{1,3})\s*\.?\s*\(([A-Da-d])\)/g,
     // Format: "1. A" or "1.A" or "1 A" (letter at word boundary)
-    /(\d+)\s*[\.\)\-:]\s*([A-Da-d])(?=[\s,;.\n\r]|$)/g,
+    /(\d{1,3})\s*[\.\)\-:]\s*([A-Da-d])(?=[\s,;.\n\r]|$)/g,
     // Format: "Q1: A" or "Q.1: A"
-    /Q\.?\s*(\d+)\s*[\:\-\.\)]\s*\(?([A-Da-d])\)?/gi,
+    /Q\.?\s*(\d{1,3})\s*[\:\-\.\)]\s*\(?([A-Da-d])\)?/gi,
     // Format: "Ans 1: A" or "Answer 1: A"
-    /(?:Ans(?:wer)?)\s*[\.\:\-]?\s*(\d+)\s*[\:\-\.\)]\s*\(?([A-Da-d])\)?/gi,
+    /(?:Ans(?:wer)?)\s*[\.\:\-]?\s*(\d{1,3})\s*[\:\-\.\)]\s*\(?([A-Da-d])\)?/gi,
     // Format: table-like "1    A" or "1  A" (multiple spaces)
-    /(?:^|\n)\s*(\d+)\s{2,}([A-Da-d])(?:\s|$)/gm,
+    /(?:^|\n)\s*(\d{1,3})\s{2,}([A-Da-d])(?:\s|$)/gm,
     // Format: "1=A" or "1 = A"
-    /(\d+)\s*=\s*\(?([A-Da-d])\)?/g,
+    /(\d{1,3})\s*=\s*\(?([A-Da-d])\)?/g,
     // Format: just "1 A" at start of line
-    /(?:^|\n)\s*(\d+)\s+([A-Da-d])(?=\s|\n|$)/gm,
+    /(?:^|\n)\s*(\d{1,3})\s+([A-Da-d])(?=\s|\n|$)/gm,
+    
+    // Numeric answer formats (1-4 instead of A-D):
+    // Format: "1. (2)" or "1.(3)"
+    /(\d{1,3})\s*\.?\s*\(([1-4])\)/g,
+    // Format: "1. 2" or "1.3" (numeric answer)
+    /(\d{1,3})\s*[\.\)\-:]\s*([1-4])(?=[\s,;.\n\r]|$)/g,
+    // Format: table-like "1    2" (question number, numeric answer)
+    /(?:^|\n)\s*(\d{1,3})\s{2,}([1-4])(?:\s|$)/gm,
   ];
   
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(searchText)) !== null) {
       const qNum = parseInt(match[1], 10);
-      const answer = match[2].toUpperCase();
+      let answer = match[2].toUpperCase();
       
-      // Only accept reasonable question numbers (1-200)
-      if (qNum >= 1 && qNum <= 200 && !answerMap.has(qNum)) {
+      // Convert numeric to letter if needed
+      if (/^[1-4]$/.test(answer)) {
+        const converted = numericToLetter(answer);
+        if (converted) answer = converted;
+        else continue;
+      }
+      
+      // Only accept reasonable question numbers (1-200) and valid answers
+      if (qNum >= 1 && qNum <= 200 && /^[A-D]$/.test(answer) && !answerMap.has(qNum)) {
         answerMap.set(qNum, answer);
       }
     }
   }
   
-  console.log(`Found ${answerMap.size} answers in answer key`);
+  console.log(`Total answers found: ${answerMap.size}`);
   
   // Log sample of found answers for debugging
   if (answerMap.size > 0) {
-    const sample = Array.from(answerMap.entries()).slice(0, 5);
+    const sample = Array.from(answerMap.entries()).slice(0, 10);
     console.log("Sample answers:", JSON.stringify(sample));
+  } else {
+    // Log what we're searching in for debugging
+    console.log("No answers found. First 1000 chars of search text:");
+    console.log(searchText.substring(0, 1000));
   }
   
   return answerMap;

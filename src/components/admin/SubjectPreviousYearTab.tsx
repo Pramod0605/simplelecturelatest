@@ -425,6 +425,22 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                         <Badge variant="secondary">AI pass</Badge>
                       )}
                     </div>
+                    
+                    {/* Answer key stats */}
+                    {extractionMeta?.answerKeyStats && (
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant={extractionMeta.answerKeyStats.applied > 0 ? "default" : "destructive"}>
+                          Answers: {extractionMeta.answerKeyStats.applied} / {extractedQuestions.length}
+                        </Badge>
+                        {extractionMeta.answerKeyStats.missing.length > 0 && (
+                          <span className="text-muted-foreground">
+                            Missing: Q{extractionMeta.answerKeyStats.missing.slice(0, 5).join(", Q")}
+                            {extractionMeta.answerKeyStats.missing.length > 5 && ` +${extractionMeta.answerKeyStats.missing.length - 5} more`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
                     {extractionMeta?.error && (
                       <p className="text-sm text-muted-foreground">
                         {extractionMeta.error}
@@ -477,11 +493,12 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                     <Badge variant="secondary" className="text-xs">
                                       {q.difficulty}
                                     </Badge>
-                                    {q.correct_answer && (
-                                      <Badge variant="outline" className="text-xs">
-                                        Ans: {q.correct_answer}
-                                      </Badge>
-                                    )}
+                                    <Badge 
+                                      variant={q.correct_answer ? "outline" : "destructive"} 
+                                      className="text-xs"
+                                    >
+                                      Ans: {q.correct_answer || "—"}
+                                    </Badge>
                                   </div>
                                 </div>
                               </div>

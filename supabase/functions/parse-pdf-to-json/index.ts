@@ -110,10 +110,11 @@ serve(async (req) => {
     }
 
     // Configure output options - USE MARKDOWN for cleaner text extraction
+    // Remove deprecated use_llm param, use output_format correctly
     datalabFormData.append("output_format", "markdown");
-    datalabFormData.append("use_llm", "true");
     datalabFormData.append("force_ocr", "true"); // Force OCR for better answer key extraction
-    datalabFormData.append("paginate", "false");
+    datalabFormData.append("paginate_output", "false");
+    datalabFormData.append("skip_cache", "true"); // Ensure fresh result, not cached JSON
 
     // Submit to Datalab Marker API
     console.log("Submitting to Datalab Marker API with markdown output...");
@@ -185,6 +186,11 @@ serve(async (req) => {
     console.log("Has Markdown:", !!result.markdown);
     console.log("Markdown length:", result.markdown?.length || 0);
     console.log("Images count:", result.images ? Object.keys(result.images).length : 0);
+    
+    // Log sample of markdown for debugging
+    if (result.markdown && result.markdown.length > 0) {
+      console.log("Markdown sample (first 500 chars):", result.markdown.substring(0, 500));
+    }
 
     // Return parsed content - prioritize markdown for question extraction
     return new Response(
