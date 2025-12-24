@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,8 +221,24 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
 
       setIsAddOpen(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving paper:", error);
+      
+      // Handle duplicate key error
+      if (error?.code === "23505") {
+        toast({
+          title: "Duplicate Paper",
+          description: `A paper for ${formData.exam_name} ${formData.year} ${formData.paper_type || ""} already exists. Please use different year or paper type.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to save paper",
+          variant: "destructive",
+        });
+      }
+      
       setCurrentStep("preview");
     }
   };
