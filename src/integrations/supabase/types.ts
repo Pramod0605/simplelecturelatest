@@ -4263,6 +4263,7 @@ export type Database = {
           chapter_id: string
           created_at: string | null
           current_job_id: string | null
+          display_name: string | null
           error_message: string | null
           extracted_images: Json | null
           file_name: string | null
@@ -4313,6 +4314,7 @@ export type Database = {
           chapter_id: string
           created_at?: string | null
           current_job_id?: string | null
+          display_name?: string | null
           error_message?: string | null
           extracted_images?: Json | null
           file_name?: string | null
@@ -4363,6 +4365,7 @@ export type Database = {
           chapter_id?: string
           created_at?: string | null
           current_job_id?: string | null
+          display_name?: string | null
           error_message?: string | null
           extracted_images?: Json | null
           file_name?: string | null
