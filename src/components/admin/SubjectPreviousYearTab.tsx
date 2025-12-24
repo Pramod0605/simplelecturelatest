@@ -125,19 +125,26 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
 
       // Step 2: Extract questions using AI
       setCurrentStep("extracting");
-      const aiResult = await extractQuestionsAI.mutateAsync({
-        contentJson: result.content_json,
-        examName: formData.exam_name,
-        year: formData.year,
-        paperType: formData.paper_type,
-      });
+      try {
+        const aiResult = await extractQuestionsAI.mutateAsync({
+          contentJson: result.content_json,
+          examName: formData.exam_name,
+          year: formData.year,
+          paperType: formData.paper_type,
+        });
 
-      if (aiResult.success && aiResult.questions) {
-        setExtractedQuestions(aiResult.questions);
-        setFormData((prev) => ({ ...prev, total_questions: aiResult.questionsCount }));
+        if (aiResult.questions && aiResult.questions.length > 0) {
+          setExtractedQuestions(aiResult.questions);
+          setFormData((prev) => ({ ...prev, total_questions: aiResult.questionsCount }));
+        }
+        
+        // Show preview even with partial results
+        setCurrentStep("preview");
+      } catch (aiError) {
+        console.error("AI extraction failed:", aiError);
+        // Still show preview with empty questions - user can save paper without questions
+        setCurrentStep("preview");
       }
-      
-      setCurrentStep("preview");
     } catch (error) {
       console.error("Error in PDF parsing/extraction:", error);
       setCurrentStep("form");
