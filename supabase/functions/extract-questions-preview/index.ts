@@ -15,6 +15,7 @@ interface ExtractedQuestion {
   question_text: string;
   options: Record<string, ExtractedOption>;
   correct_answer: string;
+  question_type: "mcq" | "integer";
   explanation: string;
   difficulty: string;
   marks: number;
@@ -46,28 +47,54 @@ function numericToLetter(num: string): string | null {
 
 /**
  * Parse markdown table rows for answer key
+ * Handles formats like: | 1. (3) | 2. (4) | and | 21. (8788) |
  */
 function parseTableAnswers(text: string): Map<number, string> {
   const answers = new Map<number, string>();
   
-  // Match table rows: | 1 | A | or | 1 | 2 | (numeric)
-  const tableRowPattern = /\|\s*(\d{1,3})\s*\|\s*([A-Da-d1-4])\s*\|/g;
+  // PRIMARY PATTERN: Match "| 1. (3) |" or "| 21. (8788) |" format
+  // This is the actual format used in JEE/MathonGo papers
+  const primaryPattern = /\|\s*(\d{1,3})\s*\.?\s*\(([^)]+)\)/g;
   let match;
   
-  while ((match = tableRowPattern.exec(text)) !== null) {
+  while ((match = primaryPattern.exec(text)) !== null) {
     const qNum = parseInt(match[1], 10);
-    let answer = match[2].toUpperCase();
+    const rawAnswer = match[2].trim();
     
-    // Convert numeric to letter if needed
+    if (qNum < 1 || qNum > 300) continue;
+    
+    // Check what type of answer it is
+    if (/^[1-4]$/.test(rawAnswer)) {
+      // MCQ with numeric answer (1-4) -> convert to A-D
+      const letter = numericToLetter(rawAnswer);
+      if (letter) answers.set(qNum, letter);
+    } else if (/^[A-Da-d]$/.test(rawAnswer)) {
+      // MCQ with letter answer
+      answers.set(qNum, rawAnswer.toUpperCase());
+    } else if (/^-?\d+\.?\d*$/.test(rawAnswer)) {
+      // Integer-type or numeric answer (like 8788, 474, 17280)
+      answers.set(qNum, rawAnswer);
+    }
+  }
+  
+  // FALLBACK PATTERN: Match simple table "| 1 | A |" or "| 1 | 2 |"
+  const simpleTablePattern = /\|\s*(\d{1,3})\s*\|\s*([A-Da-d1-4])\s*\|/g;
+  while ((match = simpleTablePattern.exec(text)) !== null) {
+    const qNum = parseInt(match[1], 10);
+    if (answers.has(qNum)) continue; // Don't overwrite
+    
+    let answer = match[2].toUpperCase();
     if (/^[1-4]$/.test(answer)) {
       const converted = numericToLetter(answer);
       if (converted) answer = converted;
     }
     
-    if (qNum >= 1 && qNum <= 200 && /^[A-D]$/.test(answer)) {
+    if (qNum >= 1 && qNum <= 300 && /^[A-D]$/.test(answer)) {
       answers.set(qNum, answer);
     }
   }
+  
+  console.log(`parseTableAnswers: Found ${answers.size} answers from table patterns`);
   
   return answers;
 }
@@ -125,8 +152,8 @@ function extractAnswerKey(text: string): Map<number, string> {
     }
   }
   
-  // Strategy 2: Multiple regex patterns for different answer key formats
-  const patterns = [
+  // Strategy 2: Additional patterns for non-table answer formats
+  const mcqPatterns = [
     // Format: "1. (A)" or "1.(A)" or "1 (A)"
     /(\d{1,3})\s*\.?\s*\(([A-Da-d])\)/g,
     // Format: "1. A" or "1.A" or "1 A" (letter at word boundary)
@@ -141,32 +168,62 @@ function extractAnswerKey(text: string): Map<number, string> {
     /(\d{1,3})\s*=\s*\(?([A-Da-d])\)?/g,
     // Format: just "1 A" at start of line
     /(?:^|\n)\s*(\d{1,3})\s+([A-Da-d])(?=\s|\n|$)/gm,
-    
-    // Numeric answer formats (1-4 instead of A-D):
-    // Format: "1. (2)" or "1.(3)"
+  ];
+  
+  // Numeric MCQ patterns (1-4 instead of A-D)
+  const numericMcqPatterns = [
+    // Format: "1. (2)" or "1.(3)" - most common for JEE
     /(\d{1,3})\s*\.?\s*\(([1-4])\)/g,
-    // Format: "1. 2" or "1.3" (numeric answer)
+    // Format: "1. 2" or "1:3" (numeric answer)
     /(\d{1,3})\s*[\.\)\-:]\s*([1-4])(?=[\s,;.\n\r]|$)/g,
     // Format: table-like "1    2" (question number, numeric answer)
     /(?:^|\n)\s*(\d{1,3})\s{2,}([1-4])(?:\s|$)/gm,
   ];
   
-  for (const pattern of patterns) {
+  // Integer-type answer patterns (multi-digit like 8788, 474, 17280)
+  const integerPatterns = [
+    // Format: "21. (8788)" or "21.(474)"
+    /(\d{1,3})\s*\.?\s*\((-?\d{2,})\)/g,
+    // Format: "21: 8788" or "21 - 8788"
+    /(\d{1,3})\s*[:\-]\s*(-?\d{2,})(?=[\s,;.\n\r]|$)/g,
+  ];
+  
+  // Apply MCQ letter patterns
+  for (const pattern of mcqPatterns) {
     let match;
     while ((match = pattern.exec(searchText)) !== null) {
       const qNum = parseInt(match[1], 10);
-      let answer = match[2].toUpperCase();
+      const answer = match[2].toUpperCase();
       
-      // Convert numeric to letter if needed
-      if (/^[1-4]$/.test(answer)) {
-        const converted = numericToLetter(answer);
-        if (converted) answer = converted;
-        else continue;
-      }
-      
-      // Only accept reasonable question numbers (1-200) and valid answers
-      if (qNum >= 1 && qNum <= 200 && /^[A-D]$/.test(answer) && !answerMap.has(qNum)) {
+      if (qNum >= 1 && qNum <= 300 && /^[A-D]$/.test(answer) && !answerMap.has(qNum)) {
         answerMap.set(qNum, answer);
+      }
+    }
+  }
+  
+  // Apply numeric MCQ patterns (convert 1-4 to A-D)
+  for (const pattern of numericMcqPatterns) {
+    let match;
+    while ((match = pattern.exec(searchText)) !== null) {
+      const qNum = parseInt(match[1], 10);
+      const numAnswer = match[2];
+      
+      if (qNum >= 1 && qNum <= 300 && !answerMap.has(qNum)) {
+        const letter = numericToLetter(numAnswer);
+        if (letter) answerMap.set(qNum, letter);
+      }
+    }
+  }
+  
+  // Apply integer-type patterns (store as-is, don't convert)
+  for (const pattern of integerPatterns) {
+    let match;
+    while ((match = pattern.exec(searchText)) !== null) {
+      const qNum = parseInt(match[1], 10);
+      const intAnswer = match[2];
+      
+      if (qNum >= 1 && qNum <= 300 && !answerMap.has(qNum)) {
+        answerMap.set(qNum, intAnswer);
       }
     }
   }
@@ -283,6 +340,7 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
       question_text: String(q.question_text || q.text || q.question || ""),
       options,
       correct_answer: "", // Will be filled from answer key
+      question_type: "mcq", // Default, will be updated when answer is applied
       explanation: String(q.explanation || q.solution || ""),
       difficulty,
       marks: Number(q.marks || q.mark || 4),
@@ -475,14 +533,22 @@ ${chunk}`;
       const answer = answerKey.get(qNum);
       if (answer) {
         question.correct_answer = answer;
+        // Determine question type based on answer format
+        if (/^[A-D]$/.test(answer)) {
+          question.question_type = "mcq";
+        } else {
+          question.question_type = "integer";
+        }
         answersApplied++;
       } else {
         missingAnswers.push(qNum);
       }
     }
     console.log(`Applied ${answersApplied} answers from answer key`);
+    console.log(`MCQ answers: ${Array.from(questionMap.values()).filter(q => q.question_type === "mcq").length}`);
+    console.log(`Integer answers: ${Array.from(questionMap.values()).filter(q => q.question_type === "integer").length}`);
     
-    if (missingAnswers.length > 0 && missingAnswers.length <= 20) {
+    if (missingAnswers.length > 0 && missingAnswers.length <= 30) {
       console.log(`Missing answers for questions: ${missingAnswers.join(", ")}`);
     }
 
