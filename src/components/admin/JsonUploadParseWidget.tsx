@@ -6,6 +6,7 @@ import { useDatalab } from "@/hooks/useDatalab";
 import { toast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useExtractJsonQuestions } from "@/hooks/useExtractJsonQuestions";
+import { useAddAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
 
 interface JsonUploadParseWidgetProps {
   currentJson: any;
@@ -35,6 +36,7 @@ export function JsonUploadParseWidget({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { parsePdfFromUrl, isLoading, progress } = useDatalab();
   const extractQuestions = useExtractJsonQuestions();
+  const addDocument = useAddAIAssistantDocument();
 
   const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,11 +76,39 @@ export function JsonUploadParseWidget({
 
     const result = await parsePdfFromUrl(pdfUrl);
     if (result) {
-      onJsonChange(result.content_json || result);
-      toast({
-        title: "PDF Parsed",
-        description: `Successfully parsed PDF for ${entityName}`,
-      });
+      const parsedContent = result.content_json || result;
+      onJsonChange(parsedContent);
+      
+      // Save to ai_assistant_documents if subjectId is provided
+      if (subjectId) {
+        try {
+          const fileName = pdfUrl.split('/').pop() || "document.pdf";
+          await addDocument.mutateAsync({
+            subjectId,
+            displayName: `${entityName} (${entityType})`,
+            sourceType: "pdf",
+            sourceUrl: pdfUrl,
+            fileName,
+            contentPreview: JSON.stringify(parsedContent).substring(0, 500),
+          });
+          
+          toast({
+            title: "PDF Parsed & Saved",
+            description: `Document added to AI Assistant for ${entityName}`,
+          });
+        } catch (error) {
+          // Still show success for parsing even if document save fails
+          toast({
+            title: "PDF Parsed",
+            description: `Parsed successfully but couldn't save to Documents tab`,
+          });
+        }
+      } else {
+        toast({
+          title: "PDF Parsed",
+          description: `Successfully parsed PDF for ${entityName}`,
+        });
+      }
     }
   };
 
