@@ -4,8 +4,8 @@ import { toast } from "@/hooks/use-toast";
 
 export interface ExtractedQuestion {
   question_text: string;
-  question_type: "mcq" | "subjective" | "true_false";
-  question_format: "single_choice" | "multiple_choice" | "true_false" | "subjective";
+  question_type: "mcq" | "subjective" | "true_false" | "integer";
+  question_format: "single_choice" | "multiple_choice" | "true_false" | "subjective" | "integer";
   options: Record<string, { text: string }>;
   correct_answer: string;
   explanation?: string;
@@ -164,18 +164,23 @@ function parseQuestionItem(item: any, defaultNumber: number): ExtractedQuestion 
     });
   }
 
-  // Determine question type
-  const hasOptions = Object.keys(options).length > 0;
-  const questionType = hasOptions ? "mcq" : "subjective";
-  const questionFormat = hasOptions ? "single_choice" : "subjective";
-
-  // Parse correct answer
+  // Parse correct answer first (need it to determine question type)
   let correctAnswer = item.correct_answer || item.answer || item.correct || "";
   if (typeof correctAnswer !== "string") {
     correctAnswer = String(correctAnswer);
   }
-  // Normalize to just the key if it's like "(A)" or "A)"
-  correctAnswer = correctAnswer.replace(/[()]/g, "").trim().toUpperCase().charAt(0);
+  // Clean up the answer
+  const cleanedAnswer = correctAnswer.replace(/[()]/g, "").trim();
+  
+  // Determine question type - check if it's integer based on answer format or empty options
+  const hasOptions = Object.keys(options).length > 0;
+  const isIntegerAnswer = /^-?\d+\.?\d*$/.test(cleanedAnswer) && cleanedAnswer.length > 1;
+  
+  const questionType = isIntegerAnswer ? "integer" : hasOptions ? "mcq" : "subjective";
+  const questionFormat = isIntegerAnswer ? "integer" : hasOptions ? "single_choice" : "subjective";
+
+  // For MCQ, normalize to just the first letter; for integer keep full value
+  const finalAnswer = isIntegerAnswer ? cleanedAnswer : cleanedAnswer.toUpperCase().charAt(0);
 
   // Parse difficulty
   let difficulty: ExtractedQuestion["difficulty"] = "Medium";
@@ -193,7 +198,7 @@ function parseQuestionItem(item: any, defaultNumber: number): ExtractedQuestion 
     question_type: questionType,
     question_format: questionFormat,
     options,
-    correct_answer: correctAnswer,
+    correct_answer: finalAnswer,
     explanation: item.explanation || item.solution || undefined,
     difficulty,
     marks: item.marks || item.mark || 1,

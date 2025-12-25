@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -142,12 +143,20 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
   const calculateScore = useCallback(() => {
     let correct = 0;
     testQuestions.forEach((q) => {
-      if (answers[q.id]?.toUpperCase() === q.correct_answer?.toUpperCase()) {
+      const userAnswer = answers[q.id]?.trim();
+      const correctAnswer = q.correct_answer?.trim();
+      if (userAnswer && correctAnswer && userAnswer.toUpperCase() === correctAnswer.toUpperCase()) {
         correct++;
       }
     });
     return correct;
   }, [testQuestions, answers]);
+
+  const isIntegerQuestion = (question: PaperQuestion): boolean => {
+    return question.question_type === "integer" || 
+           !question.options || 
+           Object.keys(question.options).length === 0;
+  };
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -429,29 +438,46 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
                 </Button>
               </div>
 
-              <RadioGroup
-                value={answers[currentQuestion.id] || ""}
-                onValueChange={(value) => handleAnswer(currentQuestion.id, value)}
-                className="space-y-3"
-              >
-                {Object.keys(currentQuestion.options || {}).sort().map((key) => (
-                  <div
-                    key={key}
-                    className={cn(
-                      "flex items-center space-x-3 p-4 rounded-lg border transition-colors",
-                      answers[currentQuestion.id] === key
-                        ? "border-primary bg-primary/5"
-                        : "hover:bg-accent"
-                    )}
-                  >
-                    <RadioGroupItem value={key} id={`opt-${key}`} />
-                    <Label htmlFor={`opt-${key}`} className="flex-1 cursor-pointer">
-                      <span className="font-medium mr-2">{key}.</span>
-                      {getOptionText(currentQuestion, key)}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+              {isIntegerQuestion(currentQuestion) ? (
+                // Integer type question - show text input
+                <div className="space-y-3">
+                  <Label className="text-sm text-muted-foreground">
+                    Enter your numeric answer:
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="Enter your answer (e.g., 42, -5, 3.14)"
+                    value={answers[currentQuestion.id] || ""}
+                    onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
+                    className="text-lg font-mono"
+                  />
+                </div>
+              ) : (
+                // MCQ question - show radio buttons
+                <RadioGroup
+                  value={answers[currentQuestion.id] || ""}
+                  onValueChange={(value) => handleAnswer(currentQuestion.id, value)}
+                  className="space-y-3"
+                >
+                  {Object.keys(currentQuestion.options || {}).sort().map((key) => (
+                    <div
+                      key={key}
+                      className={cn(
+                        "flex items-center space-x-3 p-4 rounded-lg border transition-colors",
+                        answers[currentQuestion.id] === key
+                          ? "border-primary bg-primary/5"
+                          : "hover:bg-accent"
+                      )}
+                    >
+                      <RadioGroupItem value={key} id={`opt-${key}`} />
+                      <Label htmlFor={`opt-${key}`} className="flex-1 cursor-pointer">
+                        <span className="font-medium mr-2">{key}.</span>
+                        {getOptionText(currentQuestion, key)}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
 
               {/* Navigation */}
               <div className="flex items-center justify-between pt-4">
@@ -561,8 +587,10 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Detailed Review</h3>
           {testQuestions.map((q, idx) => {
-            const userAnswer = answers[q.id];
-            const isCorrect = userAnswer?.toUpperCase() === q.correct_answer?.toUpperCase();
+            const userAnswer = answers[q.id]?.trim();
+            const correctAnswer = q.correct_answer?.trim();
+            const isCorrect = userAnswer && correctAnswer && userAnswer.toUpperCase() === correctAnswer.toUpperCase();
+            const isInteger = isIntegerQuestion(q);
 
             return (
               <Card key={q.id} className={cn(
@@ -571,9 +599,14 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
               )}>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-start justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Question {idx + 1}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Question {idx + 1}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {isInteger ? "Integer" : "MCQ"}
+                      </Badge>
+                    </div>
                     {isCorrect ? (
                       <Badge variant="outline" className="text-green-600 border-green-600">
                         <CheckCircle className="h-3 w-3 mr-1" />
@@ -587,21 +620,43 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
                     )}
                   </div>
                   <p className="whitespace-pre-wrap">{q.question_text}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {Object.keys(q.options || {}).sort().map((key) => (
-                      <div
-                        key={key}
-                        className={cn(
-                          "p-2 rounded text-sm",
-                          key.toUpperCase() === q.correct_answer?.toUpperCase() && "bg-green-100 text-green-800",
-                          userAnswer?.toUpperCase() === key.toUpperCase() && 
-                          key.toUpperCase() !== q.correct_answer?.toUpperCase() && "bg-red-100 text-red-800"
+                  
+                  {isInteger ? (
+                    // Integer question review
+                    <div className="space-y-2">
+                      <div className="flex flex-col gap-2 text-sm">
+                        <div className={cn(
+                          "p-3 rounded",
+                          isCorrect ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        )}>
+                          <span className="font-medium">Your answer:</span> {userAnswer || "Not answered"}
+                        </div>
+                        {!isCorrect && (
+                          <div className="p-3 rounded bg-green-100 text-green-800">
+                            <span className="font-medium">Correct answer:</span> {correctAnswer}
+                          </div>
                         )}
-                      >
-                        <span className="font-medium">{key}.</span> {getOptionText(q, key)}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    // MCQ question review
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {Object.keys(q.options || {}).sort().map((key) => (
+                        <div
+                          key={key}
+                          className={cn(
+                            "p-2 rounded text-sm",
+                            key.toUpperCase() === correctAnswer?.toUpperCase() && "bg-green-100 text-green-800",
+                            userAnswer?.toUpperCase() === key.toUpperCase() && 
+                            key.toUpperCase() !== correctAnswer?.toUpperCase() && "bg-red-100 text-red-800"
+                          )}
+                        >
+                          <span className="font-medium">{key}.</span> {getOptionText(q, key)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   {!userAnswer && (
                     <p className="text-sm text-muted-foreground italic">Not answered</p>
                   )}
