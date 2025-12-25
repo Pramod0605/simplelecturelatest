@@ -90,6 +90,7 @@ export function JsonUploadParseWidget({
             sourceUrl: pdfUrl,
             fileName,
             contentPreview: JSON.stringify(parsedContent).substring(0, 500),
+            fullContent: parsedContent,
           });
           
           toast({

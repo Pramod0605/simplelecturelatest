@@ -38,6 +38,7 @@ import { SubjectPreviousYearTab } from "@/components/admin/SubjectPreviousYearTa
 import { SubjectInstructorsTab } from "@/components/admin/SubjectInstructorsTab";
 import { SubjectCoursesTab } from "@/components/admin/SubjectCoursesTab";
 import { SubjectDocumentsTab } from "@/components/admin/SubjectDocumentsTab";
+import { SubjectVideoGeneratorTab } from "@/components/admin/SubjectVideoGeneratorTab";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -507,17 +508,7 @@ export default function SubjectForm() {
         {/* Tab 8: Generate Video */}
         <TabsContent value="generate-video">
           {isEdit && id ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Generate Video</CardTitle>
-                <CardDescription>
-                  Generate AI video scripts for chapters and topics
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                Video generation functionality coming soon...
-              </CardContent>
-            </Card>
+            <SubjectVideoGeneratorTab subjectId={id} subjectName={subject?.name || ""} />
           ) : (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
