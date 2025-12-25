@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileJson, Video, FileText, Image } from "lucide-react";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
 
 interface SubjectVideoGeneratorTabProps {
@@ -15,6 +15,7 @@ interface SubjectVideoGeneratorTabProps {
 export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVideoGeneratorTabProps) {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"markdown" | "json">("markdown");
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const { data: documents, isLoading } = useAIAssistantDocuments(subjectId);
   
@@ -122,7 +123,7 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                   </span>
                 </div>
                 
-                <ScrollArea className="h-[600px] rounded-lg border bg-muted/50 p-4">
+                <ScrollArea className={`${isExpanded ? "h-[600px]" : "h-[200px]"} rounded-lg border bg-muted/50 p-4 transition-all duration-300`}>
                   {viewMode === "markdown" ? (
                     <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">
                       {(fullContent.content_markdown as string) || "No markdown content available"}
@@ -133,6 +134,25 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                     </pre>
                   )}
                 </ScrollArea>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="w-full mt-2"
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Show More
+                    </>
+                  )}
+                </Button>
               </>
             ) : (
               <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30 text-center">
