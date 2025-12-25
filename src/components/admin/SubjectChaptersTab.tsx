@@ -911,7 +911,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                     Add Chapter
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {editingChapter ? "Edit Chapter" : "Add New Chapter"}
