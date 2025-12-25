@@ -269,9 +269,6 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
             <DialogTitle>
               {selectedPaper?.exam_name} {selectedPaper?.year}
             </DialogTitle>
-            <DialogDescription>
-              Configure your test settings before starting
-            </DialogDescription>
           </DialogHeader>
 
           {questionsLoading ? (
