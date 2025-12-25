@@ -1175,90 +1175,93 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             </div>
           )}
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : showTreeView ? (
-            <CurriculumTreeView subjectId={subjectId} subjectName={subjectName} />
-          ) : chapters && chapters.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEndChapters}
-            >
-              <SortableContext
-                items={chapters.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-4">
-                  {chapters.map((chapter) => (
-                    <SortableChapterItem
-                      key={chapter.id}
-                      chapter={chapter}
-                      isExpanded={expandedChapters.has(chapter.id)}
-                      onToggle={() => toggleChapter(chapter.id)}
-                      onEdit={() => {
-                        setEditingChapter(chapter);
-                        setChapterForm({
-                          chapter_number: chapter.chapter_number,
-                          title: chapter.title,
-                          description: chapter.description || "",
-                          sequence_order: chapter.sequence_order,
-                          video_id: chapter.video_id || "",
-                          video_platform: chapter.video_platform || "",
-                          notes_markdown: chapter.notes_markdown || "",
-                          pdf_url: chapter.pdf_url || "",
-                          content_json: (chapter as any).content_json || null,
-                        });
-                  }}
-                  onDelete={() => setDeleteChapterId(chapter.id)}
-                  onAddTopic={() => {
-                    setSelectedChapter(chapter.id);
-                    setIsAddTopicOpen(true);
-                  }}
-                  onEditTopic={(topic) => {
-                    setSelectedChapter(chapter.id);
-                    setEditingTopic(topic);
-                    setTopicForm({
-                      topic_number: topic.topic_number,
-                      title: topic.title,
-                      estimated_duration_minutes: topic.estimated_duration_minutes || 60,
-                      video_id: topic.video_id || "",
-                      video_platform: topic.video_platform || "",
-                      notes_markdown: topic.notes_markdown || "",
-                      content_markdown: topic.content_markdown || "",
-                      pdf_url: topic.pdf_url || "",
-                      sequence_order: topic.sequence_order,
-                      content_json: (topic as any).content_json || null,
-                    });
-                  }}
-                  onDeleteTopic={(topicId) => {
-                    setSelectedChapter(chapter.id);
-                    setDeleteTopicId(topicId);
-                  }}
-                  onGenerateContent={(topicId, topicData, chapterData) => {
-                    setGenerateContentTopicId(topicId);
-                    setCurrentChapterForContent(chapterData);
-                    setCurrentTopicForContent(topicData);
-                    setGenerateContentDialogOpen(true);
-                  }}
-                  subjectId={subjectId}
-                  subjectName={subjectName}
-                  categoryId={subject?.category_id || ''}
-                  parentCategoryName={getCategoryHierarchy().parentCategory}
-                  subCategoryName={getCategoryHierarchy().subCategory}
-                />
-                ))}
+          {/* Scrollable chapters container */}
+          <div className="max-h-[calc(100vh-350px)] overflow-y-auto pr-2">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
               </div>
-            </SortableContext>
-          </DndContext>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <p>No chapters added yet</p>
-              <p className="text-sm mt-2">Click "Add Chapter" to get started</p>
-            </div>
-          )}
+            ) : showTreeView ? (
+              <CurriculumTreeView subjectId={subjectId} subjectName={subjectName} />
+            ) : chapters && chapters.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEndChapters}
+              >
+                <SortableContext
+                  items={chapters.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {chapters.map((chapter) => (
+                      <SortableChapterItem
+                        key={chapter.id}
+                        chapter={chapter}
+                        isExpanded={expandedChapters.has(chapter.id)}
+                        onToggle={() => toggleChapter(chapter.id)}
+                        onEdit={() => {
+                          setEditingChapter(chapter);
+                          setChapterForm({
+                            chapter_number: chapter.chapter_number,
+                            title: chapter.title,
+                            description: chapter.description || "",
+                            sequence_order: chapter.sequence_order,
+                            video_id: chapter.video_id || "",
+                            video_platform: chapter.video_platform || "",
+                            notes_markdown: chapter.notes_markdown || "",
+                            pdf_url: chapter.pdf_url || "",
+                            content_json: (chapter as any).content_json || null,
+                          });
+                        }}
+                        onDelete={() => setDeleteChapterId(chapter.id)}
+                        onAddTopic={() => {
+                          setSelectedChapter(chapter.id);
+                          setIsAddTopicOpen(true);
+                        }}
+                        onEditTopic={(topic) => {
+                          setSelectedChapter(chapter.id);
+                          setEditingTopic(topic);
+                          setTopicForm({
+                            topic_number: topic.topic_number,
+                            title: topic.title,
+                            estimated_duration_minutes: topic.estimated_duration_minutes || 60,
+                            video_id: topic.video_id || "",
+                            video_platform: topic.video_platform || "",
+                            notes_markdown: topic.notes_markdown || "",
+                            content_markdown: topic.content_markdown || "",
+                            pdf_url: topic.pdf_url || "",
+                            sequence_order: topic.sequence_order,
+                            content_json: (topic as any).content_json || null,
+                          });
+                        }}
+                        onDeleteTopic={(topicId) => {
+                          setSelectedChapter(chapter.id);
+                          setDeleteTopicId(topicId);
+                        }}
+                        onGenerateContent={(topicId, topicData, chapterData) => {
+                          setGenerateContentTopicId(topicId);
+                          setCurrentChapterForContent(chapterData);
+                          setCurrentTopicForContent(topicData);
+                          setGenerateContentDialogOpen(true);
+                        }}
+                        subjectId={subjectId}
+                        subjectName={subjectName}
+                        categoryId={subject?.category_id || ''}
+                        parentCategoryName={getCategoryHierarchy().parentCategory}
+                        subCategoryName={getCategoryHierarchy().subCategory}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                <p>No chapters added yet</p>
+                <p className="text-sm mt-2">Click "Add Chapter" to get started</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
