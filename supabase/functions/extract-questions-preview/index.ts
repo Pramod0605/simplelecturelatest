@@ -5,6 +5,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Maximum questions to extract - papers can have 1-200 questions
+const MAX_QUESTIONS = 200;
+
 interface ExtractedOption {
   text: string;
   image_url?: string;
@@ -61,7 +64,7 @@ function parseTableAnswers(text: string): Map<number, string> {
     const qNum = parseInt(match[1], 10);
     const rawAnswer = match[2].trim();
     
-    if (qNum < 1 || qNum > 300) continue;
+    if (qNum < 1 || qNum > MAX_QUESTIONS) continue;
     
     // Check what type of answer it is
     if (/^[1-4]$/.test(rawAnswer)) {
@@ -89,7 +92,7 @@ function parseTableAnswers(text: string): Map<number, string> {
       if (converted) answer = converted;
     }
     
-    if (qNum >= 1 && qNum <= 300 && /^[A-D]$/.test(answer)) {
+    if (qNum >= 1 && qNum <= MAX_QUESTIONS && /^[A-D]$/.test(answer)) {
       answers.set(qNum, answer);
     }
   }
@@ -195,7 +198,7 @@ function extractAnswerKey(text: string): Map<number, string> {
       const qNum = parseInt(match[1], 10);
       const answer = match[2].toUpperCase();
       
-      if (qNum >= 1 && qNum <= 300 && /^[A-D]$/.test(answer) && !answerMap.has(qNum)) {
+      if (qNum >= 1 && qNum <= MAX_QUESTIONS && /^[A-D]$/.test(answer) && !answerMap.has(qNum)) {
         answerMap.set(qNum, answer);
       }
     }
@@ -208,7 +211,7 @@ function extractAnswerKey(text: string): Map<number, string> {
       const qNum = parseInt(match[1], 10);
       const numAnswer = match[2];
       
-      if (qNum >= 1 && qNum <= 300 && !answerMap.has(qNum)) {
+      if (qNum >= 1 && qNum <= MAX_QUESTIONS && !answerMap.has(qNum)) {
         const letter = numericToLetter(numAnswer);
         if (letter) answerMap.set(qNum, letter);
       }
@@ -222,7 +225,7 @@ function extractAnswerKey(text: string): Map<number, string> {
       const qNum = parseInt(match[1], 10);
       const intAnswer = match[2];
       
-      if (qNum >= 1 && qNum <= 300 && !answerMap.has(qNum)) {
+      if (qNum >= 1 && qNum <= MAX_QUESTIONS && !answerMap.has(qNum)) {
         answerMap.set(qNum, intAnswer);
       }
     }
@@ -287,7 +290,7 @@ function chunkTextByQuestions(text: string, maxChunkSize: number = 30000, maxQue
     
     while ((match = patternCopy.exec(remaining)) !== null) {
       const qNum = parseInt(match[1], 10);
-      if (qNum >= 1 && qNum <= 300) {
+      if (qNum >= 1 && qNum <= MAX_QUESTIONS) {
         questionPositions.push({ index: match.index, qNum });
       }
     }
@@ -451,12 +454,13 @@ serve(async (req) => {
     const systemPrompt = `You are an expert at extracting multiple choice questions from exam papers.
 
 IMPORTANT RULES:
-1. Extract ALL questions you find - do not skip any
+1. Extract ALL questions you find in this content (papers may contain anywhere from 1 to ${MAX_QUESTIONS} questions)
 2. DO NOT guess or determine the correct answer - leave correct_answer as empty string ""
 3. Extract question text exactly as written (preserve formatting, formulas)
 4. IMPORTANT: JSON escaping: any backslash must be doubled (\\).
 5. Extract all options A, B, C, D (and E if present)
 6. If a question has an image reference, note it in the question text
+7. Do not stop early - extract every single question you can find
 
 Return a JSON array of objects with this exact structure:
 {
@@ -776,9 +780,10 @@ ${chunk}`;
       console.log(`Missing answers for questions: ${missingAnswers.join(", ")}`);
     }
 
-    // Convert to sorted array
+    // Convert to sorted array and cap at MAX_QUESTIONS
     const finalQuestions = Array.from(questionMap.values())
-      .sort((a, b) => a.question_number - b.question_number);
+      .sort((a, b) => a.question_number - b.question_number)
+      .slice(0, MAX_QUESTIONS);
 
     console.log(`Final: ${finalQuestions.length} unique questions extracted`);
     
