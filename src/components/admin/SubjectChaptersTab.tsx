@@ -1475,6 +1475,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
               subjectId={subjectId}
               chapterId={selectedChapter || undefined}
               topicId={editingTopic?.id}
+              parentName={selectedChapter ? chapters?.find(c => c.id === selectedChapter)?.title : undefined}
             />
           </div>
           <DialogFooter>

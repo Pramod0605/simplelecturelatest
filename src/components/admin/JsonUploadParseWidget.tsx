@@ -19,6 +19,8 @@ interface JsonUploadParseWidgetProps {
   chapterId?: string;
   topicId?: string;
   subtopicId?: string;
+  // Parent name for display (e.g., chapter name for topics)
+  parentName?: string;
 }
 
 export function JsonUploadParseWidget({
@@ -31,6 +33,7 @@ export function JsonUploadParseWidget({
   chapterId,
   topicId,
   subtopicId,
+  parentName,
 }: JsonUploadParseWidgetProps) {
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +88,7 @@ export function JsonUploadParseWidget({
           const fileName = pdfUrl.split('/').pop() || "document.pdf";
           await addDocument.mutateAsync({
             subjectId,
-            displayName: `${entityName} (${entityType})`,
+            displayName: parentName ? `${entityName} (${parentName})` : `${entityName} (${entityType})`,
             sourceType: "pdf",
             sourceUrl: pdfUrl,
             fileName,
