@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -912,7 +911,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                     Add Chapter
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>
                       {editingChapter ? "Edit Chapter" : "Add New Chapter"}
@@ -921,8 +920,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                       {editingChapter ? "Update chapter details" : "Create a new chapter for this subject"}
                     </DialogDescription>
                   </DialogHeader>
-                  <ScrollArea className="flex-1 max-h-[60vh]">
-                    <div className="space-y-4 py-4 pr-4">
+                  <div className="space-y-4 py-4">
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="chapter-number">Chapter Number *</Label>
@@ -1129,8 +1127,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         />
                       </div>
                     </div>
-                    </div>
-                  </ScrollArea>
+                  </div>
                   <DialogFooter>
                     <Button
                       variant="outline"
