@@ -4,8 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface SubjectVideoGeneratorTabProps {
   subjectId: string;
@@ -16,6 +18,9 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"markdown" | "json">("markdown");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedId, setGeneratedId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   
   const { data: documents, isLoading } = useAIAssistantDocuments(subjectId);
   
@@ -34,6 +39,57 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   
   const metadata = fullContent?.metadata as Record<string, unknown> | undefined;
   const imageCount = fullContent?.images ? Object.keys(fullContent.images as object).length : 0;
+
+  // Generate 9-digit unique ID
+  const generateUniqueId = () => {
+    return Math.floor(100000000 + Math.random() * 900000000).toString();
+  };
+
+  // Handle generate video click
+  const handleGenerateVideo = async () => {
+    setIsGenerating(true);
+    setGeneratedId(null);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const uniqueId = generateUniqueId();
+      
+      const { error } = await supabase
+        .from('video_generation_jobs')
+        .insert({
+          id: uniqueId,
+          document_id: selectedDocumentId,
+          subject_id: subjectId,
+          document_name: selectedDocument?.display_name || selectedDocument?.file_name,
+          parsed_content: fullContent as any,
+          status: 'pending',
+          created_by: user?.id
+        } as any);
+      
+      if (error) {
+        console.error('Error creating video job:', error);
+        toast.error('Failed to create video job');
+        return;
+      }
+      
+      setGeneratedId(uniqueId);
+      toast.success(`Video job created with ID: ${uniqueId}`);
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error('An error occurred');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (generatedId) {
+      navigator.clipboard.writeText(generatedId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success('ID copied to clipboard');
+    }
+  };
 
   return (
     <Card>
@@ -153,6 +209,48 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                     </>
                   )}
                 </Button>
+
+                {/* Generate Video Button */}
+                <div className="mt-4 p-4 border rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5">
+                  <Button 
+                    onClick={handleGenerateVideo}
+                    disabled={isGenerating}
+                    className="w-full gap-2"
+                    size="lg"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Generate Video
+                      </>
+                    )}
+                  </Button>
+                  
+                  {generatedId && (
+                    <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Video Job Created!</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xl font-mono font-bold text-green-800 dark:text-green-200">{generatedId}</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={copyToClipboard}
+                          className="h-8 w-8 p-0"
+                        >
+                          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use this ID to access the video once generated. The parsed content is stored and ready for API processing.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30 text-center">
