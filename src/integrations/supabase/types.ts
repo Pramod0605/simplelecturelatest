@@ -4601,6 +4601,53 @@ export type Database = {
           },
         ]
       }
+      video_generation_jobs: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          document_id: string | null
+          document_name: string | null
+          id: string
+          parsed_content: Json | null
+          status: string | null
+          subject_id: string
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string | null
+          document_name?: string | null
+          id: string
+          parsed_content?: Json | null
+          status?: string | null
+          subject_id: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string | null
+          document_name?: string | null
+          id?: string
+          parsed_content?: Json | null
+          status?: string | null
+          subject_id?: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_generation_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "ai_assistant_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_storyboards: {
         Row: {
           audio_error_message: string | null
