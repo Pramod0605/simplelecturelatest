@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft, Sparkles, Loader2, FileJson } from "lucide-react";
+import { BookOpen, List, Brain, FileText, Users, GraduationCap, ArrowLeft, Sparkles, Loader2, FileJson, Video } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploadWidget } from "@/components/admin/ImageUploadWidget";
 import { AIImageGenerator } from "@/components/admin/AIImageGenerator";
@@ -185,7 +185,7 @@ export default function SubjectForm() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="basic" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Basic Info
@@ -213,6 +213,10 @@ export default function SubjectForm() {
           <TabsTrigger value="previous-year" disabled={!isEdit} className="gap-2">
             <FileText className="h-4 w-4" />
             Previous Year
+          </TabsTrigger>
+          <TabsTrigger value="generate-video" disabled={!isEdit} className="gap-2">
+            <Video className="h-4 w-4" />
+            Generate Video
           </TabsTrigger>
         </TabsList>
 
@@ -495,6 +499,29 @@ export default function SubjectForm() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 Save the subject first to manage documents
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Tab 8: Generate Video */}
+        <TabsContent value="generate-video">
+          {isEdit && id ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Generate Video</CardTitle>
+                <CardDescription>
+                  Generate AI video scripts for chapters and topics
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Video generation functionality coming soon...
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Save the subject first to generate videos
               </CardContent>
             </Card>
           )}
