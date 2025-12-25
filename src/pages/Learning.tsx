@@ -13,6 +13,7 @@ import { AssignmentViewer } from "@/components/learning/AssignmentViewer";
 import { DPTTest } from "@/components/learning/DPTTest";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
 import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
+import { PreviousYearPapers } from "@/components/learning/PreviousYearPapers";
 import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
@@ -258,66 +259,81 @@ export default function Learning() {
           </aside>
 
           <main className="flex-1 overflow-y-auto p-6">
-            {selectedTopic ? (
-              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-7">
-                  <TabsTrigger value="videos">Videos</TabsTrigger>
-                  <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
-                  <TabsTrigger value="podcast">Podcast</TabsTrigger>
-                  <TabsTrigger value="mcqs">MCQs</TabsTrigger>
-                  <TabsTrigger value="dpt">DPT</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
-                  <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                </TabsList>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-8">
+                <TabsTrigger value="videos" disabled={!selectedTopic}>Videos</TabsTrigger>
+                <TabsTrigger value="ai-assistant" disabled={!selectedTopic}>AI Assistant</TabsTrigger>
+                <TabsTrigger value="podcast" disabled={!selectedTopic}>Podcast</TabsTrigger>
+                <TabsTrigger value="mcqs" disabled={!selectedTopic}>MCQs</TabsTrigger>
+                <TabsTrigger value="dpt" disabled={!selectedTopic}>DPT</TabsTrigger>
+                <TabsTrigger value="notes" disabled={!selectedTopic}>Notes</TabsTrigger>
+                <TabsTrigger value="assignments" disabled={!selectedTopic}>Assignments</TabsTrigger>
+                <TabsTrigger value="previous-year">Previous Year</TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="videos">
-                  <RecordedVideos 
-                    topicId={selectedTopic.id}
-                    topicVideoId={selectedTopic.video_id}
-                    topicVideoPlatform={selectedTopic.video_platform}
-                    topicTitle={selectedTopic.title}
-                  />
-                </TabsContent>
+              {selectedTopic ? (
+                <>
+                  <TabsContent value="videos">
+                    <RecordedVideos 
+                      topicId={selectedTopic.id}
+                      topicVideoId={selectedTopic.video_id}
+                      topicVideoPlatform={selectedTopic.video_platform}
+                      topicTitle={selectedTopic.title}
+                    />
+                  </TabsContent>
 
-                <TabsContent value="ai-assistant">
-                  <AITeachingAssistant 
-                    topicId={selectedTopic.id} 
-                    chapterId={selectedTopic.chapter_id}
-                    topicTitle={selectedTopic.title}
-                    subjectName={selectedSubject?.name}
-                  />
-                </TabsContent>
+                  <TabsContent value="ai-assistant">
+                    <AITeachingAssistant 
+                      topicId={selectedTopic.id} 
+                      chapterId={selectedTopic.chapter_id}
+                      topicTitle={selectedTopic.title}
+                      subjectName={selectedSubject?.name}
+                    />
+                  </TabsContent>
 
-                <TabsContent value="podcast">
-                  <PodcastPlayer topicId={selectedTopic.id} />
-                </TabsContent>
+                  <TabsContent value="podcast">
+                    <PodcastPlayer topicId={selectedTopic.id} />
+                  </TabsContent>
 
-                <TabsContent value="mcqs">
-                  <MCQTest topicId={selectedTopic.id} />
-                </TabsContent>
+                  <TabsContent value="mcqs">
+                    <MCQTest topicId={selectedTopic.id} />
+                  </TabsContent>
 
-                <TabsContent value="dpt">
-                  <DPTTest />
-                </TabsContent>
+                  <TabsContent value="dpt">
+                    <DPTTest />
+                  </TabsContent>
 
-                <TabsContent value="notes">
-                  <NotesViewer content={selectedTopic.content_markdown} title={selectedTopic.title} />
-                </TabsContent>
+                  <TabsContent value="notes">
+                    <NotesViewer content={selectedTopic.content_markdown} title={selectedTopic.title} />
+                  </TabsContent>
 
-                <TabsContent value="assignments">
-                  <AssignmentViewer topicId={selectedTopic.id} />
-                </TabsContent>
-              </Tabs>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Welcome to {course?.name}</h3>
-                  <p className="text-muted-foreground">
-                    Select a topic from the sidebar to start learning
-                  </p>
-                </div>
-              </div>
-            )}
+                  <TabsContent value="assignments">
+                    <AssignmentViewer topicId={selectedTopic.id} />
+                  </TabsContent>
+
+                  <TabsContent value="previous-year">
+                    <PreviousYearPapers subjectId={selectedSubjectId} />
+                  </TabsContent>
+                </>
+              ) : (
+                <>
+                  {activeTab === "previous-year" ? (
+                    <TabsContent value="previous-year" forceMount>
+                      <PreviousYearPapers subjectId={selectedSubjectId} />
+                    </TabsContent>
+                  ) : (
+                    <div className="flex items-center justify-center h-[400px]">
+                      <div className="text-center">
+                        <h3 className="text-lg font-medium mb-2">Welcome to {course?.name}</h3>
+                        <p className="text-muted-foreground">
+                          Select a topic from the sidebar to start learning
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </Tabs>
           </main>
         </div>
       </div>
