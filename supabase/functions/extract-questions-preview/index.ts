@@ -244,9 +244,26 @@ function extractAnswerKey(text: string): Map<number, string> {
 }
 
 /**
- * Split text into chunks at question boundaries to avoid breaking questions.
+ * Count approximate number of questions in text
  */
-function chunkTextByQuestions(text: string, maxChunkSize: number = 100000): string[] {
+function countQuestionsInText(text: string): number {
+  const questionPattern = /(?:^|\n)\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]/gm;
+  const matches = text.match(questionPattern) || [];
+  return matches.length;
+}
+
+/**
+ * Helper function for delay
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Split text into chunks at question boundaries to avoid breaking questions.
+ * Uses both character count AND question count limits for optimal extraction.
+ */
+function chunkTextByQuestions(text: string, maxChunkSize: number = 30000, maxQuestionsPerChunk: number = 40): string[] {
   if (text.length <= maxChunkSize) {
     return [text];
   }
@@ -254,38 +271,62 @@ function chunkTextByQuestions(text: string, maxChunkSize: number = 100000): stri
   const chunks: string[] = [];
   let remaining = text;
   
+  // Find all question positions in the text
+  const questionPattern = /(?:^|\n)\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]/gm;
+  
   while (remaining.length > 0) {
     if (remaining.length <= maxChunkSize) {
       chunks.push(remaining);
       break;
     }
     
-    // Find a good break point near maxChunkSize
-    let breakPoint = maxChunkSize;
-    
-    // Look for question boundary patterns near the break point
-    const searchStart = Math.max(0, maxChunkSize - 5000);
-    const searchEnd = Math.min(remaining.length, maxChunkSize + 2000);
-    const searchRegion = remaining.slice(searchStart, searchEnd);
-    
-    // Find question starts in the search region
-    const questionPattern = /(?:^|\n)\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]/gm;
-    let lastMatch = null;
+    // Find all question starts in remaining text
+    const questionPositions: { index: number; qNum: number }[] = [];
     let match;
+    const patternCopy = new RegExp(questionPattern.source, questionPattern.flags);
     
-    while ((match = questionPattern.exec(searchRegion)) !== null) {
-      if (searchStart + match.index >= maxChunkSize - 3000) {
-        // Found a question boundary after the target point
-        if (!lastMatch || searchStart + match.index <= maxChunkSize) {
-          lastMatch = { index: searchStart + match.index };
-        }
-        break;
+    while ((match = patternCopy.exec(remaining)) !== null) {
+      const qNum = parseInt(match[1], 10);
+      if (qNum >= 1 && qNum <= 300) {
+        questionPositions.push({ index: match.index, qNum });
       }
-      lastMatch = { index: searchStart + match.index };
     }
     
-    if (lastMatch && lastMatch.index > maxChunkSize * 0.7) {
-      breakPoint = lastMatch.index;
+    // Determine break point based on both size and question count
+    let breakPoint = maxChunkSize;
+    
+    if (questionPositions.length > maxQuestionsPerChunk) {
+      // Find the position after maxQuestionsPerChunk questions
+      const targetQuestion = questionPositions[maxQuestionsPerChunk];
+      if (targetQuestion && targetQuestion.index > 0) {
+        breakPoint = Math.min(breakPoint, targetQuestion.index);
+      }
+    }
+    
+    // Look for question boundary near the break point
+    const searchStart = Math.max(0, breakPoint - 5000);
+    const searchEnd = Math.min(remaining.length, breakPoint + 2000);
+    
+    // Find the closest question boundary
+    let bestBreakPoint = breakPoint;
+    for (const pos of questionPositions) {
+      if (pos.index >= searchStart && pos.index <= searchEnd) {
+        if (pos.index <= breakPoint && pos.index > bestBreakPoint * 0.7) {
+          bestBreakPoint = pos.index;
+        } else if (pos.index > breakPoint && bestBreakPoint === breakPoint) {
+          bestBreakPoint = pos.index;
+          break;
+        }
+      }
+    }
+    
+    if (bestBreakPoint > 0 && bestBreakPoint < remaining.length) {
+      breakPoint = bestBreakPoint;
+    }
+    
+    // Ensure we don't create tiny chunks
+    if (breakPoint < maxChunkSize * 0.3 && remaining.length > maxChunkSize) {
+      breakPoint = Math.min(maxChunkSize, remaining.length);
     }
     
     chunks.push(remaining.slice(0, breakPoint));
@@ -393,8 +434,13 @@ serve(async (req) => {
     console.log(`Answer key extracted: ${answerKey.size} answers found`);
 
     // Step 2: Split text into chunks for processing
-    const chunks = chunkTextByQuestions(extractionText, 120000);
-    console.log(`Split text into ${chunks.length} chunks`);
+    // Use smaller chunks for more complete extraction (30k chars, ~40 questions per chunk)
+    const chunks = chunkTextByQuestions(extractionText, 30000, 40);
+    console.log(`Split text into ${chunks.length} chunks for extraction`);
+    
+    // Estimate expected questions from answer key
+    const expectedQuestionCount = answerKey.size;
+    console.log(`Expected questions from answer key: ${expectedQuestionCount}`);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -489,43 +535,60 @@ Remember: DO NOT determine correct answers - leave them empty. Just extract ques
 Content:
 ${chunk}`;
 
-      try {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            tools,
-            tool_choice,
-            temperature: 0.1,
-          }),
-        });
+      // Retry logic with exponential backoff
+      const maxRetries = 3;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            const waitTime = attempt * 2000; // 2s, 4s, 6s
+            console.log(`Chunk ${i + 1} - Retry ${attempt}/${maxRetries} after ${waitTime}ms...`);
+            await delay(waitTime);
+          }
+          
+          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              tools,
+              tool_choice,
+              temperature: 0.1,
+              max_tokens: 16000, // Ensure enough output for 50+ questions per chunk
+            }),
+          });
 
-        console.log(`Chunk ${i + 1} - Gateway response status: ${response.status}`);
+          console.log(`Chunk ${i + 1} - Gateway response status: ${response.status}`);
 
-        if (response.status === 429) {
-          errors.push(`Chunk ${i + 1}: Rate limited`);
-          continue;
-        }
-        
-        if (response.status === 402) {
-          errors.push(`Chunk ${i + 1}: Credits exhausted`);
-          break;
-        }
+          if (response.status === 429) {
+            if (attempt < maxRetries) {
+              console.log(`Chunk ${i + 1} - Rate limited, will retry...`);
+              continue; // Retry
+            }
+            errors.push(`Chunk ${i + 1}: Rate limited after ${maxRetries} retries`);
+            break;
+          }
+          
+          if (response.status === 402) {
+            errors.push(`Chunk ${i + 1}: Credits exhausted`);
+            break; // No point retrying
+          }
 
-        if (!response.ok) {
-          const errText = await response.text();
-          errors.push(`Chunk ${i + 1}: API error ${response.status}`);
-          console.error(`Chunk ${i + 1} error:`, errText);
-          continue;
-        }
+          if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Chunk ${i + 1} error:`, errText);
+            if (attempt < maxRetries) continue; // Retry
+            errors.push(`Chunk ${i + 1}: API error ${response.status}`);
+            break;
+          }
 
         const data = await response.json();
         const message = data.choices?.[0]?.message;
@@ -660,9 +723,20 @@ ${chunk}`;
         }
         
         chunksProcessed++;
-      } catch (chunkErr) {
-        console.error(`Chunk ${i + 1} processing error:`, chunkErr);
-        errors.push(`Chunk ${i + 1}: ${chunkErr instanceof Error ? chunkErr.message : "Unknown error"}`);
+        break; // Success - exit retry loop
+        
+        } catch (attemptErr) {
+          lastError = attemptErr instanceof Error ? attemptErr : new Error(String(attemptErr));
+          if (attempt < maxRetries) {
+            console.log(`Chunk ${i + 1} - Attempt ${attempt + 1} failed, will retry...`);
+            continue;
+          }
+        }
+      } // End retry loop
+      
+      if (lastError && chunksProcessed === 0) {
+        console.error(`Chunk ${i + 1} processing error after retries:`, lastError);
+        errors.push(`Chunk ${i + 1}: ${lastError.message}`);
       }
     }
 
@@ -707,13 +781,21 @@ ${chunk}`;
       .sort((a, b) => a.question_number - b.question_number);
 
     console.log(`Final: ${finalQuestions.length} unique questions extracted`);
+    
+    // Completeness validation - warn if we got significantly fewer questions than expected
+    let isIncomplete = false;
+    if (expectedQuestionCount > 0 && finalQuestions.length < expectedQuestionCount * 0.9) {
+      console.warn(`⚠️ INCOMPLETE EXTRACTION: Got ${finalQuestions.length}/${expectedQuestionCount} questions (${Math.round(finalQuestions.length / expectedQuestionCount * 100)}%)`);
+      isIncomplete = true;
+    }
 
     const response: ExtractResponse = {
       success: finalQuestions.length > 0,
       questions: finalQuestions,
       questionsCount: finalQuestions.length,
-      partial: errors.length > 0 && finalQuestions.length > 0,
-      error: finalQuestions.length === 0 ? "No MCQs could be extracted" : undefined,
+      partial: isIncomplete || (errors.length > 0 && finalQuestions.length > 0),
+      error: finalQuestions.length === 0 ? "No MCQs could be extracted" : 
+             isIncomplete ? `Incomplete extraction: got ${finalQuestions.length} of ${expectedQuestionCount} expected questions` : undefined,
       errorCode: finalQuestions.length === 0 ? "NO_QUESTIONS" : undefined,
       errors: errors.length > 0 ? errors : undefined,
       chunksProcessed,
