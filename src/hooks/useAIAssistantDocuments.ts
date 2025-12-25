@@ -11,6 +11,7 @@ export interface AIAssistantDocument {
   file_name: string | null;
   status: string | null;
   content_preview: string | null;
+  full_content: any | null;
   created_at: string | null;
   created_by: string | null;
 }
@@ -44,6 +45,7 @@ export function useAddAIAssistantDocument() {
       sourceUrl,
       fileName,
       contentPreview,
+      fullContent,
     }: {
       subjectId: string;
       displayName?: string;
@@ -51,6 +53,7 @@ export function useAddAIAssistantDocument() {
       sourceUrl?: string;
       fileName?: string;
       contentPreview?: string;
+      fullContent?: any;
     }) => {
       const { data: userData } = await supabase.auth.getUser();
       
@@ -63,6 +66,7 @@ export function useAddAIAssistantDocument() {
           source_url: sourceUrl,
           file_name: fileName,
           content_preview: contentPreview?.substring(0, 500),
+          full_content: fullContent || null,
           status: "completed",
           created_by: userData.user?.id,
         })

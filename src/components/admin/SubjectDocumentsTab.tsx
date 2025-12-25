@@ -152,6 +152,7 @@ export function SubjectDocumentsTab({
         sourceUrl: pdfUrl || undefined,
         fileName: uploadedFileName || undefined,
         contentPreview: JSON.stringify(jsonContent).substring(0, 500),
+        fullContent: jsonContent,
       });
 
       toast({
