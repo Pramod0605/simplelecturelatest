@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface PaperQuestion {
   id: string;
   question_text: string;
-  question_type: "mcq" | "subjective" | "true_false";
-  question_format: "single_choice" | "multiple_choice" | "true_false" | "subjective";
+  question_type: "mcq" | "subjective" | "true_false" | "integer";
+  question_format: "single_choice" | "multiple_choice" | "true_false" | "subjective" | "integer";
   options: Record<string, { text: string }>;
   correct_answer: string;
   explanation?: string | null;
