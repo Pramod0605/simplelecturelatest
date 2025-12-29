@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Clock, Flag, CheckCircle, XCircle, Trophy, Loader2 } from "lucide-react";
+import { Clock, Flag, CheckCircle, XCircle, Trophy, Loader2, Star } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMCQQuestions, useMCQQuestionCounts, type MCQQuestion, type DifficultyLevel } from "@/hooks/useMCQQuestions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -231,7 +231,15 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
+                <div className="flex items-center gap-2 mb-2">
+                  <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
+                  {currentQuestion.is_important && (
+                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-500">
+                      <Star className="h-3 w-3 mr-1 fill-yellow-500" />
+                      Important
+                    </Badge>
+                  )}
+                </div>
                 {currentQuestion.question_image_url && (
                   <img 
                     src={currentQuestion.question_image_url} 
@@ -297,7 +305,7 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-10 gap-2">
-              {questions.map((_, idx) => (
+              {questions.map((q, idx) => (
                 <Button
                   key={idx}
                   variant={idx === currentQuestionIndex ? "default" : answers[idx] ? "secondary" : "outline"}
@@ -308,6 +316,9 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
                   {idx + 1}
                   {flagged.has(idx) && (
                     <Flag className="h-3 w-3 absolute -top-1 -right-1 text-destructive" />
+                  )}
+                  {q.is_important && (
+                    <Star className="h-3 w-3 absolute -top-1 -left-1 text-yellow-500 fill-yellow-500" />
                   )}
                 </Button>
               ))}

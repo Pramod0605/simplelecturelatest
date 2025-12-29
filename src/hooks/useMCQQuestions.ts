@@ -13,6 +13,7 @@ export interface MCQQuestion {
   difficulty: string;
   question_image_url?: string;
   marks: number;
+  is_important?: boolean;
 }
 
 // Transform JSONB options {A: {text: "..."}} to array format
@@ -48,6 +49,7 @@ const transformQuestion = (dbQuestion: {
   difficulty: string | null;
   question_image_url: string | null;
   marks: number | null;
+  is_important: boolean | null;
 }): MCQQuestion => {
   return {
     id: dbQuestion.id,
@@ -57,7 +59,8 @@ const transformQuestion = (dbQuestion: {
     explanation: dbQuestion.explanation || "No explanation available.",
     difficulty: dbQuestion.difficulty || "Medium",
     question_image_url: dbQuestion.question_image_url || undefined,
-    marks: dbQuestion.marks || 1
+    marks: dbQuestion.marks || 1,
+    is_important: dbQuestion.is_important || false
   };
 };
 

@@ -1,19 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Edit, Trash2, Eye } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CheckCircle2, XCircle, Edit, Trash2, Eye, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 
 interface QuestionPreviewProps {
   question: any;
   onEdit: (question: any) => void;
   onDelete: (id: string) => void;
-  onVerify: (id: string, verified: boolean) => void;
+  onVerify: (id: string, verified: boolean, isImportant?: boolean) => void;
 }
 
 export function QuestionPreview({ question, onEdit, onDelete, onVerify }: QuestionPreviewProps) {
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [isImportant, setIsImportant] = useState(false);
 
   const renderContent = (content: string, containsFormula: boolean, images?: string[]) => {
     if (!content) return null;
@@ -56,6 +60,16 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
     }
   };
 
+  const handleVerifyClick = () => {
+    setIsImportant(false);
+    setShowVerifyDialog(true);
+  };
+
+  const handleConfirmVerify = () => {
+    onVerify(question.id, true, isImportant);
+    setShowVerifyDialog(false);
+  };
+
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
@@ -77,6 +91,12 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
                 ) : (
                   <Badge variant="outline" className="border-orange-500 text-orange-700">
                     Pending
+                  </Badge>
+                )}
+                {question.is_important && (
+                  <Badge className="bg-yellow-100 text-yellow-800 border-yellow-500">
+                    <Star className="h-3 w-3 mr-1 fill-yellow-500" />
+                    Important
                   </Badge>
                 )}
                 {question.is_ai_generated && (
@@ -133,7 +153,7 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
                 size="sm"
                 variant="outline"
                 className="w-full mt-2"
-                onClick={() => onVerify(question.id, true)}
+                onClick={handleVerifyClick}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Verify Question
@@ -142,6 +162,40 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
           </div>
         </CardContent>
       </Card>
+
+      {/* Verify Dialog */}
+      <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Verify Question</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Is this question important for exams or high priority practice?
+            </p>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="important"
+                checked={isImportant} 
+                onCheckedChange={(checked) => setIsImportant(!!checked)} 
+              />
+              <Label htmlFor="important" className="flex items-center gap-2 cursor-pointer">
+                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                Mark as Important
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVerifyDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmVerify}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Verify Question
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Full Preview Modal */}
       <Dialog open={showFullPreview} onOpenChange={setShowFullPreview}>
@@ -216,6 +270,14 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
                 <div>Marks: <span className="font-medium">{question.marks}</span></div>
                 <div>Format: <span className="font-medium">{question.question_format}</span></div>
                 <div>Type: <span className="font-medium">{question.question_type}</span></div>
+                {question.is_important && (
+                  <div className="col-span-2">
+                    <Badge className="bg-yellow-100 text-yellow-800">
+                      <Star className="h-3 w-3 mr-1 fill-yellow-500" />
+                      Important Question
+                    </Badge>
+                  </div>
+                )}
                 {question.contains_formula && (
                   <div>Formula Type: <span className="font-medium">{question.formula_type || 'plain'}</span></div>
                 )}

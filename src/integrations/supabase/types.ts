@@ -2995,6 +2995,7 @@ export type Database = {
           formula_type: string | null
           id: string
           is_ai_generated: boolean | null
+          is_important: boolean | null
           is_verified: boolean | null
           marks: number | null
           option_images: Json | null
@@ -3019,6 +3020,7 @@ export type Database = {
           formula_type?: string | null
           id?: string
           is_ai_generated?: boolean | null
+          is_important?: boolean | null
           is_verified?: boolean | null
           marks?: number | null
           option_images?: Json | null
@@ -3043,6 +3045,7 @@ export type Database = {
           formula_type?: string | null
           id?: string
           is_ai_generated?: boolean | null
+          is_important?: boolean | null
           is_verified?: boolean | null
           marks?: number | null
           option_images?: Json | null

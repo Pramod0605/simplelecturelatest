@@ -16,6 +16,7 @@ export interface SubjectQuestion {
   subtopic_id?: string;
   is_verified: boolean;
   is_ai_generated: boolean;
+  is_important?: boolean;
   question_image_url?: string;
   option_images?: Record<string, string>;
   contains_formula: boolean;
