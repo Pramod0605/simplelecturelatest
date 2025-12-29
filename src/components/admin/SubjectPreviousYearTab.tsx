@@ -432,6 +432,17 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                         accept=".pdf"
                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                       />
+                      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md dark:bg-amber-950/30 dark:border-amber-800">
+                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-amber-800 dark:text-amber-200">
+                          <p className="font-medium">For best extraction results:</p>
+                          <ul className="list-disc list-inside mt-1 space-y-0.5">
+                            <li>Maximum <strong>90 questions</strong> per PDF</li>
+                            <li>Include answer key/sheet in the same PDF</li>
+                            <li>Clear, legible text (avoid scanned/handwritten)</li>
+                          </ul>
+                        </div>
+                      </div>
                       {selectedFile && (
                         <>
                           <p className="text-xs text-muted-foreground">
