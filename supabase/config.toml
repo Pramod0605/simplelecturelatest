@@ -1,5 +1,8 @@
 project_id = "oxwhqvsoelqqsblmqkxx"
 
+[functions.ai-support-assistant]
+verify_jwt = false
+
 [functions.b2-upload]
 verify_jwt = true
 

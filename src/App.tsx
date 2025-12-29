@@ -91,6 +91,8 @@ import Forum from "./pages/Forum";
 import ForumCategory from "./pages/ForumCategory";
 import ForumPost from "./pages/ForumPost";
 import ForumModeration from "./pages/admin/ForumModeration";
+import Support from "./pages/Support";
+import SupportDashboard from "./pages/admin/SupportDashboard";
 
 // Instructor Panel
 import { InstructorProtectedRoute } from "./components/instructor/InstructorProtectedRoute";
@@ -136,6 +138,7 @@ const App = () => (
             <Route path="/forum" element={<Forum />} />
             <Route path="/forum/category/:slug" element={<ForumCategory />} />
             <Route path="/forum/post/:id" element={<ForumPost />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/mobile" element={<MobileHome />} />
             <Route path="/mobile/auth" element={<MobileAuth />} />
             <Route path="/mobile/dashboard" element={<MobileDashboard />} />
@@ -205,6 +208,7 @@ const App = () => (
                 <Route path="hr/live-classes" element={<LiveClassesManager />} />
                 <Route path="hr/recordings" element={<RecordingsManager />} />
                 <Route path="forum-moderation" element={<ForumModeration />} />
+                <Route path="support" element={<SupportDashboard />} />
               </Route>
             </Route>
             
