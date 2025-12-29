@@ -3777,41 +3777,61 @@ export type Database = {
       }
       subject_previous_year_papers: {
         Row: {
+          chapter_id: string | null
           created_at: string | null
           exam_name: string
           id: string
           paper_type: string | null
           pdf_url: string | null
           subject_id: string
+          topic_id: string | null
           total_questions: number | null
           year: number
         }
         Insert: {
+          chapter_id?: string | null
           created_at?: string | null
           exam_name: string
           id?: string
           paper_type?: string | null
           pdf_url?: string | null
           subject_id: string
+          topic_id?: string | null
           total_questions?: number | null
           year: number
         }
         Update: {
+          chapter_id?: string | null
           created_at?: string | null
           exam_name?: string
           id?: string
           paper_type?: string | null
           pdf_url?: string | null
           subject_id?: string
+          topic_id?: string | null
           total_questions?: number | null
           year?: number
         }
         Relationships: [
           {
+            foreignKeyName: "subject_previous_year_papers_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "subject_previous_year_papers_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_previous_year_papers_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
         ]

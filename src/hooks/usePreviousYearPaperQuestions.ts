@@ -48,18 +48,24 @@ export const usePreviousYearPaperQuestions = (paperId: string | null) => {
   });
 };
 
-// Fetch papers for a subject
-export const usePreviousYearPapersForSubject = (subjectId: string | null) => {
+// Fetch papers for a subject, optionally filtered by topic
+export const usePreviousYearPapersForSubject = (subjectId: string | null, topicId?: string | null) => {
   return useQuery({
-    queryKey: ["previous-year-papers-subject", subjectId],
+    queryKey: ["previous-year-papers-subject", subjectId, topicId],
     queryFn: async () => {
       if (!subjectId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("subject_previous_year_papers")
         .select("*")
-        .eq("subject_id", subjectId)
-        .order("year", { ascending: false });
+        .eq("subject_id", subjectId);
+
+      // If topicId is provided, filter by topic OR show papers without topic_id (for backward compatibility)
+      if (topicId) {
+        query = query.or(`topic_id.eq.${topicId},topic_id.is.null`);
+      }
+
+      const { data, error } = await query.order("year", { ascending: false });
 
       if (error) throw error;
       return data || [];
