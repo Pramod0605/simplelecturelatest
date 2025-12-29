@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle, Brain } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle, Brain, Star } from "lucide-react";
 import { PDFPreview } from "./PDFPreview";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface SubjectPreviousYearTabProps {
   subjectId: string;
@@ -81,6 +82,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
+  const [importantQuestions, setImportantQuestions] = useState<Set<number>>(new Set());
   const [parsedJson, setParsedJson] = useState<any>(null);
   const [extractionMeta, setExtractionMeta] = useState<
     | {
@@ -120,6 +122,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
     });
     setSelectedFile(null);
     setExtractedQuestions([]);
+    setImportantQuestions(new Set());
     setParsedJson(null);
     setExtractionMeta(null);
     setCurrentStep("form");
@@ -208,10 +211,15 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         total_questions: extractedQuestions.length || formData.total_questions,
       });
 
-      // If we have extracted questions, save them
+      // If we have extracted questions, save them with importance flags
       if (extractedQuestions.length > 0 && paper) {
+        const questionsWithImportance = extractedQuestions.map((q, idx) => ({
+          ...q,
+          is_important: importantQuestions.has(idx),
+        }));
+        
         await bulkInsertQuestions.mutateAsync({
-          questions: extractedQuestions,
+          questions: questionsWithImportance,
           paperId: paper.id,
           topicId: formData.topic_id,
           subjectId,
@@ -506,7 +514,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                       ))}
                                     </div>
                                   )}
-                                  <div className="mt-1 flex gap-2">
+                                  <div className="mt-2 flex items-center gap-3 flex-wrap">
                                     <Badge variant="secondary" className="text-xs">
                                       {q.difficulty}
                                     </Badge>
@@ -516,6 +524,40 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                     >
                                       Ans: {q.correct_answer || "—"}
                                     </Badge>
+                                    <div 
+                                      className="flex items-center gap-1.5 cursor-pointer"
+                                      onClick={() => {
+                                        setImportantQuestions(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(index)) {
+                                            newSet.delete(index);
+                                          } else {
+                                            newSet.add(index);
+                                          }
+                                          return newSet;
+                                        });
+                                      }}
+                                    >
+                                      <Checkbox 
+                                        checked={importantQuestions.has(index)}
+                                        onCheckedChange={(checked) => {
+                                          setImportantQuestions(prev => {
+                                            const newSet = new Set(prev);
+                                            if (checked) {
+                                              newSet.add(index);
+                                            } else {
+                                              newSet.delete(index);
+                                            }
+                                            return newSet;
+                                          });
+                                        }}
+                                        className="h-3.5 w-3.5"
+                                      />
+                                      <span className={`text-xs flex items-center gap-1 ${importantQuestions.has(index) ? 'text-yellow-600 font-medium' : 'text-muted-foreground'}`}>
+                                        <Star className={`h-3 w-3 ${importantQuestions.has(index) ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                                        Important
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>

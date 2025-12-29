@@ -12,6 +12,7 @@ export interface PaperQuestion {
   difficulty: string;
   marks: number;
   is_verified: boolean;
+  is_important?: boolean;
 }
 
 export const usePreviousYearPaperQuestions = (paperId: string | null) => {
@@ -40,6 +41,7 @@ export const usePreviousYearPaperQuestions = (paperId: string | null) => {
         difficulty: q.difficulty || "Medium",
         marks: q.marks || 1,
         is_verified: q.is_verified || false,
+        is_important: q.is_important || false,
       }));
     },
     enabled: !!paperId,

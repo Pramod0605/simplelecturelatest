@@ -12,6 +12,7 @@ export interface ExtractedQuestion {
   difficulty: "Low" | "Medium" | "Intermediate" | "Advanced";
   marks?: number;
   question_number?: number;
+  is_important?: boolean;
 }
 
 interface BulkInsertParams {
@@ -49,6 +50,7 @@ export const useBulkInsertPreviousYearQuestions = () => {
         previous_year_paper_id: paperId,
         is_verified: false,
         is_ai_generated: true,
+        is_important: q.is_important || false,
       }));
 
       // Insert in batches of 50
