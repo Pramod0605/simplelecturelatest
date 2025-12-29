@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
   const [importantQuestions, setImportantQuestions] = useState<Set<number>>(new Set());
   const [parsedJson, setParsedJson] = useState<any>(null);
+  const [extractionProgress, setExtractionProgress] = useState({ current: 0, total: 90 });
   const [extractionMeta, setExtractionMeta] = useState<
     | {
         partial?: boolean;
@@ -107,6 +108,32 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       }
     | null
   >(null);
+
+  // Animated extraction progress counter
+  useEffect(() => {
+    if (currentStep !== "extracting") {
+      setExtractionProgress({ current: 0, total: 90 });
+      return;
+    }
+
+    const estimatedTotal = formData.total_questions > 0 ? formData.total_questions : 90;
+    setExtractionProgress({ current: 0, total: estimatedTotal });
+
+    // Simulate progress with varying speeds
+    const interval = setInterval(() => {
+      setExtractionProgress((prev) => {
+        if (prev.current >= prev.total - 5) {
+          // Slow down near the end
+          return { ...prev, current: Math.min(prev.current + 0.5, prev.total - 1) };
+        }
+        // Faster progress initially
+        const increment = Math.random() * 3 + 1;
+        return { ...prev, current: Math.min(prev.current + increment, prev.total - 1) };
+      });
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, [currentStep, formData.total_questions]);
 
   const { data: papers, isLoading } = usePreviousYearPapers(subjectId);
   const { data: chapters } = useSubjectChapters(subjectId);
@@ -436,7 +463,13 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                     <p className="text-sm text-muted-foreground">
                       Gemini is identifying questions, options, and correct answers
                     </p>
-                    <Progress value={75} className="w-64" />
+                    <p className="text-lg font-semibold text-primary">
+                      {Math.floor(extractionProgress.current)}/{extractionProgress.total}
+                    </p>
+                    <Progress 
+                      value={(extractionProgress.current / extractionProgress.total) * 100} 
+                      className="w-64" 
+                    />
                   </div>
                 )}
 
