@@ -59,10 +59,6 @@ const SupportDashboard = () => {
       return data;
     },
   });
-      if (error) throw error;
-      return data;
-    },
-  });
 
   // Fetch ticket messages
   const { data: ticketMessages } = useQuery({
