@@ -9,12 +9,14 @@ const corsHeaders = {
 const MAX_QUESTIONS = 200;
 // Number of parallel chunks to process
 const CHUNK_COUNT = 6;
-// Maximum recovery attempts per chunk (dynamic: 2 for badly failed chunks)
-const MAX_CHUNK_RECOVERY_ATTEMPTS = 2;
+// Maximum recovery attempts per chunk
+const MAX_CHUNK_RECOVERY_ATTEMPTS = 3;
 // Questions to target per recovery call
-const RECOVERY_BATCH_SIZE = 15;
-// Chunk overlap in characters to avoid splitting questions
-const CHUNK_OVERLAP = 500;
+const RECOVERY_BATCH_SIZE = 10;
+// Chunk overlap in characters - INCREASED from 500 to 3000
+const CHUNK_OVERLAP = 3000;
+// Global recovery threshold - INCREASED from 25 to 50
+const GLOBAL_RECOVERY_THRESHOLD = 50;
 
 interface ExtractedOption {
   text: string;
@@ -224,7 +226,38 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Create smart chunks with expected question ranges
+ * Find all question positions with improved patterns
+ */
+function findQuestionPositions(text: string): { index: number; qNum: number }[] {
+  const positions: { index: number; qNum: number }[] = [];
+  const seen = new Set<number>();
+  
+  // Multiple patterns to catch different question formats
+  const patterns = [
+    /(?:^|\n)\s*(?:Q|Question)\s*\.?\s*(\d{1,3})\s*[\.\):\-]/gmi,  // Q1. Q.1 Question 1
+    /(?:^|\n)\s*(\d{1,3})\s*\.\s+[A-Z]/gm,                          // 1. A sentence...
+    /(?:^|\n)\s*(\d{1,3})\s*\)\s+/gm,                               // 1) 
+    /(?:^|\n)\s*\((\d{1,3})\)\s+/gm,                                // (1)
+    /(?:^|\n)\s*(\d{1,3})\s*[\.\)]\s*(?:Match|Which|What|If|A|The|In|For|Consider)/gmi, // 1. Match...
+  ];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const qNum = parseInt(match[1], 10);
+      if (qNum >= 1 && qNum <= MAX_QUESTIONS && !seen.has(qNum)) {
+        seen.add(qNum);
+        positions.push({ index: match.index, qNum });
+      }
+    }
+  }
+  
+  // Sort by position in text
+  return positions.sort((a, b) => a.index - b.index);
+}
+
+/**
+ * Create smart chunks with expected question ranges - IMPROVED with more overlap
  */
 function createSmartChunks(
   text: string, 
@@ -234,33 +267,42 @@ function createSmartChunks(
   const chunks: ChunkWithRange[] = [];
   const questionsPerChunk = Math.ceil(totalQuestions / CHUNK_COUNT);
   
-  // Find all question positions in text
-  const questionPattern = /(?:^|\n)\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]/gm;
-  const questionPositions: { index: number; qNum: number }[] = [];
-  let match;
-  
-  while ((match = questionPattern.exec(text)) !== null) {
-    const qNum = parseInt(match[1], 10);
-    if (qNum >= 1 && qNum <= MAX_QUESTIONS) {
-      questionPositions.push({ index: match.index, qNum });
-    }
-  }
-  
+  // Find all question positions with improved detection
+  const questionPositions = findQuestionPositions(text);
   console.log(`Found ${questionPositions.length} question markers in text`);
   
-  // If we can't find question markers, split by character count
-  if (questionPositions.length < CHUNK_COUNT) {
-    const chunkSize = Math.ceil(text.length / CHUNK_COUNT);
+  // If we found enough markers, use position-based chunking with HEAVY overlap
+  if (questionPositions.length >= CHUNK_COUNT * 2) {
     for (let i = 0; i < CHUNK_COUNT; i++) {
-      const start = i * chunkSize;
-      const end = Math.min((i + 1) * chunkSize, text.length);
-      const chunkText = text.slice(start, end);
-      
-      if (chunkText.trim().length < 100) continue;
-      
       const rangeStart = i * questionsPerChunk + 1;
       const rangeEnd = Math.min((i + 1) * questionsPerChunk, totalQuestions);
       const expectedRange = Array.from({ length: rangeEnd - rangeStart + 1 }, (_, j) => rangeStart + j);
+      
+      // Find text boundaries - look for questions just before and after range
+      const startQ = questionPositions.find(p => p.qNum >= rangeStart - 2);
+      const endQ = questionPositions.find(p => p.qNum > rangeEnd + 2);
+      
+      // Use generous overlap on both sides
+      let chunkStart = startQ ? Math.max(0, startQ.index - CHUNK_OVERLAP) : (i * Math.ceil(text.length / CHUNK_COUNT));
+      let chunkEnd = endQ ? Math.min(text.length, endQ.index + CHUNK_OVERLAP) : Math.min(text.length, ((i + 1) * Math.ceil(text.length / CHUNK_COUNT)) + CHUNK_OVERLAP);
+      
+      // Find paragraph boundaries to avoid cutting mid-sentence
+      const beforeStart = text.lastIndexOf('\n\n', chunkStart + 100);
+      if (beforeStart > chunkStart - 500 && beforeStart > 0) {
+        chunkStart = beforeStart;
+      }
+      
+      const afterEnd = text.indexOf('\n\n', chunkEnd - 100);
+      if (afterEnd !== -1 && afterEnd < chunkEnd + 500) {
+        chunkEnd = afterEnd;
+      }
+      
+      chunkStart = Math.max(0, chunkStart);
+      chunkEnd = Math.min(text.length, chunkEnd);
+      
+      const chunkText = text.slice(chunkStart, chunkEnd);
+      
+      if (chunkText.trim().length < 100) continue;
       
       const answerKeySlice = new Map<number, string>();
       for (const qNum of expectedRange) {
@@ -275,46 +317,40 @@ function createSmartChunks(
         answerKeySlice,
       });
     }
-    return chunks;
-  }
-  
-  // Smart chunking based on question positions with OVERLAP
-  for (let i = 0; i < CHUNK_COUNT; i++) {
-    const rangeStart = i * questionsPerChunk + 1;
-    const rangeEnd = Math.min((i + 1) * questionsPerChunk, totalQuestions);
-    const expectedRange = Array.from({ length: rangeEnd - rangeStart + 1 }, (_, j) => rangeStart + j);
+  } else {
+    // Fallback: split by character count with MUCH MORE overlap
+    const baseChunkSize = Math.ceil(text.length / CHUNK_COUNT);
+    const overlapSize = CHUNK_OVERLAP;
     
-    // Find text boundaries for this range
-    const startPos = questionPositions.find(p => p.qNum >= rangeStart);
-    const endPos = questionPositions.find(p => p.qNum > rangeEnd);
-    
-    // Add CHUNK_OVERLAP to ensure we don't cut questions in half
-    let chunkStart = startPos ? Math.max(0, startPos.index - CHUNK_OVERLAP) : (i * Math.ceil(text.length / CHUNK_COUNT));
-    let chunkEnd = endPos ? endPos.index + CHUNK_OVERLAP : ((i + 1) * Math.ceil(text.length / CHUNK_COUNT));
-    
-    // Ensure we don't exceed text bounds
-    chunkStart = Math.max(0, chunkStart);
-    chunkEnd = Math.min(text.length, chunkEnd);
-    
-    const chunkText = text.slice(chunkStart, chunkEnd);
-    
-    if (chunkText.trim().length < 100) continue;
-    
-    const answerKeySlice = new Map<number, string>();
-    for (const qNum of expectedRange) {
-      const answer = answerKey.get(qNum);
-      if (answer) answerKeySlice.set(qNum, answer);
+    for (let i = 0; i < CHUNK_COUNT; i++) {
+      const rangeStart = i * questionsPerChunk + 1;
+      const rangeEnd = Math.min((i + 1) * questionsPerChunk, totalQuestions);
+      const expectedRange = Array.from({ length: rangeEnd - rangeStart + 1 }, (_, j) => rangeStart + j);
+      
+      // Calculate chunk boundaries with overlap
+      const start = Math.max(0, i * baseChunkSize - overlapSize);
+      const end = Math.min(text.length, (i + 1) * baseChunkSize + overlapSize);
+      
+      const chunkText = text.slice(start, end);
+      
+      if (chunkText.trim().length < 100) continue;
+      
+      const answerKeySlice = new Map<number, string>();
+      for (const qNum of expectedRange) {
+        const answer = answerKey.get(qNum);
+        if (answer) answerKeySlice.set(qNum, answer);
+      }
+      
+      chunks.push({
+        text: chunkText,
+        chunkIndex: i,
+        expectedRange,
+        answerKeySlice,
+      });
     }
-    
-    chunks.push({
-      text: chunkText,
-      chunkIndex: i,
-      expectedRange,
-      answerKeySlice,
-    });
   }
   
-  console.log(`Created ${chunks.length} smart chunks`);
+  console.log(`Created ${chunks.length} smart chunks with ${CHUNK_OVERLAP} char overlap`);
   return chunks;
 }
 
@@ -380,7 +416,7 @@ serve(async (req) => {
   try {
     const { contentJson, contentMarkdown, examName, year, paperType } = await req.json();
     
-    console.log("=== Starting PARALLEL MCQ Extraction ===");
+    console.log("=== Starting IMPROVED MCQ Extraction ===");
     console.log(`Exam: ${examName}  Year: ${year} Type: ${paperType}`);
 
     let extractionText = "";
@@ -466,13 +502,14 @@ serve(async (req) => {
     const tool_choice = { type: "function", function: { name: "extract_questions" } };
 
     /**
-     * Process a single chunk with the AI
+     * Process a single chunk with the AI - IMPROVED prompts
      */
     async function callAI(
       chunkText: string,
       expectedRange: number[],
       isRecovery: boolean = false,
-      targetQuestions?: number[]
+      targetQuestions?: number[],
+      temperature: number = 0.1
     ): Promise<ExtractedQuestion[]> {
       const rangeStr = expectedRange.length > 0 
         ? `Questions ${expectedRange[0]}-${expectedRange[expectedRange.length - 1]}`
@@ -482,29 +519,65 @@ serve(async (req) => {
       let userPrompt: string;
       
       if (isRecovery && targetQuestions && targetQuestions.length > 0) {
-        systemPrompt = `You are an expert at extracting specific questions from exam papers.
-Focus ONLY on finding questions ${targetQuestions.join(", ")}.
-Return them in JSON format with question_number, question_text, options, difficulty, marks, explanation.`;
+        // IMPROVED recovery prompt - more explicit and structured
+        systemPrompt = `You are an expert exam paper parser. Your task is to find SPECIFIC questions from an exam document.
+
+CRITICAL INSTRUCTIONS:
+1. You MUST find questions numbered: ${targetQuestions.join(", ")}
+2. Search for patterns like: "Q${targetQuestions[0]}.", "${targetQuestions[0]}.", "(${targetQuestions[0]})", "Question ${targetQuestions[0]}"
+3. Each question has 4 options (A, B, C, D)
+4. Extract the EXACT text - do not paraphrase
+5. If a question has math/formulas, preserve them exactly
+
+Return format:
+{
+  "questions": [
+    {
+      "question_number": 16,
+      "question_text": "The full question text...",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "difficulty": "Medium",
+      "marks": 4
+    }
+  ]
+}`;
         
-        userPrompt = `FIND ONLY these specific questions: ${targetQuestions.join(", ")}
+        userPrompt = `FIND THESE SPECIFIC QUESTIONS: ${targetQuestions.join(", ")}
 
-Search carefully for each question number. Return ONLY these questions.
+Look carefully for each question number. Common patterns:
+- "Q16." or "16." at start of line
+- "(16)" or "16)" 
+- "Question 16:"
 
-Content:
+IMPORTANT: Extract ALL ${targetQuestions.length} questions listed above. Do not skip any.
+
+Document content:
 ${chunkText}`;
       } else {
-        systemPrompt = `You are an expert at extracting MCQs from exam papers.
+        // IMPROVED initial extraction prompt
+        systemPrompt = `You are an expert MCQ extractor for ${examName} exam papers.
 
-RULES:
-1. Extract ALL questions in range ${rangeStr}
-2. DO NOT determine correct answer - leave correct_answer as ""
-3. Extract question text exactly as written
-4. Extract all options A, B, C, D
+EXTRACTION RULES:
+1. Extract ALL questions from ${rangeStr}
+2. Preserve exact question text including formulas, symbols, special characters
+3. Extract all 4 options (A, B, C, D) for each question
+4. DO NOT determine correct answers - leave blank
+5. Look for question patterns: "Q1.", "1.", "(1)", "Question 1"
+6. Difficulty: estimate as Low/Medium/Advanced based on complexity
+7. Marks: typically 4 for MCQ, 2-4 for integer type
 
-Return JSON: { "questions": [...] }`;
+CRITICAL: You MUST extract ALL questions in the range ${rangeStr}. Missing questions is not acceptable.
+
+Return structured JSON with the questions array.`;
         
         userPrompt = `Extract ${rangeStr} from this ${examName} ${year} ${paperType || ""} exam paper.
-Expected questions: ${expectedRange.join(", ")}
+
+YOU MUST FIND AND EXTRACT THESE QUESTION NUMBERS: ${expectedRange.join(", ")}
+
+Search the entire content carefully. Questions may use different formats:
+- "Q16. Which of the following..."
+- "16. Consider the reaction..."
+- "(16) A ball is thrown..."
 
 Content:
 ${chunkText}`;
@@ -532,7 +605,7 @@ ${chunkText}`;
               ],
               tools,
               tool_choice,
-              temperature: 0.1,
+              temperature: temperature + (attempt * 0.1), // Increase temp on retries
               max_tokens: 16000,
             }),
           });
@@ -595,9 +668,9 @@ ${chunkText}`;
     }
 
     /**
-     * Process a single chunk with its own scoped recovery loop
+     * Process a single chunk with AGGRESSIVE recovery
      */
-    async function processChunkWithRecovery(chunk: ChunkWithRange): Promise<ChunkResult> {
+    async function processChunkWithRecovery(chunk: ChunkWithRange, fullText: string): Promise<ChunkResult> {
       const { text, chunkIndex, expectedRange, answerKeySlice } = chunk;
       const errors: string[] = [];
       let totalRecovered = 0;
@@ -622,24 +695,40 @@ ${chunkText}`;
         }
       }
       
-      // Per-chunk scoped recovery - only for THIS chunk's expected questions
-      // FIXED: Removed the "<= 10" restriction - recovery should run for ANY missing questions
+      // Check extraction rate
+      const extractionRate = questionMap.size / expectedRange.length;
       const missing = expectedRange.filter(n => !questionMap.has(n) && answerKeySlice.has(n));
       
+      // AGGRESSIVE recovery if less than 80% extracted
       if (missing.length > 0) {
-        console.log(`   Chunk ${chunkIndex + 1}: Missing ${missing.length} questions, attempting recovery...`);
+        console.log(`   Chunk ${chunkIndex + 1}: Missing ${missing.length} questions (${Math.round(extractionRate * 100)}% rate), attempting recovery...`);
         
-        // Dynamic recovery attempts: more attempts for badly failed chunks
-        const maxAttempts = missing.length > 5 ? MAX_CHUNK_RECOVERY_ATTEMPTS : 1;
+        // More recovery attempts for badly failed chunks
+        const maxAttempts = extractionRate < 0.5 ? MAX_CHUNK_RECOVERY_ATTEMPTS : 2;
         
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           const currentMissing = expectedRange.filter(n => !questionMap.has(n) && answerKeySlice.has(n));
           if (currentMissing.length === 0) break;
           
           try {
-            await delay(300 + attempt * 200); // Increasing delay between attempts
-            // FIXED: Process more questions per recovery (RECOVERY_BATCH_SIZE instead of 8)
-            const recovered = await callAI(text, expectedRange, true, currentMissing.slice(0, RECOVERY_BATCH_SIZE));
+            await delay(300 + attempt * 300);
+            
+            // For very poor extraction, try with extended context
+            let recoveryText = text;
+            if (extractionRate < 0.3 && attempt > 0) {
+              // Use a broader portion of the full text
+              const chunkCenter = Math.floor(fullText.length * (chunkIndex + 0.5) / CHUNK_COUNT);
+              const extendedStart = Math.max(0, chunkCenter - 15000);
+              const extendedEnd = Math.min(fullText.length, chunkCenter + 15000);
+              recoveryText = fullText.slice(extendedStart, extendedEnd);
+              console.log(`   Chunk ${chunkIndex + 1}: Using extended context (${recoveryText.length} chars)`);
+            }
+            
+            // Process in smaller batches for recovery
+            const batchSize = attempt === 0 ? RECOVERY_BATCH_SIZE : Math.min(5, currentMissing.length);
+            const batch = currentMissing.slice(0, batchSize);
+            
+            const recovered = await callAI(recoveryText, expectedRange, true, batch, 0.2 + attempt * 0.1);
             
             let newlyRecovered = 0;
             for (const q of recovered) {
@@ -650,12 +739,16 @@ ${chunkText}`;
             }
             
             totalRecovered += newlyRecovered;
-            console.log(`   Chunk ${chunkIndex + 1}: Recovery attempt ${attempt + 1} got ${newlyRecovered} questions`);
+            console.log(`   Chunk ${chunkIndex + 1}: Recovery attempt ${attempt + 1} got ${newlyRecovered}/${batch.length} questions`);
             
-            if (newlyRecovered === 0) break;
+            // If recovery is working, continue; if not, try different approach
+            if (newlyRecovered === 0 && attempt < maxAttempts - 1) {
+              // Try with higher temperature
+              continue;
+            }
           } catch (err) {
             errors.push(`Chunk ${chunkIndex + 1} recovery ${attempt + 1}: ${err instanceof Error ? err.message : "Unknown"}`);
-            break;
+            // Don't break - try next attempt with different params
           }
         }
       }
@@ -676,7 +769,7 @@ ${chunkText}`;
     
     // Launch all chunks in parallel with small stagger to avoid rate limits
     const chunkPromises = smartChunks.map((chunk, i) => 
-      delay(i * 200).then(() => processChunkWithRecovery(chunk))
+      delay(i * 200).then(() => processChunkWithRecovery(chunk, extractionText))
     );
     
     const startTime = Date.now();
@@ -710,50 +803,80 @@ ${chunkText}`;
     
     console.log(`Merged: ${questionMap.size} unique questions from ${chunksProcessed} chunks`);
 
-    // ===== PHASE 2.5: GLOBAL RECOVERY FOR REMAINING MISSING QUESTIONS =====
+    // ===== PHASE 2.5: GLOBAL RECOVERY - IMPROVED with higher threshold =====
     const globalMissing = Array.from(answerKey.keys()).filter(n => !questionMap.has(n));
     
-    if (globalMissing.length > 0 && globalMissing.length <= 25) {
+    // Increased threshold from 25 to 50
+    if (globalMissing.length > 0 && globalMissing.length <= GLOBAL_RECOVERY_THRESHOLD) {
       console.log(`\n===== PHASE 2.5: GLOBAL RECOVERY =====`);
-      console.log(`Attempting global recovery for ${globalMissing.length} missing questions: ${globalMissing.slice(0, 10).join(", ")}${globalMissing.length > 10 ? "..." : ""}`);
+      console.log(`Attempting global recovery for ${globalMissing.length} missing questions`);
       
-      try {
-        // Use last portion of text which often contains all questions
-        const globalRecoveryText = extractionText.slice(-40000);
-        const globalRecovered = await callAI(globalRecoveryText, globalMissing, true, globalMissing);
+      // Split missing into batches and try multiple times
+      const globalBatchSize = 15;
+      let globalNewlyRecovered = 0;
+      
+      for (let batchStart = 0; batchStart < globalMissing.length; batchStart += globalBatchSize) {
+        const batch = globalMissing.slice(batchStart, batchStart + globalBatchSize);
+        const stillMissingInBatch = batch.filter(n => !questionMap.has(n));
         
-        let globalNewlyRecovered = 0;
-        for (const q of globalRecovered) {
-          if (globalMissing.includes(q.question_number) && !questionMap.has(q.question_number)) {
-            questionMap.set(q.question_number, q);
-            globalNewlyRecovered++;
-            totalRecovered++;
+        if (stillMissingInBatch.length === 0) continue;
+        
+        try {
+          await delay(300);
+          
+          // Try different portions of the text for each batch
+          let recoveryText: string;
+          if (batchStart === 0) {
+            // First batch - use end of document
+            recoveryText = extractionText.slice(-50000);
+          } else if (batchStart < globalMissing.length / 2) {
+            // Middle batches - use full document middle
+            const midStart = Math.floor(extractionText.length * 0.2);
+            const midEnd = Math.floor(extractionText.length * 0.8);
+            recoveryText = extractionText.slice(midStart, midEnd);
+          } else {
+            // Later batches - use start of document
+            recoveryText = extractionText.slice(0, 50000);
           }
-        }
-        
-        console.log(`Global recovery: Found ${globalNewlyRecovered} additional questions`);
-        
-        // Second global recovery attempt if still missing significant questions
-        const stillMissingAfterFirst = Array.from(answerKey.keys()).filter(n => !questionMap.has(n));
-        if (stillMissingAfterFirst.length > 0 && stillMissingAfterFirst.length <= 15) {
-          await delay(500);
-          console.log(`Second global recovery attempt for ${stillMissingAfterFirst.length} questions...`);
           
-          const secondRecovered = await callAI(extractionText.slice(0, 40000), stillMissingAfterFirst, true, stillMissingAfterFirst);
+          console.log(`   Global batch ${Math.floor(batchStart / globalBatchSize) + 1}: Looking for ${stillMissingInBatch.join(", ")}`);
           
-          for (const q of secondRecovered) {
-            if (stillMissingAfterFirst.includes(q.question_number) && !questionMap.has(q.question_number)) {
+          const recovered = await callAI(recoveryText, stillMissingInBatch, true, stillMissingInBatch, 0.2);
+          
+          for (const q of recovered) {
+            if (stillMissingInBatch.includes(q.question_number) && !questionMap.has(q.question_number)) {
               questionMap.set(q.question_number, q);
               globalNewlyRecovered++;
               totalRecovered++;
             }
           }
-          console.log(`Second global recovery: Total recovered ${globalNewlyRecovered} questions`);
+        } catch (err) {
+          console.error(`Global batch recovery failed:`, err);
         }
-      } catch (err) {
-        console.error(`Global recovery failed:`, err);
-        allErrors.push(`Global recovery: ${err instanceof Error ? err.message : "Unknown"}`);
       }
+      
+      console.log(`Global recovery: Found ${globalNewlyRecovered} additional questions`);
+      
+      // Second pass - full document scan for remaining
+      const stillMissingAfterGlobal = Array.from(answerKey.keys()).filter(n => !questionMap.has(n));
+      if (stillMissingAfterGlobal.length > 0 && stillMissingAfterGlobal.length <= 20) {
+        console.log(`\nSecond global pass for ${stillMissingAfterGlobal.length} questions...`);
+        try {
+          await delay(500);
+          const secondRecovered = await callAI(extractionText, stillMissingAfterGlobal, true, stillMissingAfterGlobal, 0.3);
+          
+          for (const q of secondRecovered) {
+            if (stillMissingAfterGlobal.includes(q.question_number) && !questionMap.has(q.question_number)) {
+              questionMap.set(q.question_number, q);
+              totalRecovered++;
+            }
+          }
+        } catch (err) {
+          console.error(`Second global pass failed:`, err);
+        }
+      }
+    } else if (globalMissing.length > GLOBAL_RECOVERY_THRESHOLD) {
+      console.log(`\n⚠️ Skipping global recovery: ${globalMissing.length} missing questions exceeds threshold of ${GLOBAL_RECOVERY_THRESHOLD}`);
     }
 
     // ===== APPLY ANSWER KEY =====
@@ -816,7 +939,7 @@ ${chunkText}`;
       extractionStats: {
         expected: expectedQuestionCount,
         extracted: finalQuestions.length,
-        recoveryAttempts: smartChunks.length, // Each chunk does its own recovery
+        recoveryAttempts: smartChunks.length,
         recoveredInRetries: totalRecovered,
         stillMissing: stillMissing.slice(0, 30),
         completionRate,
