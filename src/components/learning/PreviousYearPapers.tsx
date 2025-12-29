@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Timer,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -424,9 +425,17 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
             <CardContent className="pt-6 space-y-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <Badge variant="outline" className="mb-3">
-                    {currentQuestion.difficulty}
-                  </Badge>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <Badge variant="outline">
+                      {currentQuestion.difficulty}
+                    </Badge>
+                    {currentQuestion.is_important && (
+                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                        <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-1" />
+                        Important
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-lg whitespace-pre-wrap">{currentQuestion.question_text}</p>
                 </div>
                 <Button
@@ -514,7 +523,7 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "h-8 w-8 p-0",
+                      "h-8 w-8 p-0 relative",
                       idx === currentQuestionIndex && "ring-2 ring-primary",
                       answers[q.id] && "bg-primary text-primary-foreground",
                       flaggedQuestions.has(q.id) && "border-orange-500 border-2"
@@ -522,6 +531,9 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
                     onClick={() => setCurrentQuestionIndex(idx)}
                   >
                     {idx + 1}
+                    {q.is_important && (
+                      <Star className="absolute -top-1 -right-1 h-3 w-3 fill-yellow-500 text-yellow-500" />
+                    )}
                   </Button>
                 ))}
               </div>
@@ -533,6 +545,10 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 rounded border border-orange-500 border-2" />
                   <span>Flagged</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
+                  <span>Important</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 rounded border" />
@@ -599,13 +615,19 @@ export function PreviousYearPapers({ subjectId }: PreviousYearPapersProps) {
               )}>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-muted-foreground">
                         Question {idx + 1}
                       </span>
                       <Badge variant="secondary" className="text-xs">
                         {isInteger ? "Integer" : "MCQ"}
                       </Badge>
+                      {q.is_important && (
+                        <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">
+                          <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-1" />
+                          Important
+                        </Badge>
+                      )}
                     </div>
                     {isCorrect ? (
                       <Badge variant="outline" className="text-green-600 border-green-600">
