@@ -236,9 +236,11 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         pdfUrl = await uploadPDF.mutateAsync({ file: selectedFile, paperId: tempId });
       }
 
-      // Create the paper record
+      // Create the paper record with chapter and topic IDs
       const paper = await createPaper.mutateAsync({
         subject_id: subjectId,
+        chapter_id: formData.chapter_id,
+        topic_id: formData.topic_id,
         year: formData.year,
         exam_name: formData.exam_name,
         paper_type: formData.paper_type || undefined,

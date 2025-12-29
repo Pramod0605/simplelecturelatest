@@ -5,6 +5,8 @@ import { toast } from "@/hooks/use-toast";
 export interface PreviousYearPaper {
   id: string;
   subject_id: string;
+  chapter_id?: string;
+  topic_id?: string;
   year: number;
   exam_name: string;
   paper_type?: string;

@@ -312,14 +312,14 @@ export default function Learning() {
                   </TabsContent>
 
                   <TabsContent value="previous-year">
-                    <PreviousYearPapers subjectId={selectedSubjectId} />
+                    <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
                   </TabsContent>
                 </>
               ) : (
                 <>
                   {activeTab === "previous-year" ? (
                     <TabsContent value="previous-year" forceMount>
-                      <PreviousYearPapers subjectId={selectedSubjectId} />
+                      <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
                     </TabsContent>
                   ) : (
                     <div className="flex items-center justify-center h-[400px]">
