@@ -7,8 +7,8 @@ const corsHeaders = {
 
 // Maximum questions to extract - papers can have 1-200 questions
 const MAX_QUESTIONS = 200;
-// Maximum retry attempts for missing question recovery
-const MAX_RECOVERY_ATTEMPTS = 5;
+// Maximum retry attempts for missing question recovery (reduced to prevent timeout)
+const MAX_RECOVERY_ATTEMPTS = 2;
 
 interface ExtractedOption {
   text: string;
@@ -802,13 +802,15 @@ ${chunk}`;
       
       const allRecovered: ExtractedQuestion[] = [];
       
-      // Split into batches of 10 for more focused extraction
-      const batches = batchMissingQuestions(missingNumbers, 10);
-      console.log(`Split into ${batches.length} batches for targeted extraction`);
+      // Split into batches of 5 for more focused extraction (reduced to prevent timeout)
+      const batches = batchMissingQuestions(missingNumbers, 5);
+      // Limit to max 2 batches per recovery attempt
+      const limitedBatches = batches.slice(0, 2);
+      console.log(`Split into ${batches.length} batches, processing ${limitedBatches.length} to prevent timeout`);
       
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        console.log(`Processing batch ${i + 1}/${batches.length}: Questions ${batch.join(", ")}`);
+      for (let i = 0; i < limitedBatches.length; i++) {
+        const batch = limitedBatches[i];
+        console.log(`Processing batch ${i + 1}/${limitedBatches.length}: Questions ${batch.join(", ")}`);
         
         // Find relevant text segments for these questions
         const relevantText = findRelevantTextForQuestions(fullText, batch);
@@ -903,49 +905,53 @@ ${chunk}`;
     let totalRecovered = 0;
 
     if (expectedQuestionCount > 0) {
-      console.log("\n===== PHASE 2: SELF-CORRECTING RECOVERY LOOP =====");
+      const missingNumbers = findMissingQuestions(questionMap, answerKey);
+      const initialCompletionRate = questionMap.size / expectedQuestionCount;
       
-      while (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-        const missingNumbers = findMissingQuestions(questionMap, answerKey);
+      // Only run recovery if we're missing more than 10% of questions
+      if (missingNumbers.length > 0 && initialCompletionRate < 0.9) {
+        console.log("\n===== PHASE 2: SELF-CORRECTING RECOVERY LOOP =====");
         
-        if (missingNumbers.length === 0) {
-          console.log(`\n🎉 100% EXTRACTION COMPLETE! All ${expectedQuestionCount} questions extracted.`);
-          break;
-        }
-        
-        console.log(`\n⚠️ Recovery Attempt ${recoveryAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`);
-        console.log(`Missing ${missingNumbers.length} questions: ${missingNumbers.slice(0, 20).join(", ")}${missingNumbers.length > 20 ? "..." : ""}`);
-        
-        // Targeted extraction for missing questions
-        const recovered = await extractMissingQuestions(extractionText, missingNumbers);
-        
-        // Merge recovered questions
-        let newlyRecovered = 0;
-        for (const q of recovered) {
-          if (!questionMap.has(q.question_number)) {
-            questionMap.set(q.question_number, q);
-            newlyRecovered++;
-          }
-        }
-        
-        totalRecovered += newlyRecovered;
-        console.log(`✅ Recovered ${newlyRecovered} new questions in attempt ${recoveryAttempts + 1}`);
-        console.log(`📊 Current total: ${questionMap.size}/${expectedQuestionCount} questions`);
-        
-        recoveryAttempts++;
-        
-        // If no progress made, try a different approach or stop
-        if (newlyRecovered === 0) {
-          console.log("No new questions recovered in this attempt.");
+        while (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+          const currentMissing = findMissingQuestions(questionMap, answerKey);
           
-          // For last attempts, try full text search with different strategies
-          if (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-            console.log("Will try again with different extraction strategy...");
-            await delay(2000);
-          } else {
-            console.log("Max recovery attempts reached. Returning best result.");
+          if (currentMissing.length === 0) {
+            console.log(`\n🎉 100% EXTRACTION COMPLETE! All ${expectedQuestionCount} questions extracted.`);
+            break;
+          }
+          
+          // Limit recovery to max 15 questions per attempt to prevent timeout
+          const questionsToRecover = currentMissing.slice(0, 15);
+          
+          console.log(`\n⚠️ Recovery Attempt ${recoveryAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`);
+          console.log(`Missing ${currentMissing.length} questions, targeting: ${questionsToRecover.join(", ")}`);
+          
+          // Targeted extraction for missing questions
+          const recovered = await extractMissingQuestions(extractionText, questionsToRecover);
+          
+          // Merge recovered questions
+          let newlyRecovered = 0;
+          for (const q of recovered) {
+            if (!questionMap.has(q.question_number)) {
+              questionMap.set(q.question_number, q);
+              newlyRecovered++;
+            }
+          }
+          
+          totalRecovered += newlyRecovered;
+          console.log(`✅ Recovered ${newlyRecovered} new questions in attempt ${recoveryAttempts + 1}`);
+          console.log(`📊 Current total: ${questionMap.size}/${expectedQuestionCount} questions`);
+          
+          recoveryAttempts++;
+          
+          // If no progress made, stop to prevent timeout
+          if (newlyRecovered === 0) {
+            console.log("No new questions recovered. Stopping recovery to prevent timeout.");
+            break;
           }
         }
+      } else if (missingNumbers.length > 0) {
+        console.log(`\n📊 Initial extraction at ${Math.round(initialCompletionRate * 100)}% - skipping recovery loop to prevent timeout.`);
       }
     }
 
