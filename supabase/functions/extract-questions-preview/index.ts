@@ -9,8 +9,12 @@ const corsHeaders = {
 const MAX_QUESTIONS = 200;
 // Number of parallel chunks to process
 const CHUNK_COUNT = 6;
-// Maximum recovery attempts per chunk
-const MAX_CHUNK_RECOVERY_ATTEMPTS = 1;
+// Maximum recovery attempts per chunk (dynamic: 2 for badly failed chunks)
+const MAX_CHUNK_RECOVERY_ATTEMPTS = 2;
+// Questions to target per recovery call
+const RECOVERY_BATCH_SIZE = 15;
+// Chunk overlap in characters to avoid splitting questions
+const CHUNK_OVERLAP = 500;
 
 interface ExtractedOption {
   text: string;
@@ -274,7 +278,7 @@ function createSmartChunks(
     return chunks;
   }
   
-  // Smart chunking based on question positions
+  // Smart chunking based on question positions with OVERLAP
   for (let i = 0; i < CHUNK_COUNT; i++) {
     const rangeStart = i * questionsPerChunk + 1;
     const rangeEnd = Math.min((i + 1) * questionsPerChunk, totalQuestions);
@@ -284,8 +288,9 @@ function createSmartChunks(
     const startPos = questionPositions.find(p => p.qNum >= rangeStart);
     const endPos = questionPositions.find(p => p.qNum > rangeEnd);
     
-    let chunkStart = startPos ? Math.max(0, startPos.index - 500) : (i * Math.ceil(text.length / CHUNK_COUNT));
-    let chunkEnd = endPos ? endPos.index : ((i + 1) * Math.ceil(text.length / CHUNK_COUNT));
+    // Add CHUNK_OVERLAP to ensure we don't cut questions in half
+    let chunkStart = startPos ? Math.max(0, startPos.index - CHUNK_OVERLAP) : (i * Math.ceil(text.length / CHUNK_COUNT));
+    let chunkEnd = endPos ? endPos.index + CHUNK_OVERLAP : ((i + 1) * Math.ceil(text.length / CHUNK_COUNT));
     
     // Ensure we don't exceed text bounds
     chunkStart = Math.max(0, chunkStart);
@@ -618,18 +623,23 @@ ${chunkText}`;
       }
       
       // Per-chunk scoped recovery - only for THIS chunk's expected questions
+      // FIXED: Removed the "<= 10" restriction - recovery should run for ANY missing questions
       const missing = expectedRange.filter(n => !questionMap.has(n) && answerKeySlice.has(n));
       
-      if (missing.length > 0 && missing.length <= 10) {
+      if (missing.length > 0) {
         console.log(`   Chunk ${chunkIndex + 1}: Missing ${missing.length} questions, attempting recovery...`);
         
-        for (let attempt = 0; attempt < MAX_CHUNK_RECOVERY_ATTEMPTS; attempt++) {
+        // Dynamic recovery attempts: more attempts for badly failed chunks
+        const maxAttempts = missing.length > 5 ? MAX_CHUNK_RECOVERY_ATTEMPTS : 1;
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
           const currentMissing = expectedRange.filter(n => !questionMap.has(n) && answerKeySlice.has(n));
           if (currentMissing.length === 0) break;
           
           try {
-            await delay(300); // Small delay before recovery
-            const recovered = await callAI(text, expectedRange, true, currentMissing.slice(0, 8));
+            await delay(300 + attempt * 200); // Increasing delay between attempts
+            // FIXED: Process more questions per recovery (RECOVERY_BATCH_SIZE instead of 8)
+            const recovered = await callAI(text, expectedRange, true, currentMissing.slice(0, RECOVERY_BATCH_SIZE));
             
             let newlyRecovered = 0;
             for (const q of recovered) {
@@ -640,11 +650,11 @@ ${chunkText}`;
             }
             
             totalRecovered += newlyRecovered;
-            console.log(`   Chunk ${chunkIndex + 1}: Recovered ${newlyRecovered} questions`);
+            console.log(`   Chunk ${chunkIndex + 1}: Recovery attempt ${attempt + 1} got ${newlyRecovered} questions`);
             
             if (newlyRecovered === 0) break;
           } catch (err) {
-            errors.push(`Chunk ${chunkIndex + 1} recovery: ${err instanceof Error ? err.message : "Unknown"}`);
+            errors.push(`Chunk ${chunkIndex + 1} recovery ${attempt + 1}: ${err instanceof Error ? err.message : "Unknown"}`);
             break;
           }
         }
@@ -699,6 +709,52 @@ ${chunkText}`;
     }
     
     console.log(`Merged: ${questionMap.size} unique questions from ${chunksProcessed} chunks`);
+
+    // ===== PHASE 2.5: GLOBAL RECOVERY FOR REMAINING MISSING QUESTIONS =====
+    const globalMissing = Array.from(answerKey.keys()).filter(n => !questionMap.has(n));
+    
+    if (globalMissing.length > 0 && globalMissing.length <= 25) {
+      console.log(`\n===== PHASE 2.5: GLOBAL RECOVERY =====`);
+      console.log(`Attempting global recovery for ${globalMissing.length} missing questions: ${globalMissing.slice(0, 10).join(", ")}${globalMissing.length > 10 ? "..." : ""}`);
+      
+      try {
+        // Use last portion of text which often contains all questions
+        const globalRecoveryText = extractionText.slice(-40000);
+        const globalRecovered = await callAI(globalRecoveryText, globalMissing, true, globalMissing);
+        
+        let globalNewlyRecovered = 0;
+        for (const q of globalRecovered) {
+          if (globalMissing.includes(q.question_number) && !questionMap.has(q.question_number)) {
+            questionMap.set(q.question_number, q);
+            globalNewlyRecovered++;
+            totalRecovered++;
+          }
+        }
+        
+        console.log(`Global recovery: Found ${globalNewlyRecovered} additional questions`);
+        
+        // Second global recovery attempt if still missing significant questions
+        const stillMissingAfterFirst = Array.from(answerKey.keys()).filter(n => !questionMap.has(n));
+        if (stillMissingAfterFirst.length > 0 && stillMissingAfterFirst.length <= 15) {
+          await delay(500);
+          console.log(`Second global recovery attempt for ${stillMissingAfterFirst.length} questions...`);
+          
+          const secondRecovered = await callAI(extractionText.slice(0, 40000), stillMissingAfterFirst, true, stillMissingAfterFirst);
+          
+          for (const q of secondRecovered) {
+            if (stillMissingAfterFirst.includes(q.question_number) && !questionMap.has(q.question_number)) {
+              questionMap.set(q.question_number, q);
+              globalNewlyRecovered++;
+              totalRecovered++;
+            }
+          }
+          console.log(`Second global recovery: Total recovered ${globalNewlyRecovered} questions`);
+        }
+      } catch (err) {
+        console.error(`Global recovery failed:`, err);
+        allErrors.push(`Global recovery: ${err instanceof Error ? err.message : "Unknown"}`);
+      }
+    }
 
     // ===== APPLY ANSWER KEY =====
     console.log("\n===== PHASE 3: APPLY ANSWER KEY =====");
