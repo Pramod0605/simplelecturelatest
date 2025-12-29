@@ -214,8 +214,14 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     });
   };
 
-  const handleVerifyQuestion = (id: string, verified: boolean) => {
-    updateQuestion.mutate({ id, updates: { is_verified: verified } });
+  const handleVerifyQuestion = (id: string, verified: boolean, isImportant?: boolean) => {
+    updateQuestion.mutate({ 
+      id, 
+      updates: { 
+        is_verified: verified,
+        ...(isImportant !== undefined && { is_important: isImportant })
+      } 
+    });
   };
 
   // Filter questions client-side for search
