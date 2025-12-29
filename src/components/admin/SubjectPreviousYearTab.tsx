@@ -461,11 +461,17 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                     <Brain className="h-12 w-12 animate-pulse text-primary" />
                     <p className="text-lg font-medium">Extracting Questions with AI...</p>
                     <p className="text-sm text-muted-foreground">
-                      Gemini is identifying questions, options, and correct answers
+                      Processing 6 chunks in parallel for faster extraction
                     </p>
-                    <p className="text-lg font-semibold text-primary">
-                      {Math.floor(extractionProgress.current)}/{extractionProgress.total}
-                    </p>
+                    {extractionProgress.current >= extractionProgress.total - 5 ? (
+                      <p className="text-lg font-semibold text-primary animate-pulse">
+                        Finalizing extraction...
+                      </p>
+                    ) : (
+                      <p className="text-lg font-semibold text-primary">
+                        {Math.floor(extractionProgress.current)}/{extractionProgress.total}
+                      </p>
+                    )}
                     <Progress 
                       value={(extractionProgress.current / extractionProgress.total) * 100} 
                       className="w-64" 
