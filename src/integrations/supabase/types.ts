@@ -3969,6 +3969,116 @@ export type Database = {
           },
         ]
       }
+      support_faqs: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string
+          display_order: number | null
+          helpful_count: number | null
+          id: string
+          is_active: boolean | null
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          category: string
+          created_at?: string
+          display_order?: number | null
+          helpful_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string
+          display_order?: number | null
+          helpful_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          question?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_type: string
+          ticket_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          ai_confidence: number | null
+          assigned_admin_id: string | null
+          category: string
+          closed_at: string | null
+          created_at: string
+          escalated_at: string | null
+          id: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          assigned_admin_id?: string | null
+          category: string
+          closed_at?: string | null
+          created_at?: string
+          escalated_at?: string | null
+          id?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          assigned_admin_id?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          escalated_at?: string | null
+          id?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teacher_profiles: {
         Row: {
           avatar_url: string | null
