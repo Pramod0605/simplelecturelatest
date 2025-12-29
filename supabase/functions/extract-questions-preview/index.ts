@@ -7,6 +7,8 @@ const corsHeaders = {
 
 // Maximum questions to extract - papers can have 1-200 questions
 const MAX_QUESTIONS = 200;
+// Maximum retry attempts for missing question recovery
+const MAX_RECOVERY_ATTEMPTS = 5;
 
 interface ExtractedOption {
   text: string;
@@ -37,6 +39,14 @@ interface ExtractResponse {
     found: number;
     applied: number;
     missing: number[];
+  };
+  extractionStats?: {
+    expected: number;
+    extracted: number;
+    recoveryAttempts: number;
+    recoveredInRetries: number;
+    stillMissing: number[];
+    completionRate: string;
   };
 }
 
@@ -403,6 +413,73 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
   return result.sort((a, b) => a.question_number - b.question_number);
 }
 
+/**
+ * Find missing questions by comparing extracted questions against answer key
+ */
+function findMissingQuestions(
+  extracted: Map<number, ExtractedQuestion>,
+  answerKey: Map<number, string>
+): number[] {
+  const missing: number[] = [];
+  for (const qNum of answerKey.keys()) {
+    if (!extracted.has(qNum)) {
+      missing.push(qNum);
+    }
+  }
+  return missing.sort((a, b) => a - b);
+}
+
+/**
+ * Split missing questions into smaller batches for more focused extraction
+ */
+function batchMissingQuestions(missingNumbers: number[], batchSize: number = 10): number[][] {
+  const batches: number[][] = [];
+  for (let i = 0; i < missingNumbers.length; i += batchSize) {
+    batches.push(missingNumbers.slice(i, i + batchSize));
+  }
+  return batches;
+}
+
+/**
+ * Find text segments around specific question numbers for targeted extraction
+ */
+function findRelevantTextForQuestions(fullText: string, targetNumbers: number[]): string {
+  const segments: string[] = [];
+  
+  for (const qNum of targetNumbers) {
+    // Look for content around this question number
+    // Pattern to find question start
+    const patterns = [
+      new RegExp(`(?:^|\\n)\\s*(?:Q\\.?\\s*)?${qNum}\\s*[\\.\\)]`, 'gm'),
+      new RegExp(`Question\\s*${qNum}`, 'gi'),
+      new RegExp(`\\b${qNum}\\s*\\.\\s*[A-Z]`, 'gm'),
+    ];
+    
+    for (const pattern of patterns) {
+      const match = pattern.exec(fullText);
+      if (match) {
+        // Get 3000 chars around the match (1000 before, 2000 after)
+        const start = Math.max(0, match.index - 1000);
+        const end = Math.min(fullText.length, match.index + 2000);
+        const segment = fullText.slice(start, end);
+        
+        // Avoid duplicating segments
+        if (!segments.some(s => s.includes(segment.slice(500, 1000)))) {
+          segments.push(segment);
+        }
+        break;
+      }
+    }
+  }
+  
+  // If no specific segments found, return the full text (for broad search)
+  if (segments.length === 0) {
+    return fullText;
+  }
+  
+  return segments.join("\n\n---SEGMENT BREAK---\n\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -411,8 +488,8 @@ serve(async (req) => {
   try {
     const { contentJson, contentMarkdown, examName, year, paperType } = await req.json();
     
-    console.log("=== Starting MCQ Extraction ===");
-    console.log(`Exam: ${examName}  Year: ${year} Type: ${paperType} `);
+    console.log("=== Starting MCQ Extraction with Self-Correcting Loop ===");
+    console.log(`Exam: ${examName}  Year: ${year} Type: ${paperType}`);
 
     // Prefer markdown over JSON for cleaner text
     let extractionText = "";
@@ -443,17 +520,16 @@ serve(async (req) => {
     console.log("Extracting answer key from document...");
     const answerKey = extractAnswerKey(extractionText);
     console.log(`Answer key extracted: ${answerKey.size} answers found`);
+    
+    // This is the expected question count (ground truth)
+    const expectedQuestionCount = answerKey.size;
+    console.log(`🎯 EXPECTED QUESTIONS: ${expectedQuestionCount} (from answer key)`);
 
     // Step 2: Split text into chunks for processing
-    // Use smaller chunks (15k chars, ~20 questions) for more reliable extraction
     const chunks = chunkTextByQuestions(extractionText, 15000, 20);
     console.log(`Split text into ${chunks.length} chunks for extraction`);
     
-    // Estimate expected questions from answer key
-    const expectedQuestionCount = answerKey.size;
-    console.log(`Expected questions from answer key: ${expectedQuestionCount}`);
-    
-    // Estimate questions from content patterns
+    // Estimate from content patterns (backup)
     const estimatedFromContent = countQuestionsInText(extractionText);
     console.log(`Estimated questions from content patterns: ${estimatedFromContent}`);
 
@@ -462,17 +538,18 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // System prompt - explicitly tell AI NOT to determine correct answers
+    // System prompt - includes expected count to guide extraction
     const systemPrompt = `You are an expert at extracting multiple choice questions from exam papers.
 
 IMPORTANT RULES:
-1. Extract ALL questions you find in this content (papers may contain anywhere from 1 to ${MAX_QUESTIONS} questions)
-2. DO NOT guess or determine the correct answer - leave correct_answer as empty string ""
-3. Extract question text exactly as written (preserve formatting, formulas)
-4. IMPORTANT: JSON escaping: any backslash must be doubled (\\).
-5. Extract all options A, B, C, D (and E if present)
-6. If a question has an image reference, note it in the question text
-7. Do not stop early - extract every single question you can find
+1. Extract ALL questions you find in this content
+2. This paper contains ${expectedQuestionCount > 0 ? expectedQuestionCount : "multiple"} questions - try to find ALL of them
+3. DO NOT guess or determine the correct answer - leave correct_answer as empty string ""
+4. Extract question text exactly as written (preserve formatting, formulas)
+5. IMPORTANT: JSON escaping: any backslash must be doubled (\\).
+6. Extract all options A, B, C, D (and E if present)
+7. If a question has an image reference, note it in the question text
+8. Do not stop early - extract every single question you can find
 
 Return a JSON array of objects with this exact structure:
 {
@@ -490,11 +567,10 @@ Return a JSON array of objects with this exact structure:
 
 Return ONLY valid JSON, no other text.`;
 
-    const allQuestions: ExtractedQuestion[] = [];
     const errors: string[] = [];
     let chunksProcessed = 0;
 
-    // Use tool-calling so the model returns structured data (avoids invalid JSON escapes from LaTeX like \\underline)
+    // Use tool-calling for structured output
     const tools = [
       {
         type: "function",
@@ -547,16 +623,42 @@ Return ONLY valid JSON, no other text.`;
       chunk: string, 
       chunkIndex: number, 
       totalChunks: number,
-      isRetry: boolean = false
+      isRetry: boolean = false,
+      targetQuestions?: number[] // For targeted extraction
     ): Promise<ExtractedQuestion[]> {
-      const chunkLabel = isRetry ? `Chunk ${chunkIndex + 1} (retry)` : `Chunk ${chunkIndex + 1}/${totalChunks}`;
+      const chunkLabel = isRetry 
+        ? `Chunk ${chunkIndex + 1} (retry${targetQuestions ? ` for Q${targetQuestions.join(",")}` : ""})` 
+        : `Chunk ${chunkIndex + 1}/${totalChunks}`;
       console.log(`Processing ${chunkLabel}, length: ${chunk.length}`);
       
-      const userPrompt = `Extract ALL multiple choice questions from this ${examName} ${year} ${paperType || ""} exam paper content.
-Remember: DO NOT determine correct answers - leave them empty. Just extract questions and options.
+      let userPrompt: string;
+      
+      if (targetQuestions && targetQuestions.length > 0) {
+        // Targeted prompt for missing questions
+        userPrompt = `CRITICAL: Find ONLY these specific questions that were missed: ${targetQuestions.join(", ")}
+
+These question numbers exist in this exam paper but were not found in the previous extraction.
+Search VERY carefully for each of these question numbers: ${targetQuestions.join(", ")}
+
+Look for patterns like:
+- "Q.${targetQuestions[0]}." or "${targetQuestions[0]}."
+- "Question ${targetQuestions[0]}"
+- Just the number "${targetQuestions[0]}" followed by a question
+
+Extract ONLY questions with these numbers: ${targetQuestions.join(", ")}
+DO NOT extract other questions. Focus on finding these missing ones.
 
 Content:
 ${chunk}`;
+      } else {
+        // Standard extraction prompt
+        userPrompt = `Extract ALL multiple choice questions from this ${examName} ${year} ${paperType || ""} exam paper content.
+Remember: DO NOT determine correct answers - leave them empty. Just extract questions and options.
+${expectedQuestionCount > 0 ? `This paper has ${expectedQuestionCount} total questions - make sure to find all of them.` : ""}
+
+Content:
+${chunk}`;
+      }
 
       const maxRetries = 3;
       
@@ -583,7 +685,7 @@ ${chunk}`;
               tools,
               tool_choice,
               temperature: 0.1,
-              max_tokens: 32000, // Increased for large chunks with many questions
+              max_tokens: 32000,
             }),
           });
 
@@ -689,6 +791,58 @@ ${chunk}`;
       return [];
     }
 
+    /**
+     * Targeted extraction for specific missing questions
+     */
+    async function extractMissingQuestions(
+      fullText: string,
+      missingNumbers: number[],
+    ): Promise<ExtractedQuestion[]> {
+      console.log(`\n🔍 TARGETED EXTRACTION for ${missingNumbers.length} missing questions: ${missingNumbers.join(", ")}`);
+      
+      const allRecovered: ExtractedQuestion[] = [];
+      
+      // Split into batches of 10 for more focused extraction
+      const batches = batchMissingQuestions(missingNumbers, 10);
+      console.log(`Split into ${batches.length} batches for targeted extraction`);
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`Processing batch ${i + 1}/${batches.length}: Questions ${batch.join(", ")}`);
+        
+        // Find relevant text segments for these questions
+        const relevantText = findRelevantTextForQuestions(fullText, batch);
+        
+        // Add delay between batches
+        if (i > 0) {
+          await delay(1500);
+        }
+        
+        try {
+          const recovered = await processChunk(relevantText, i, batches.length, true, batch);
+          
+          // Only accept questions that match our target list
+          const validRecovered = recovered.filter(q => batch.includes(q.question_number));
+          
+          if (validRecovered.length > 0) {
+            console.log(`✅ Batch ${i + 1} recovered ${validRecovered.length} questions: ${validRecovered.map(q => q.question_number).join(", ")}`);
+            allRecovered.push(...validRecovered);
+          } else {
+            console.log(`❌ Batch ${i + 1} found 0 targeted questions`);
+          }
+        } catch (err) {
+          console.error(`Batch ${i + 1} failed:`, err);
+          errors.push(`Recovery batch ${i + 1}: ${err instanceof Error ? err.message : "Unknown error"}`);
+        }
+      }
+      
+      return allRecovered;
+    }
+
+    // ===== INITIAL EXTRACTION =====
+    console.log("\n===== PHASE 1: INITIAL EXTRACTION =====");
+    const allQuestions: ExtractedQuestion[] = [];
+
     // Process each chunk with delays and fallback logic
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -710,7 +864,7 @@ ${chunk}`;
           console.log(`Re-chunked into ${subChunks.length} smaller pieces`);
           
           for (let j = 0; j < subChunks.length; j++) {
-            await delay(1000); // Shorter delay for sub-chunks
+            await delay(1000);
             try {
               const subExtracted = await processChunk(subChunks[j], j, subChunks.length, true);
               if (subExtracted.length > 0) {
@@ -742,7 +896,63 @@ ${chunk}`;
       }
     }
 
-    // Step 3: Apply answer key to questions (NO AI - just mapping)
+    console.log(`\n📊 Initial extraction: ${questionMap.size}/${expectedQuestionCount} questions`);
+
+    // ===== SELF-CORRECTING LOOP =====
+    let recoveryAttempts = 0;
+    let totalRecovered = 0;
+
+    if (expectedQuestionCount > 0) {
+      console.log("\n===== PHASE 2: SELF-CORRECTING RECOVERY LOOP =====");
+      
+      while (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+        const missingNumbers = findMissingQuestions(questionMap, answerKey);
+        
+        if (missingNumbers.length === 0) {
+          console.log(`\n🎉 100% EXTRACTION COMPLETE! All ${expectedQuestionCount} questions extracted.`);
+          break;
+        }
+        
+        console.log(`\n⚠️ Recovery Attempt ${recoveryAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`);
+        console.log(`Missing ${missingNumbers.length} questions: ${missingNumbers.slice(0, 20).join(", ")}${missingNumbers.length > 20 ? "..." : ""}`);
+        
+        // Targeted extraction for missing questions
+        const recovered = await extractMissingQuestions(extractionText, missingNumbers);
+        
+        // Merge recovered questions
+        let newlyRecovered = 0;
+        for (const q of recovered) {
+          if (!questionMap.has(q.question_number)) {
+            questionMap.set(q.question_number, q);
+            newlyRecovered++;
+          }
+        }
+        
+        totalRecovered += newlyRecovered;
+        console.log(`✅ Recovered ${newlyRecovered} new questions in attempt ${recoveryAttempts + 1}`);
+        console.log(`📊 Current total: ${questionMap.size}/${expectedQuestionCount} questions`);
+        
+        recoveryAttempts++;
+        
+        // If no progress made, try a different approach or stop
+        if (newlyRecovered === 0) {
+          console.log("No new questions recovered in this attempt.");
+          
+          // For last attempts, try full text search with different strategies
+          if (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+            console.log("Will try again with different extraction strategy...");
+            await delay(2000);
+          } else {
+            console.log("Max recovery attempts reached. Returning best result.");
+          }
+        }
+      }
+    }
+
+    // ===== FINAL PROCESSING =====
+    console.log("\n===== PHASE 3: FINAL PROCESSING =====");
+
+    // Apply answer key to questions (NO AI - just mapping)
     console.log(`Applying answer key to ${questionMap.size} questions...`);
     let answersApplied = 0;
     const missingAnswers: number[] = [];
@@ -763,41 +973,51 @@ ${chunk}`;
       }
     }
     console.log(`Applied ${answersApplied} answers from answer key`);
-    console.log(`MCQ answers: ${Array.from(questionMap.values()).filter(q => q.question_type === "mcq").length}`);
-    console.log(`Integer answers: ${Array.from(questionMap.values()).filter(q => q.question_type === "integer").length}`);
-    
-    if (missingAnswers.length > 0 && missingAnswers.length <= 30) {
-      console.log(`Missing answers for questions: ${missingAnswers.join(", ")}`);
-    }
 
     // Convert to sorted array and cap at MAX_QUESTIONS
     const finalQuestions = Array.from(questionMap.values())
       .sort((a, b) => a.question_number - b.question_number)
       .slice(0, MAX_QUESTIONS);
 
-    console.log(`Final: ${finalQuestions.length} unique questions extracted`);
-    
-    // Completeness validation - warn if we got significantly fewer questions than expected
-    let isIncomplete = false;
-    if (expectedQuestionCount > 0 && finalQuestions.length < expectedQuestionCount * 0.9) {
-      console.warn(`⚠️ INCOMPLETE EXTRACTION: Got ${finalQuestions.length}/${expectedQuestionCount} questions (${Math.round(finalQuestions.length / expectedQuestionCount * 100)}%)`);
-      isIncomplete = true;
+    // Calculate final statistics
+    const stillMissing = expectedQuestionCount > 0 ? findMissingQuestions(questionMap, answerKey) : [];
+    const completionRate = expectedQuestionCount > 0 
+      ? `${Math.round((finalQuestions.length / expectedQuestionCount) * 100)}%`
+      : "N/A";
+
+    console.log(`\n===== EXTRACTION COMPLETE =====`);
+    console.log(`📊 Final: ${finalQuestions.length}/${expectedQuestionCount} questions (${completionRate})`);
+    console.log(`🔄 Recovery attempts: ${recoveryAttempts}`);
+    console.log(`✅ Recovered in retries: ${totalRecovered}`);
+    if (stillMissing.length > 0) {
+      console.log(`❌ Still missing: ${stillMissing.slice(0, 20).join(", ")}${stillMissing.length > 20 ? "..." : ""}`);
     }
+
+    const isComplete = expectedQuestionCount > 0 && finalQuestions.length >= expectedQuestionCount;
+    const isPartial = expectedQuestionCount > 0 && finalQuestions.length < expectedQuestionCount * 0.95;
 
     const response: ExtractResponse = {
       success: finalQuestions.length > 0,
       questions: finalQuestions,
       questionsCount: finalQuestions.length,
-      partial: isIncomplete || (errors.length > 0 && finalQuestions.length > 0),
+      partial: isPartial || (errors.length > 0 && finalQuestions.length > 0),
       error: finalQuestions.length === 0 ? "No MCQs could be extracted" : 
-             isIncomplete ? `Incomplete extraction: got ${finalQuestions.length} of ${expectedQuestionCount} expected questions` : undefined,
+             isPartial ? `Extracted ${finalQuestions.length} of ${expectedQuestionCount} expected questions (${completionRate})` : undefined,
       errorCode: finalQuestions.length === 0 ? "NO_QUESTIONS" : undefined,
       errors: errors.length > 0 ? errors : undefined,
       chunksProcessed,
       answerKeyStats: {
         found: answerKey.size,
         applied: answersApplied,
-        missing: missingAnswers.slice(0, 20), // Limit to first 20
+        missing: missingAnswers.slice(0, 20),
+      },
+      extractionStats: {
+        expected: expectedQuestionCount,
+        extracted: finalQuestions.length,
+        recoveryAttempts,
+        recoveredInRetries: totalRecovered,
+        stillMissing: stillMissing.slice(0, 30),
+        completionRate,
       },
     };
 
