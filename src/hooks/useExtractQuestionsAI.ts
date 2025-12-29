@@ -25,6 +25,14 @@ export interface ExtractQuestionsResponse {
     applied: number;
     missing: number[];
   };
+  extractionStats?: {
+    expected: number;
+    extracted: number;
+    recoveryAttempts: number;
+    recoveredInRetries: number;
+    stillMissing: number[];
+    completionRate: string;
+  };
 }
 
 export function useExtractQuestionsAI() {

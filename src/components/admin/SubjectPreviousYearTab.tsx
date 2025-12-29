@@ -96,6 +96,14 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
           applied: number;
           missing: number[];
         };
+        extractionStats?: {
+          expected: number;
+          extracted: number;
+          recoveryAttempts: number;
+          recoveredInRetries: number;
+          stillMissing: number[];
+          completionRate: string;
+        };
       }
     | null
   >(null);
@@ -434,35 +442,75 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
 
                 {currentStep === "preview" && (
                   <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {extractedQuestions.length > 0 ? (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-destructive" />
-                      )}
-                      <span className="font-medium">
-                        Extracted {extractedQuestions.length} questions
-                      </span>
-                      {extractionMeta?.partial && (
-                        <Badge variant="outline">Partial</Badge>
-                      )}
-                      {extractionMeta?.chunksProcessed && (
-                        <Badge variant="secondary">AI pass</Badge>
-                      )}
-                    </div>
+                    {/* Extraction Stats - Show completion rate prominently */}
+                    {extractionMeta?.extractionStats && (
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-3">
+                          {extractionMeta.extractionStats.extracted >= extractionMeta.extractionStats.expected ? (
+                            <CheckCircle className="h-6 w-6 text-primary" />
+                          ) : extractionMeta.extractionStats.extracted >= extractionMeta.extractionStats.expected * 0.95 ? (
+                            <CheckCircle className="h-6 w-6 text-yellow-500" />
+                          ) : (
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                          )}
+                          <div>
+                            <p className="font-semibold text-lg">
+                              Extracted {extractionMeta.extractionStats.extracted}/{extractionMeta.extractionStats.expected} questions
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Completion: {extractionMeta.extractionStats.completionRate}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Recovery info */}
+                        {extractionMeta.extractionStats.recoveryAttempts > 0 && (
+                          <div className="flex flex-wrap gap-2 text-sm">
+                            <Badge variant="secondary">
+                              {extractionMeta.extractionStats.recoveryAttempts} recovery attempt{extractionMeta.extractionStats.recoveryAttempts > 1 ? "s" : ""}
+                            </Badge>
+                            {extractionMeta.extractionStats.recoveredInRetries > 0 && (
+                              <Badge variant="outline" className="text-primary">
+                                +{extractionMeta.extractionStats.recoveredInRetries} recovered
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Missing questions warning */}
+                        {extractionMeta.extractionStats.stillMissing.length > 0 && (
+                          <div className="text-sm text-destructive">
+                            <span className="font-medium">Still missing: </span>
+                            Q{extractionMeta.extractionStats.stillMissing.slice(0, 10).join(", Q")}
+                            {extractionMeta.extractionStats.stillMissing.length > 10 && ` +${extractionMeta.extractionStats.stillMissing.length - 10} more`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Fallback for old format without extractionStats */}
+                    {!extractionMeta?.extractionStats && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {extractedQuestions.length > 0 ? (
+                          <CheckCircle className="h-5 w-5 text-primary" />
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        )}
+                        <span className="font-medium">
+                          Extracted {extractedQuestions.length} questions
+                        </span>
+                        {extractionMeta?.partial && (
+                          <Badge variant="outline">Partial</Badge>
+                        )}
+                      </div>
+                    )}
                     
                     {/* Answer key stats */}
                     {extractionMeta?.answerKeyStats && (
                       <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Badge variant={extractionMeta.answerKeyStats.applied > 0 ? "default" : "destructive"}>
-                          Answers: {extractionMeta.answerKeyStats.applied} / {extractedQuestions.length}
+                          Answers applied: {extractionMeta.answerKeyStats.applied}
                         </Badge>
-                        {extractionMeta.answerKeyStats.missing.length > 0 && (
-                          <span className="text-muted-foreground">
-                            Missing: Q{extractionMeta.answerKeyStats.missing.slice(0, 5).join(", Q")}
-                            {extractionMeta.answerKeyStats.missing.length > 5 && ` +${extractionMeta.answerKeyStats.missing.length - 5} more`}
-                          </span>
-                        )}
                       </div>
                     )}
                     
