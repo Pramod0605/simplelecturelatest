@@ -266,7 +266,7 @@ function delay(ms: number): Promise<void> {
  * Split text into chunks at question boundaries to avoid breaking questions.
  * Uses both character count AND question count limits for optimal extraction.
  */
-function chunkTextByQuestions(text: string, maxChunkSize: number = 30000, maxQuestionsPerChunk: number = 40): string[] {
+function chunkTextByQuestions(text: string, maxChunkSize: number = 15000, maxQuestionsPerChunk: number = 20): string[] {
   if (text.length <= maxChunkSize) {
     return [text];
   }
@@ -337,6 +337,14 @@ function chunkTextByQuestions(text: string, maxChunkSize: number = 30000, maxQue
   }
   
   return chunks;
+}
+
+/**
+ * Re-chunk a failed chunk into smaller pieces for retry
+ */
+function rechunkFailedContent(text: string): string[] {
+  // Split into 8KB chunks for failed content
+  return chunkTextByQuestions(text, 8000, 10);
 }
 
 /**
@@ -437,13 +445,17 @@ serve(async (req) => {
     console.log(`Answer key extracted: ${answerKey.size} answers found`);
 
     // Step 2: Split text into chunks for processing
-    // Use smaller chunks for more complete extraction (30k chars, ~40 questions per chunk)
-    const chunks = chunkTextByQuestions(extractionText, 30000, 40);
+    // Use smaller chunks (15k chars, ~20 questions) for more reliable extraction
+    const chunks = chunkTextByQuestions(extractionText, 15000, 20);
     console.log(`Split text into ${chunks.length} chunks for extraction`);
     
     // Estimate expected questions from answer key
     const expectedQuestionCount = answerKey.size;
     console.log(`Expected questions from answer key: ${expectedQuestionCount}`);
+    
+    // Estimate questions from content patterns
+    const estimatedFromContent = countQuestionsInText(extractionText);
+    console.log(`Estimated questions from content patterns: ${estimatedFromContent}`);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -528,10 +540,17 @@ Return ONLY valid JSON, no other text.`;
 
     const tool_choice = { type: "function", function: { name: "extract_questions" } };
 
-    // Process each chunk
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      console.log(`Processing chunk ${i + 1}/${chunks.length}, length: ${chunk.length}`);
+    /**
+     * Process a single chunk and return extracted questions
+     */
+    async function processChunk(
+      chunk: string, 
+      chunkIndex: number, 
+      totalChunks: number,
+      isRetry: boolean = false
+    ): Promise<ExtractedQuestion[]> {
+      const chunkLabel = isRetry ? `Chunk ${chunkIndex + 1} (retry)` : `Chunk ${chunkIndex + 1}/${totalChunks}`;
+      console.log(`Processing ${chunkLabel}, length: ${chunk.length}`);
       
       const userPrompt = `Extract ALL multiple choice questions from this ${examName} ${year} ${paperType || ""} exam paper content.
 Remember: DO NOT determine correct answers - leave them empty. Just extract questions and options.
@@ -539,15 +558,13 @@ Remember: DO NOT determine correct answers - leave them empty. Just extract ques
 Content:
 ${chunk}`;
 
-      // Retry logic with exponential backoff
       const maxRetries = 3;
-      let lastError: Error | null = null;
       
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
           if (attempt > 0) {
-            const waitTime = attempt * 2000; // 2s, 4s, 6s
-            console.log(`Chunk ${i + 1} - Retry ${attempt}/${maxRetries} after ${waitTime}ms...`);
+            const waitTime = attempt * 2000;
+            console.log(`${chunkLabel} - Retry ${attempt}/${maxRetries} after ${waitTime}ms...`);
             await delay(waitTime);
           }
           
@@ -566,181 +583,154 @@ ${chunk}`;
               tools,
               tool_choice,
               temperature: 0.1,
-              max_tokens: 16000, // Ensure enough output for 50+ questions per chunk
+              max_tokens: 32000, // Increased for large chunks with many questions
             }),
           });
 
-          console.log(`Chunk ${i + 1} - Gateway response status: ${response.status}`);
+          console.log(`${chunkLabel} - Gateway response status: ${response.status}`);
 
           if (response.status === 429) {
             if (attempt < maxRetries) {
-              console.log(`Chunk ${i + 1} - Rate limited, will retry...`);
-              continue; // Retry
+              console.log(`${chunkLabel} - Rate limited, will retry...`);
+              continue;
             }
-            errors.push(`Chunk ${i + 1}: Rate limited after ${maxRetries} retries`);
-            break;
+            throw new Error("Rate limited after retries");
           }
           
           if (response.status === 402) {
-            errors.push(`Chunk ${i + 1}: Credits exhausted`);
-            break; // No point retrying
+            throw new Error("Credits exhausted");
           }
 
           if (!response.ok) {
             const errText = await response.text();
-            console.error(`Chunk ${i + 1} error:`, errText);
-            if (attempt < maxRetries) continue; // Retry
-            errors.push(`Chunk ${i + 1}: API error ${response.status}`);
-            break;
+            console.error(`${chunkLabel} error:`, errText);
+            if (attempt < maxRetries) continue;
+            throw new Error(`API error ${response.status}`);
           }
 
-        const data = await response.json();
-        const message = data.choices?.[0]?.message;
-        const toolArgs = message?.tool_calls?.[0]?.function?.arguments as string | undefined;
-        const content = (message?.content as string | undefined) || "";
+          const data = await response.json();
+          const message = data.choices?.[0]?.message;
+          const toolArgs = message?.tool_calls?.[0]?.function?.arguments as string | undefined;
+          const content = (message?.content as string | undefined) || "";
 
-        if (toolArgs) {
-          console.log(`Chunk ${i + 1} - Tool args length: ${toolArgs.length}`);
-        } else {
-          console.log(`Chunk ${i + 1} - LLM response length: ${content.length}`);
-        }
-
-        // Parse JSON from response
-        let parsed: any = null;
-
-        // Preferred: tool calling output
-        if (toolArgs) {
-          try {
-            parsed = JSON.parse(toolArgs);
-          } catch (e) {
-            console.error(`Chunk ${i + 1} - Tool args JSON parse error:`, e);
-            errors.push(`Chunk ${i + 1}: Failed to parse tool output`);
+          if (toolArgs) {
+            console.log(`${chunkLabel} - Tool args length: ${toolArgs.length}`);
+          } else {
+            console.log(`${chunkLabel} - LLM response length: ${content.length}`);
           }
-        }
 
-        // Fallback: parse from message.content
-        if (!parsed) {
-          try {
-          // Clean up response - remove markdown code blocks if present
-          let jsonText = content.trim();
-          if (jsonText.startsWith("```")) {
-            jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-          }
-          
-          // Try to find JSON object or array in response
-          const objectMatch = jsonText.match(/\{[\s\S]*\}/);
-          if (objectMatch) {
-            let jsonStr = objectMatch[0];
-            
-            // Sanitize JSON to fix common escape issues from LLM responses
-            // Fix invalid escape sequences: \x, \', and especially invalid unicode escapes like \underline (\u + non-hex)
-            jsonStr = jsonStr
-              // Fix invalid \u escapes that are common in LaTeX commands (e.g. \underline, \uparrow)
-              // Keep real unicode escapes like \u00B0 intact
-              .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
-              // Fix invalid escapes like \p, \d, \s, etc. - remove the backslash
-              .replace(/\\([^"\\\/bfnrtu])/g, "$1")
-              // Fix unescaped control characters
-              .replace(/[\x00-\x1F\x7F]/g, (char: string) => {
-                if (char === "\n") return "\\n";
-                if (char === "\r") return "\\r";
-                if (char === "\t") return "\\t";
-                return ""; // Remove other control characters
-              });
+          // Parse JSON from response
+          let parsed: any = null;
 
+          // Preferred: tool calling output
+          if (toolArgs) {
             try {
-              parsed = JSON.parse(jsonStr);
-            } catch (firstParseErr) {
-              // Second attempt: more aggressive cleanup
-              console.log(`Chunk ${i + 1} - First parse failed, trying aggressive cleanup...`);
-
-              // Remove all backslashes before non-standard escape chars (and invalid \u escapes)
-              jsonStr = objectMatch[0]
-                .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
-                .replace(/\\(?!["\\/bfnrtu])/g, "")
-                .replace(/[\x00-\x1F\x7F]/g, "");
-
-              try {
-                parsed = JSON.parse(jsonStr);
-                console.log(`Chunk ${i + 1} - Aggressive cleanup succeeded`);
-              } catch (secondParseErr) {
-                // Third attempt: extract questions array directly with regex
-                console.log(`Chunk ${i + 1} - Second parse failed, trying regex extraction...`);
-
-                const questionsMatch = jsonText.match(/"questions"\s*:\s*\[/);
-                if (questionsMatch) {
-                  // Find the matching closing bracket
-                  const startIdx = jsonText.indexOf("[", questionsMatch.index);
-                  let bracketCount = 0;
-                  let endIdx = startIdx;
-
-                  for (let j = startIdx; j < jsonText.length; j++) {
-                    if (jsonText[j] === "[") bracketCount++;
-                    else if (jsonText[j] === "]") {
-                      bracketCount--;
-                      if (bracketCount === 0) {
-                        endIdx = j + 1;
-                        break;
-                      }
-                    }
-                  }
-
-                  if (endIdx > startIdx) {
-                    const arrStr = jsonText
-                      .slice(startIdx, endIdx)
-                      .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
-                      .replace(/\\(?!["\\/bfnrtu])/g, "")
-                      .replace(/[\x00-\x1F\x7F]/g, "");
-                    try {
-                      const arr = JSON.parse(arrStr);
-                      if (Array.isArray(arr)) {
-                        parsed = { questions: arr };
-                        console.log(
-                          `Chunk ${i + 1} - Regex extraction succeeded with ${arr.length} questions`,
-                        );
-                      }
-                    } catch (e) {
-                      // Give up on this chunk
-                    }
-                  }
-                }
-                
-                if (!parsed) {
-                  throw secondParseErr;
-                }
-              }
+              parsed = JSON.parse(toolArgs);
+            } catch (e) {
+              console.error(`${chunkLabel} - Tool args JSON parse error:`, e);
             }
           }
-          } catch (parseErr) {
-            console.error(`Chunk ${i + 1} - JSON parse error:`, parseErr);
-            errors.push(`Chunk ${i + 1}: Failed to parse response`);
+
+          // Fallback: parse from message.content
+          if (!parsed && content) {
+            try {
+              let jsonText = content.trim();
+              if (jsonText.startsWith("```")) {
+                jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+              }
+              
+              const objectMatch = jsonText.match(/\{[\s\S]*\}/);
+              if (objectMatch) {
+                let jsonStr = objectMatch[0]
+                  .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
+                  .replace(/\\([^"\\\/bfnrtu])/g, "$1")
+                  .replace(/[\x00-\x1F\x7F]/g, (char: string) => {
+                    if (char === "\n") return "\\n";
+                    if (char === "\r") return "\\r";
+                    if (char === "\t") return "\\t";
+                    return "";
+                  });
+
+                try {
+                  parsed = JSON.parse(jsonStr);
+                } catch {
+                  // Aggressive cleanup
+                  jsonStr = objectMatch[0]
+                    .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
+                    .replace(/\\(?!["\\/bfnrtu])/g, "")
+                    .replace(/[\x00-\x1F\x7F]/g, "");
+                  parsed = JSON.parse(jsonStr);
+                }
+              }
+            } catch (parseErr) {
+              console.error(`${chunkLabel} - JSON parse error:`, parseErr);
+            }
+          }
+
+          if (parsed) {
+            const rawQuestions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
+            if (Array.isArray(rawQuestions) && rawQuestions.length > 0) {
+              const normalized = normalizeQuestions(rawQuestions);
+              console.log(`${chunkLabel} - Extracted ${normalized.length} questions`);
+              return normalized;
+            }
+          }
+          
+          console.log(`${chunkLabel} - No questions extracted from response`);
+          return [];
+          
+        } catch (attemptErr) {
+          if (attempt === maxRetries) {
+            throw attemptErr;
           }
         }
+      }
+      
+      return [];
+    }
 
-        if (parsed) {
-          const rawQuestions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
-          if (Array.isArray(rawQuestions) && rawQuestions.length > 0) {
-            const normalized = normalizeQuestions(rawQuestions);
-            console.log(`Chunk ${i + 1} - Extracted ${normalized.length} questions`);
-            allQuestions.push(...normalized);
+    // Process each chunk with delays and fallback logic
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      
+      // Add delay between chunks (except first one)
+      if (i > 0) {
+        console.log(`Waiting 1.5s before processing chunk ${i + 1}...`);
+        await delay(1500);
+      }
+      
+      try {
+        const extracted = await processChunk(chunk, i, chunks.length);
+        
+        // If chunk is large (>10KB) but returned 0 questions, try re-chunking
+        if (extracted.length === 0 && chunk.length > 10000) {
+          console.log(`Chunk ${i + 1} returned 0 questions for ${chunk.length} chars - attempting re-chunk...`);
+          
+          const subChunks = rechunkFailedContent(chunk);
+          console.log(`Re-chunked into ${subChunks.length} smaller pieces`);
+          
+          for (let j = 0; j < subChunks.length; j++) {
+            await delay(1000); // Shorter delay for sub-chunks
+            try {
+              const subExtracted = await processChunk(subChunks[j], j, subChunks.length, true);
+              if (subExtracted.length > 0) {
+                console.log(`Sub-chunk ${j + 1} extracted ${subExtracted.length} questions`);
+                allQuestions.push(...subExtracted);
+              }
+            } catch (subErr) {
+              console.error(`Sub-chunk ${j + 1} failed:`, subErr);
+              errors.push(`Sub-chunk ${i + 1}.${j + 1}: ${subErr instanceof Error ? subErr.message : "Unknown error"}`);
+            }
           }
+        } else {
+          allQuestions.push(...extracted);
         }
         
         chunksProcessed++;
-        break; // Success - exit retry loop
         
-        } catch (attemptErr) {
-          lastError = attemptErr instanceof Error ? attemptErr : new Error(String(attemptErr));
-          if (attempt < maxRetries) {
-            console.log(`Chunk ${i + 1} - Attempt ${attempt + 1} failed, will retry...`);
-            continue;
-          }
-        }
-      } // End retry loop
-      
-      if (lastError && chunksProcessed === 0) {
-        console.error(`Chunk ${i + 1} processing error after retries:`, lastError);
-        errors.push(`Chunk ${i + 1}: ${lastError.message}`);
+      } catch (chunkErr) {
+        console.error(`Chunk ${i + 1} processing error:`, chunkErr);
+        errors.push(`Chunk ${i + 1}: ${chunkErr instanceof Error ? chunkErr.message : "Unknown error"}`);
       }
     }
 
