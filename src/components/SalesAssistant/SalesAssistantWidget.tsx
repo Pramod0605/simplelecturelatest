@@ -51,6 +51,18 @@ export const SalesAssistantWidget = () => {
     }
   }, [detectedLanguage]);
 
+  // Lock body scroll when widget is open to prevent background scrolling
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   const handleLanguageChange = (language: string, gender: "female" | "male") => {
     console.log("Language changed to:", language, "Gender:", gender);
     setCurrentLanguage(language);
@@ -129,9 +141,9 @@ export const SalesAssistantWidget = () => {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {!leadId ? (
-              <div className="h-full flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <div className="p-4 space-y-3">
                   <Button
                     onClick={handleQuickChat}
