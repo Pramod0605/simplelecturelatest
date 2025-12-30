@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
 import { 
   MessageSquare, 
@@ -25,7 +26,8 @@ import {
   AlertCircle,
   User,
   Bot,
-  RefreshCw
+  RefreshCw,
+  ArrowLeft
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -46,6 +48,13 @@ const SupportDashboard = () => {
   const [faqDialogOpen, setFaqDialogOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
   const [faqForm, setFaqForm] = useState({ category: '', question: '', answer: '', display_order: 0 });
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+
+  // Handle ticket selection
+  const handleTicketClick = (ticket: any) => {
+    setSelectedTicket(ticket);
+    setDetailSheetOpen(true);
+  };
 
   // Fetch tickets
   const { data: tickets, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery({
@@ -221,120 +230,136 @@ const SupportDashboard = () => {
         </TabsList>
 
         <TabsContent value="tickets" className="mt-4">
-          <div className="grid lg:grid-cols-2 gap-4">
-            {/* Tickets List */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg">All Tickets</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => refetchTickets()}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-2">
-                    {tickets?.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        onClick={() => setSelectedTicket(ticket)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedTicket?.id === ticket.id ? 'bg-accent border-primary' : 'hover:bg-accent/50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="font-medium truncate flex-1">{ticket.subject}</p>
-                          {getStatusBadge(ticket.status)}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="h-3 w-3" />
-                          <span className="capitalize">{ticket.category}</span>
-                          <span>•</span>
-                          <Clock className="h-3 w-3" />
-                          <span>{format(new Date(ticket.created_at), "MMM d, h:mm a")}</span>
-                        </div>
+          {/* Tickets List - Full Width */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg">All Tickets</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => refetchTickets()}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                <div className="space-y-2">
+                  {tickets?.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      onClick={() => handleTicketClick(ticket)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedTicket?.id === ticket.id ? 'bg-accent border-primary' : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <p className="font-medium truncate flex-1">{ticket.subject}</p>
+                        {getStatusBadge(ticket.status)}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Ticket Detail */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {selectedTicket ? selectedTicket.subject : "Select a ticket"}
-                </CardTitle>
-                {selectedTicket && (
-                  <CardDescription className="flex items-center gap-2">
-                    <Badge variant="outline" className="capitalize">{selectedTicket.category}</Badge>
-                    {getStatusBadge(selectedTicket.status)}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                {selectedTicket ? (
-                  <div className="space-y-4">
-                    <ScrollArea className="h-[300px] pr-4">
-                      <div className="space-y-3">
-                        {ticketMessages?.map((msg) => (
-                          <div key={msg.id} className={`flex gap-2 ${msg.sender_type === 'user' ? '' : 'flex-row-reverse'}`}>
-                            <div className={`p-3 rounded-lg max-w-[80%] ${
-                              msg.sender_type === 'user' ? 'bg-muted' :
-                              msg.sender_type === 'ai' ? 'bg-secondary' : 'bg-primary text-primary-foreground'
-                            }`}>
-                              <div className="flex items-center gap-1 text-xs mb-1 opacity-70">
-                                {msg.sender_type === 'user' ? <User className="h-3 w-3" /> : 
-                                 msg.sender_type === 'ai' ? <Bot className="h-3 w-3" /> : 
-                                 <CheckCircle className="h-3 w-3" />}
-                                <span className="capitalize">{msg.sender_type}</span>
-                              </div>
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label>Admin Reply</Label>
-                      <Textarea
-                        value={adminReply}
-                        onChange={(e) => setAdminReply(e.target.value)}
-                        placeholder="Type your response..."
-                        rows={3}
-                      />
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={() => sendReplyMutation.mutate()}
-                          disabled={!adminReply.trim() || sendReplyMutation.isPending}
-                          className="gap-2"
-                        >
-                          <Send className="h-4 w-4" />
-                          Send Reply
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          onClick={() => closeTicketMutation.mutate(selectedTicket.id)}
-                          className="gap-2"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Close Ticket
-                        </Button>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        <span className="capitalize">{ticket.category}</span>
+                        <span>•</span>
+                        <Clock className="h-3 w-3" />
+                        <span>{format(new Date(ticket.created_at), "MMM d, h:mm a")}</span>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Select a ticket to view details</p>
+                  ))}
+                  {(!tickets || tickets.length === 0) && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No support tickets yet</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Ticket Detail Sheet */}
+          <Sheet open={detailSheetOpen} onOpenChange={setDetailSheetOpen}>
+            <SheetContent side="right" className="w-full sm:max-w-lg">
+              <SheetHeader className="mb-4">
+                <SheetTitle className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0 lg:hidden"
+                    onClick={() => setDetailSheetOpen(false)}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="truncate">{selectedTicket?.subject || "Ticket Details"}</span>
+                </SheetTitle>
+                {selectedTicket && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="capitalize">{selectedTicket.category}</Badge>
+                    {getStatusBadge(selectedTicket.status)}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </SheetHeader>
+
+              {selectedTicket && (
+                <div className="space-y-4 h-[calc(100vh-180px)] flex flex-col">
+                  <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-3">
+                      {ticketMessages?.map((msg) => (
+                        <div key={msg.id} className={`flex gap-2 ${msg.sender_type === 'user' ? '' : 'flex-row-reverse'}`}>
+                          <div className={`p-3 rounded-lg max-w-[85%] ${
+                            msg.sender_type === 'user' ? 'bg-muted' :
+                            msg.sender_type === 'ai' ? 'bg-secondary' : 'bg-primary text-primary-foreground'
+                          }`}>
+                            <div className="flex items-center gap-1 text-xs mb-1 opacity-70">
+                              {msg.sender_type === 'user' ? <User className="h-3 w-3" /> : 
+                               msg.sender_type === 'ai' ? <Bot className="h-3 w-3" /> : 
+                               <CheckCircle className="h-3 w-3" />}
+                              <span className="capitalize">{msg.sender_type}</span>
+                              <span className="text-xs opacity-50 ml-2">
+                                {format(new Date(msg.created_at), "MMM d, h:mm a")}
+                              </span>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <Label>Admin Reply</Label>
+                    <Textarea
+                      value={adminReply}
+                      onChange={(e) => setAdminReply(e.target.value)}
+                      placeholder="Type your response..."
+                      rows={3}
+                    />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button 
+                        onClick={() => {
+                          sendReplyMutation.mutate();
+                        }}
+                        disabled={!adminReply.trim() || sendReplyMutation.isPending}
+                        className="gap-2"
+                      >
+                        <Send className="h-4 w-4" />
+                        Send Reply
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          closeTicketMutation.mutate(selectedTicket.id);
+                          setDetailSheetOpen(false);
+                        }}
+                        className="gap-2"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Close Ticket
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
         </TabsContent>
 
         <TabsContent value="faqs" className="mt-4">
