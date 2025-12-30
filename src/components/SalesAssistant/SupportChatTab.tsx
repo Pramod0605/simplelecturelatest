@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, MessageCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { SupportFeedbackButtons } from "@/components/support/SupportFeedbackButtons";
+import ReactMarkdown from "react-markdown";
 
 interface SupportTicket {
   id: string;
@@ -32,6 +34,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [aiResponding, setAiResponding] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // Fetch user's tickets
   useEffect(() => {
@@ -70,6 +74,14 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
       if (error) throw error;
       setMessages(data || []);
 
+      // Check if last message is from AI to show feedback
+      if (data && data.length > 0) {
+        const lastMsg = data[data.length - 1];
+        if (lastMsg.sender_type === "assistant") {
+          setShowFeedback(true);
+        }
+      }
+
       // Mark ticket as read if it was admin_responded
       const ticket = tickets.find(t => t.id === ticketId);
       if (ticket?.status === "admin_responded") {
@@ -86,6 +98,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
 
   const handleTicketClick = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
+    setShowFeedback(false);
     fetchMessages(ticket.id);
   };
 
@@ -93,32 +106,193 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
     if (!newMessage.trim() || !selectedTicket) return;
 
     setSending(true);
+    setShowFeedback(false);
+    const userContent = newMessage.trim();
+
+    // Add user message to local state immediately
+    const userMsg: SupportMessage = {
+      id: `temp-user-${Date.now()}`,
+      sender_type: "user",
+      content: userContent,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setNewMessage("");
+
     try {
-      const { error } = await supabase.from("support_messages").insert({
+      // Save user message to database
+      await supabase.from("support_messages").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
-        content: newMessage.trim(),
+        content: userContent,
       });
 
-      if (error) throw error;
-
-      // Update ticket status
+      // Update ticket status to open
       await supabase
         .from("support_tickets")
         .update({ status: "open", updated_at: new Date().toISOString() })
         .eq("id", selectedTicket.id);
 
-      setNewMessage("");
-      fetchMessages(selectedTicket.id);
-      toast.success("Message sent!");
+      // Call AI assistant with streaming
+      setAiResponding(true);
+      let assistantContent = "";
+      const assistantId = `temp-ai-${Date.now()}`;
+
+      const resp = await fetch(
+        `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/ai-support-assistant`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94d2hxdnNvZWxxcXNibG1xa3h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MTU4NTgsImV4cCI6MjA3NTA5MTg1OH0.nZbWSb7AQK5uGAQmc7zXAceTHm9GRQJvqkg4-LNo_DM`,
+          },
+          body: JSON.stringify({
+            messages: [...messages, userMsg].map(m => ({
+              role: m.sender_type === "user" ? "user" : "assistant",
+              content: m.content
+            })),
+            ticketId: selectedTicket.id,
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          toast.error("Rate limit exceeded. Please try again later.");
+          throw new Error("Rate limited");
+        }
+        if (resp.status === 402) {
+          toast.error("Service temporarily unavailable.");
+          throw new Error("Payment required");
+        }
+        throw new Error("AI request failed");
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      // Stream and parse SSE response
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              // Update messages with streaming content
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.id === assistantId) {
+                  return prev.map((m, i) =>
+                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
+                  );
+                }
+                return [...prev, {
+                  id: assistantId,
+                  sender_type: "assistant",
+                  content: assistantContent,
+                  created_at: new Date().toISOString(),
+                }];
+              });
+            }
+          } catch {
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+
+      // Save AI response to database
+      if (assistantContent) {
+        await supabase.from("support_messages").insert({
+          ticket_id: selectedTicket.id,
+          sender_type: "assistant",
+          content: assistantContent,
+        });
+
+        await supabase
+          .from("support_tickets")
+          .update({ status: "ai_responded", updated_at: new Date().toISOString() })
+          .eq("id", selectedTicket.id);
+      }
+
+      setShowFeedback(true);
     } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      console.error("AI error:", error);
+      if (!(error instanceof Error && (error.message === "Rate limited" || error.message === "Payment required"))) {
+        toast.error("Failed to get AI response");
+      }
     } finally {
+      setAiResponding(false);
       setSending(false);
     }
   };
 
+  const handleResolve = async () => {
+    if (!selectedTicket) return;
+
+    const { error } = await supabase
+      .from("support_tickets")
+      .update({
+        status: "closed_resolved",
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", selectedTicket.id);
+
+    if (error) {
+      toast.error("Failed to resolve ticket");
+      return;
+    }
+
+    toast.success("Ticket resolved! Thank you for your feedback.");
+    setShowFeedback(false);
+    setSelectedTicket({ ...selectedTicket, status: "closed_resolved" });
+    fetchTickets();
+  };
+
+  const handleEscalate = async () => {
+    if (!selectedTicket) return;
+
+    const { error } = await supabase
+      .from("support_tickets")
+      .update({
+        status: "escalated_to_admin",
+        escalated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", selectedTicket.id);
+
+    if (error) {
+      toast.error("Failed to escalate ticket");
+      return;
+    }
+
+    toast.success("Ticket escalated to our support team. They will respond shortly.");
+    setShowFeedback(false);
+    setSelectedTicket({ ...selectedTicket, status: "escalated_to_admin" });
+    fetchTickets();
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -128,6 +302,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
         return <Badge variant="secondary" className="text-xs">Escalated</Badge>;
       case "closed_resolved":
         return <Badge variant="outline" className="text-xs">Closed</Badge>;
+      case "ai_responded":
+        return <Badge className="text-xs bg-blue-500">AI Responded</Badge>;
       default:
         return <Badge variant="default" className="text-xs">Open</Badge>;
     }
@@ -138,7 +314,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
       case "admin":
         return <span className="text-xs font-medium text-primary">Admin</span>;
       case "assistant":
-        return <span className="text-xs font-medium text-muted-foreground">AI</span>;
+        return <span className="text-xs font-medium text-blue-500">AI Assistant</span>;
       default:
         return <span className="text-xs font-medium text-foreground">You</span>;
     }
@@ -181,14 +357,37 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                {msg.sender_type === "assistant" ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
               </div>
             ))}
-            {messages.length === 0 && (
+
+            {aiResponding && (
+              <div className="p-2 rounded-lg text-sm bg-muted mr-4">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-xs text-muted-foreground">AI is thinking...</span>
+                </div>
+              </div>
+            )}
+
+            {messages.length === 0 && !aiResponding && (
               <p className="text-center text-muted-foreground text-sm py-4">No messages yet</p>
             )}
           </div>
         </div>
+
+        {/* Feedback buttons */}
+        {showFeedback && !aiResponding && selectedTicket.status !== "closed_resolved" && selectedTicket.status !== "escalated_to_admin" && (
+          <div className="flex-shrink-0 mb-2">
+            <SupportFeedbackButtons onResolve={handleResolve} onEscalate={handleEscalate} />
+          </div>
+        )}
 
         <div className="flex gap-2 flex-shrink-0">
           <Textarea
@@ -196,10 +395,11 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
             className="min-h-[44px] text-sm resize-none"
+            disabled={aiResponding}
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!newMessage.trim() || sending}
+            disabled={!newMessage.trim() || sending || aiResponding}
             size="icon"
           >
             <Send className="h-4 w-4" />
@@ -249,7 +449,6 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
       )}
-
     </div>
   );
 };
