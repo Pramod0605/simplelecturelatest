@@ -240,23 +240,21 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
 
-        {selectedTicket.status !== "closed_resolved" && (
-          <div className="flex gap-2 flex-shrink-0">
-            <Textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="min-h-[44px] text-sm resize-none"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim() || sending}
-              size="icon"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-2 flex-shrink-0">
+          <Textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="min-h-[44px] text-sm resize-none"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() || sending}
+            size="icon"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     );
   }
