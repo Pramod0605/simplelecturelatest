@@ -51,15 +51,40 @@ export const SalesAssistantWidget = () => {
     }
   }, [detectedLanguage]);
 
-  // Lock body scroll when widget is open to prevent background scrolling
+  // Lock background scroll when widget is open (robust on mobile)
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
+    const html = document.documentElement;
+
+    if (!isOpen) {
+      html.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      return;
     }
+
+    const scrollY = window.scrollY;
+
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+
     return () => {
+      html.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
     };
   }, [isOpen]);
 
@@ -123,7 +148,7 @@ export const SalesAssistantWidget = () => {
 
       {/* Chat Widget */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden">
+        <Card className="fixed bottom-24 right-6 w-[min(24rem,calc(100vw-3rem))] h-[min(600px,calc(100dvh-8rem))] shadow-2xl z-50 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
             <div>
@@ -155,8 +180,8 @@ export const SalesAssistantWidget = () => {
                   </Button>
                   <div className="text-center text-sm text-muted-foreground">or</div>
                 </div>
-                <Tabs defaultValue="form" className="flex-1 flex flex-col">
-                  <TabsList className="w-full">
+                <Tabs defaultValue="form" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <TabsList className="w-full flex-shrink-0">
                     <TabsTrigger value="form" className="flex-1">Enter Details</TabsTrigger>
                     <TabsTrigger value="test" className="flex-1">
                       <TestTube className="h-3 w-3 mr-1" />
@@ -172,10 +197,10 @@ export const SalesAssistantWidget = () => {
                       )}
                     </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="form" className="flex-1 overflow-auto">
+                  <TabsContent value="form" className="flex-1 min-h-0 overflow-auto mt-0">
                     <LeadCaptureForm onSubmit={handleLeadSubmit} />
                   </TabsContent>
-                  <TabsContent value="test" className="flex-1 overflow-auto">
+                  <TabsContent value="test" className="flex-1 min-h-0 overflow-auto mt-0">
                     <VoiceTestPanel />
                   </TabsContent>
                   <TabsContent value="chat" className="flex-1 min-h-0 overflow-hidden flex flex-col mt-0">
