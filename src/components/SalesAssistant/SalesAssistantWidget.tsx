@@ -148,7 +148,14 @@ export const SalesAssistantWidget = () => {
 
       {/* Chat Widget */}
       {isOpen && (
-        <Card className="fixed bottom-4 right-4 sm:bottom-24 sm:right-6 w-[min(24rem,calc(100vw-2rem))] h-[calc(100dvh-2rem)] sm:h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden">
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          {/* Dialog */}
+          <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(24rem,calc(100vw-2rem))] h-[min(600px,calc(100dvh-4rem))] shadow-2xl z-50 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
             <div>
@@ -249,7 +256,8 @@ export const SalesAssistantWidget = () => {
               </>
             )}
           </div>
-        </Card>
+          </Card>
+        </>
       )}
 
       {/* Voice Conversation Mode */}
