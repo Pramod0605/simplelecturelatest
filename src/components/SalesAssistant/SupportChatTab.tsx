@@ -379,7 +379,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
             {/* Feedback buttons - inside chat area */}
             {showFeedback && !aiResponding && selectedTicket.status !== "closed_resolved" && selectedTicket.status !== "escalated_to_admin" && (
               <div className="mr-4 mt-2">
-                <SupportFeedbackButtons onResolve={handleResolve} onEscalate={handleEscalate} />
+                <SupportFeedbackButtons onResolve={handleResolve} onEscalate={handleEscalate} compact />
               </div>
             )}
 
