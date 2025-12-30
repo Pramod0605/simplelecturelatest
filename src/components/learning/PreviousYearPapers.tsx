@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [questionFilter, setQuestionFilter] = useState<"all" | "important">("all");
 
   const { data: papers, isLoading: papersLoading } = usePreviousYearPapersForSubject(subjectId, topicId);
   const { data: paperQuestions, isLoading: questionsLoading } = usePreviousYearPaperQuestions(
@@ -393,19 +395,31 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
 
   // Render Test Interface
   if (testState === "testing") {
-    const currentQuestion = testQuestions[currentQuestionIndex];
-    const progress = ((currentQuestionIndex + 1) / testQuestions.length) * 100;
+    const importantQuestionsCount = testQuestions.filter(q => q.is_important).length;
+    const displayedQuestions = questionFilter === "important" 
+      ? testQuestions.filter(q => q.is_important)
+      : testQuestions;
+    const currentQuestion = displayedQuestions[currentQuestionIndex];
+    const progress = displayedQuestions.length > 0 
+      ? ((currentQuestionIndex + 1) / displayedQuestions.length) * 100 
+      : 0;
+
+    // Guard for invalid index when switching tabs
+    if (!currentQuestion && displayedQuestions.length > 0) {
+      setCurrentQuestionIndex(0);
+      return null;
+    }
 
     return (
       <div className="space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="sm" onClick={() => setTestState("results")}>
               Submit Test
             </Button>
             <span className="text-sm text-muted-foreground">
-              Question {currentQuestionIndex + 1} of {testQuestions.length}
+              Question {currentQuestionIndex + 1} of {displayedQuestions.length}
             </span>
           </div>
           {timeRemaining !== null && (
@@ -418,6 +432,22 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
             </div>
           )}
         </div>
+
+        {/* Question Filter Tabs */}
+        <Tabs value={questionFilter} onValueChange={(v) => {
+          setQuestionFilter(v as "all" | "important");
+          setCurrentQuestionIndex(0);
+        }}>
+          <TabsList>
+            <TabsTrigger value="all">
+              All Questions ({testQuestions.length})
+            </TabsTrigger>
+            <TabsTrigger value="important" disabled={importantQuestionsCount === 0}>
+              <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-1" />
+              Important ({importantQuestionsCount})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <Progress value={progress} className="h-2" />
 
@@ -502,7 +532,7 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
                 </Button>
-                {currentQuestionIndex === testQuestions.length - 1 ? (
+                {currentQuestionIndex === displayedQuestions.length - 1 ? (
                   <Button onClick={handleSubmit}>Submit Test</Button>
                 ) : (
                   <Button onClick={() => setCurrentQuestionIndex((i) => i + 1)}>
@@ -521,7 +551,7 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {testQuestions.map((q, idx) => (
+                {displayedQuestions.map((q, idx) => (
                   <Button
                     key={q.id}
                     variant="outline"
@@ -562,6 +592,25 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
             </CardContent>
           </Card>
         </div>
+
+        {/* Empty state for Important tab */}
+        {questionFilter === "important" && displayedQuestions.length === 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8 text-muted-foreground">
+                <Star className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p>No important questions marked in this paper.</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setQuestionFilter("all")}
+                  className="mt-2"
+                >
+                  View all questions
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
