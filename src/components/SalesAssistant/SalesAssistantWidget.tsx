@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageCircle, X, TestTube, Phone } from "lucide-react";
+import { MessageCircle, X, TestTube, Phone, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,7 @@ import { LeadCaptureForm } from "./LeadCaptureForm";
 import { ChatInterface } from "./ChatInterface";
 import { ConversationMode } from "./ConversationMode";
 import { VoiceTestPanel } from "./VoiceTestPanel";
+import { SupportChatTab } from "./SupportChatTab";
 import { useSalesAssistant } from "@/hooks/useSalesAssistant";
 import { useWebSpeech } from "@/hooks/useWebSpeech";
 
@@ -15,6 +16,7 @@ export const SalesAssistantWidget = () => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState<string>("en-IN");
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0);
   const [currentGender, setCurrentGender] = useState<"female" | "male">("male");
   
   const { 
@@ -141,19 +143,31 @@ export const SalesAssistantWidget = () => {
                   </Button>
                   <div className="text-center text-sm text-muted-foreground">or</div>
                 </div>
-                <Tabs defaultValue="form" className="flex-1">
+                <Tabs defaultValue="form" className="flex-1 flex flex-col">
                   <TabsList className="w-full">
                     <TabsTrigger value="form" className="flex-1">Enter Details</TabsTrigger>
                     <TabsTrigger value="test" className="flex-1">
                       <TestTube className="h-3 w-3 mr-1" />
                       Test Voice
                     </TabsTrigger>
+                    <TabsTrigger value="chat" className="flex-1 relative">
+                      <MessagesSquare className="h-3 w-3 mr-1" />
+                      Chat
+                      {unreadSupportCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-medium rounded-full flex items-center justify-center">
+                          {unreadSupportCount > 9 ? "9+" : unreadSupportCount}
+                        </span>
+                      )}
+                    </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="form" className="h-full">
+                  <TabsContent value="form" className="flex-1 overflow-auto">
                     <LeadCaptureForm onSubmit={handleLeadSubmit} />
                   </TabsContent>
-                  <TabsContent value="test" className="h-full overflow-auto">
+                  <TabsContent value="test" className="flex-1 overflow-auto">
                     <VoiceTestPanel />
+                  </TabsContent>
+                  <TabsContent value="chat" className="flex-1 overflow-hidden">
+                    <SupportChatTab onUnreadCountChange={setUnreadSupportCount} />
                   </TabsContent>
                 </Tabs>
               </div>
