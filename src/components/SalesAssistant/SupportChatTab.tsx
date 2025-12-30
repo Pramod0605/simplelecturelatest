@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -147,8 +146,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
   // Conversation view
   if (selectedTicket) {
     return (
-      <div className="flex flex-col h-full p-3 min-h-0 overflow-hidden">
-        <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-col flex-1 min-h-0 p-3 overflow-hidden">
+        <div className="flex items-center gap-2 mb-3 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -162,7 +161,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 border rounded-md mb-3 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md mb-3 overscroll-contain">
           <div className="p-2 space-y-3">
             {messages.map((msg) => (
               <div
@@ -188,10 +187,10 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
               <p className="text-center text-muted-foreground text-sm py-4">No messages yet</p>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {selectedTicket.status !== "closed_resolved" && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <Textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
@@ -213,8 +212,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
 
   // Ticket list view
   return (
-    <div className="p-3 h-full flex flex-col min-h-0 overflow-hidden">
-      <h4 className="text-sm font-medium mb-3">Your Support Tickets</h4>
+    <div className="p-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+      <h4 className="text-sm font-medium mb-3 flex-shrink-0">Your Support Tickets</h4>
       
       {loading ? (
         <div className="flex items-center justify-center h-32">
@@ -226,7 +225,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           <p className="text-sm">No support tickets yet</p>
         </div>
       ) : (
-        <ScrollArea className="flex-1 min-h-0 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="space-y-2">
             {tickets.map((ticket) => (
               <div
@@ -249,7 +248,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       )}
     </div>
   );
