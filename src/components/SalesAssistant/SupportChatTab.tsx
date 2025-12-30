@@ -376,18 +376,18 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
               </div>
             )}
 
+            {/* Feedback buttons - inside chat area */}
+            {showFeedback && !aiResponding && selectedTicket.status !== "closed_resolved" && selectedTicket.status !== "escalated_to_admin" && (
+              <div className="mr-4 mt-2">
+                <SupportFeedbackButtons onResolve={handleResolve} onEscalate={handleEscalate} />
+              </div>
+            )}
+
             {messages.length === 0 && !aiResponding && (
               <p className="text-center text-muted-foreground text-sm py-4">No messages yet</p>
             )}
           </div>
         </div>
-
-        {/* Feedback buttons */}
-        {showFeedback && !aiResponding && selectedTicket.status !== "closed_resolved" && selectedTicket.status !== "escalated_to_admin" && (
-          <div className="flex-shrink-0 mb-2">
-            <SupportFeedbackButtons onResolve={handleResolve} onEscalate={handleEscalate} />
-          </div>
-        )}
 
         <div className="flex gap-2 flex-shrink-0">
           <Textarea
