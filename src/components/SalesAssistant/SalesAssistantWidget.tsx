@@ -166,7 +166,7 @@ export const SalesAssistantWidget = () => {
                   <TabsContent value="test" className="flex-1 overflow-auto">
                     <VoiceTestPanel />
                   </TabsContent>
-                  <TabsContent value="chat" className="flex-1 overflow-hidden">
+                  <TabsContent value="chat" className="flex-1 min-h-0 overflow-hidden flex flex-col mt-0">
                     <SupportChatTab onUnreadCountChange={setUnreadSupportCount} />
                   </TabsContent>
                 </Tabs>
