@@ -148,7 +148,7 @@ export const SalesAssistantWidget = () => {
 
       {/* Chat Widget */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-[min(24rem,calc(100vw-3rem))] h-[min(600px,calc(100dvh-8rem))] shadow-2xl z-50 flex flex-col overflow-hidden">
+        <Card className="fixed bottom-4 right-4 sm:bottom-24 sm:right-6 w-[min(24rem,calc(100vw-2rem))] h-[calc(100dvh-2rem)] sm:h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
             <div>
