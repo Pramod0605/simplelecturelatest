@@ -35,6 +35,7 @@ import {
   usePreviousYearPaperQuestions,
   PaperQuestion,
 } from "@/hooks/usePreviousYearPaperQuestions";
+import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 
 interface PreviousYearPapersProps {
   subjectId: string | null;
@@ -437,7 +438,9 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                       </Badge>
                     )}
                   </div>
-                  <p className="text-lg whitespace-pre-wrap">{currentQuestion.question_text}</p>
+                  <div className="text-lg">
+                    <MathpixRenderer mmdText={currentQuestion.question_text} inline />
+                  </div>
                 </div>
                 <Button
                   variant={flaggedQuestions.has(currentQuestion.id) ? "default" : "ghost"}
@@ -480,9 +483,9 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                       )}
                     >
                       <RadioGroupItem value={key} id={`opt-${key}`} />
-                      <Label htmlFor={`opt-${key}`} className="flex-1 cursor-pointer">
+                      <Label htmlFor={`opt-${key}`} className="flex-1 cursor-pointer flex items-start">
                         <span className="font-medium mr-2">{key}.</span>
-                        {getOptionText(currentQuestion, key)}
+                        <MathpixRenderer mmdText={getOptionText(currentQuestion, key)} inline className="inline" />
                       </Label>
                     </div>
                   ))}
@@ -642,7 +645,9 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                       </Badge>
                     )}
                   </div>
-                  <p className="whitespace-pre-wrap">{q.question_text}</p>
+                  <div>
+                    <MathpixRenderer mmdText={q.question_text} inline />
+                  </div>
                   
                   {isInteger ? (
                     // Integer question review
@@ -674,7 +679,7 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                             key.toUpperCase() !== correctAnswer?.toUpperCase() && "bg-red-100 text-red-800"
                           )}
                         >
-                          <span className="font-medium">{key}.</span> {getOptionText(q, key)}
+                          <span className="font-medium">{key}.</span> <MathpixRenderer mmdText={getOptionText(q, key)} inline className="inline" />
                         </div>
                       ))}
                     </div>
@@ -685,7 +690,8 @@ export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersPro
                   )}
                   {q.explanation && (
                     <div className="bg-muted p-3 rounded-md text-sm">
-                      <span className="font-medium">Explanation:</span> {q.explanation}
+                      <span className="font-medium">Explanation:</span>
+                      <MathpixRenderer mmdText={q.explanation} inline className="inline ml-1" />
                     </div>
                   )}
                 </CardContent>

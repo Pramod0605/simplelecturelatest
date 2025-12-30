@@ -9,6 +9,7 @@ import { Clock, Flag, CheckCircle, XCircle, Trophy, Loader2, Star } from "lucide
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMCQQuestions, useMCQQuestionCounts, type MCQQuestion, type DifficultyLevel } from "@/hooks/useMCQQuestions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 
 interface MCQTestProps {
   topicId: string;
@@ -232,7 +233,9 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
+                  <div className="text-lg font-semibold">
+                    <MathpixRenderer mmdText={currentQuestion.question_text} inline />
+                  </div>
                   {currentQuestion.is_important && (
                     <Badge className="bg-yellow-100 text-yellow-800 border-yellow-500">
                       <Star className="h-3 w-3 mr-1 fill-yellow-500" />
@@ -265,9 +268,9 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
                   className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer"
                 >
                   <RadioGroupItem value={option.key} id={`option-${option.key}`} />
-                  <Label htmlFor={`option-${option.key}`} className="flex-1 cursor-pointer">
+                <Label htmlFor={`option-${option.key}`} className="flex-1 cursor-pointer flex items-start">
                     <span className="font-medium mr-2">{option.key}.</span>
-                    {option.text}
+                    <MathpixRenderer mmdText={option.text} inline className="inline" />
                   </Label>
                 </div>
               ))}
@@ -376,28 +379,36 @@ export const MCQTest = ({ topicId }: MCQTestProps) => {
                     )}
                     <div className="flex-1">
                       <CardTitle className="text-base">Question {idx + 1}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{question.question_text}</p>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <MathpixRenderer mmdText={question.question_text} inline />
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div>
+                  <div className="flex flex-wrap items-start gap-1">
                     <span className="font-semibold">Your Answer: </span>
                     <span className={isCorrect ? "text-green-600" : "text-red-600"}>
-                      {userAnswer ? `${userAnswer}. ${getOptionText(question, userAnswer)}` : "Not answered"}
+                      {userAnswer ? (
+                        <span className="flex items-start gap-1">
+                          {userAnswer}. <MathpixRenderer mmdText={getOptionText(question, userAnswer)} inline className="inline" />
+                        </span>
+                      ) : "Not answered"}
                     </span>
                   </div>
                   {!isCorrect && (
-                    <div>
+                    <div className="flex flex-wrap items-start gap-1">
                       <span className="font-semibold">Correct Answer: </span>
-                      <span className="text-green-600">
-                        {question.correct_answer}. {getOptionText(question, question.correct_answer)}
+                      <span className="text-green-600 flex items-start gap-1">
+                        {question.correct_answer}. <MathpixRenderer mmdText={getOptionText(question, question.correct_answer)} inline className="inline" />
                       </span>
                     </div>
                   )}
                   <div className="pt-2 border-t">
                     <span className="font-semibold">Explanation: </span>
-                    <p className="text-sm text-muted-foreground mt-1">{question.explanation}</p>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <MathpixRenderer mmdText={question.explanation || ""} inline />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
