@@ -209,7 +209,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
                 }
                 return [...prev, {
                   id: assistantId,
-                  sender_type: "assistant",
+                  sender_type: "ai",
                   content: assistantContent,
                   created_at: new Date().toISOString(),
                 }];
@@ -226,7 +226,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
       if (assistantContent) {
         await supabase.from("support_messages").insert({
           ticket_id: selectedTicket.id,
-          sender_type: "assistant",
+          sender_type: "ai",
           content: assistantContent,
         });
 
