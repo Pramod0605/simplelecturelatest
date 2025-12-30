@@ -161,7 +161,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md mb-3 overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md mb-3 overscroll-contain touch-pan-y">
           <div className="p-2 space-y-3">
             {messages.map((msg) => (
               <div
@@ -225,7 +225,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           <p className="text-sm">No support tickets yet</p>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
           <div className="space-y-2">
             {tickets.map((ticket) => (
               <div
