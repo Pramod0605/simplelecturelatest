@@ -147,7 +147,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
   // Conversation view
   if (selectedTicket) {
     return (
-      <div className="flex flex-col h-full p-3">
+      <div className="flex flex-col h-full p-3 overflow-hidden">
         <div className="flex items-center gap-2 mb-3">
           <Button
             variant="ghost"
@@ -213,7 +213,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
 
   // Ticket list view
   return (
-    <div className="p-3 h-full">
+    <div className="p-3 h-full flex flex-col overflow-hidden">
       <h4 className="text-sm font-medium mb-3">Your Support Tickets</h4>
       
       {loading ? (
@@ -226,7 +226,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           <p className="text-sm">No support tickets yet</p>
         </div>
       ) : (
-        <ScrollArea className="h-[280px]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-2">
             {tickets.map((ticket) => (
               <div
