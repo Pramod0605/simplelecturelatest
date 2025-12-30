@@ -30,8 +30,10 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [newTicketMessage, setNewTicketMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [creatingTicket, setCreatingTicket] = useState(false);
 
   // Fetch user's tickets
   useEffect(() => {
@@ -116,6 +118,55 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
       toast.error("Failed to send message");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleCreateNewTicket = async () => {
+    if (!newTicketMessage.trim()) return;
+
+    setCreatingTicket(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to create a support ticket");
+        return;
+      }
+
+      // Create new ticket
+      const { data: newTicket, error: ticketError } = await supabase
+        .from("support_tickets")
+        .insert({
+          user_id: user.id,
+          subject: "Support Request",
+          category: "General",
+          status: "open",
+        })
+        .select()
+        .single();
+
+      if (ticketError) throw ticketError;
+
+      // Add the message
+      const { error: msgError } = await supabase.from("support_messages").insert({
+        ticket_id: newTicket.id,
+        sender_type: "user",
+        content: newTicketMessage.trim(),
+      });
+
+      if (msgError) throw msgError;
+
+      setNewTicketMessage("");
+      await fetchTickets();
+      
+      // Open the new ticket conversation
+      setSelectedTicket(newTicket);
+      fetchMessages(newTicket.id);
+      toast.success("Support request sent!");
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      toast.error("Failed to create support request");
+    } finally {
+      setCreatingTicket(false);
     }
   };
 
@@ -250,6 +301,23 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
       )}
+
+      {/* Quick Message Input */}
+      <div className="flex gap-2 flex-shrink-0 mt-2 pt-2 border-t">
+        <Textarea
+          value={newTicketMessage}
+          onChange={(e) => setNewTicketMessage(e.target.value)}
+          placeholder="Start a new support request..."
+          className="min-h-[44px] text-sm resize-none"
+        />
+        <Button
+          onClick={handleCreateNewTicket}
+          disabled={!newTicketMessage.trim() || creatingTicket}
+          size="icon"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };

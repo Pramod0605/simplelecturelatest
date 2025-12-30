@@ -196,7 +196,7 @@ export const SalesAssistantWidget = () => {
                     </TabsTrigger>
                     <TabsTrigger value="chat" className="flex-1 relative">
                       <MessagesSquare className="h-3 w-3 mr-1" />
-                      Chat
+                      Service Chat
                       {unreadSupportCount > 0 && (
                         <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-medium rounded-full flex items-center justify-center">
                           {unreadSupportCount > 9 ? "9+" : unreadSupportCount}
