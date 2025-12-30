@@ -37,6 +37,9 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { Headphones } from "lucide-react";
 
 export const AdminSidebar = () => {
   const navigate = useNavigate();
@@ -44,6 +47,20 @@ export const AdminSidebar = () => {
   const [openPrograms, setOpenPrograms] = useState(false);
   const [openUsers, setOpenUsers] = useState(false);
   const [openHR, setOpenHR] = useState(false);
+
+  // Fetch escalated ticket count for badge
+  const { data: escalatedCount = 0 } = useQuery({
+    queryKey: ['escalated-ticket-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('support_tickets')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'escalated_to_admin');
+      if (error) return 0;
+      return count || 0;
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -465,6 +482,27 @@ export const AdminSidebar = () => {
         >
           <MessageSquare className="h-4 w-4" />
           <span>Forum Moderation</span>
+        </NavLink>
+
+        {/* Support Tickets */}
+        <NavLink
+          to="/admin/support"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm font-medium",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )
+          }
+        >
+          <Headphones className="h-4 w-4" />
+          <span>Support Tickets</span>
+          {escalatedCount > 0 && (
+            <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs">
+              {escalatedCount}
+            </Badge>
+          )}
         </NavLink>
 
         {/* Documentation */}
