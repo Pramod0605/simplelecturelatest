@@ -146,8 +146,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
   // Conversation view
   if (selectedTicket) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 p-3 overflow-hidden">
-        <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+      <div className="flex flex-col flex-1 min-h-0 p-2 overflow-hidden">
+        <div className="flex items-center gap-2 mb-2 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -161,7 +161,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md mb-3 overscroll-contain touch-pan-y">
+        <div className="flex-1 min-h-0 overflow-y-auto border rounded-md mb-2 overscroll-contain touch-pan-y">
           <div className="p-2 space-y-3">
             {messages.map((msg) => (
               <div
@@ -195,7 +195,7 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type your message..."
-              className="min-h-[60px] text-sm"
+              className="min-h-[44px] text-sm resize-none"
             />
             <Button
               onClick={handleSendMessage}
@@ -212,8 +212,8 @@ export const SupportChatTab = ({ onUnreadCountChange }: SupportChatTabProps) => 
 
   // Ticket list view
   return (
-    <div className="p-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-      <h4 className="text-sm font-medium mb-3 flex-shrink-0">Your Support Tickets</h4>
+    <div className="p-2 flex-1 min-h-0 flex flex-col overflow-hidden">
+      <h4 className="text-sm font-medium mb-2 flex-shrink-0">Your Support Tickets</h4>
       
       {loading ? (
         <div className="flex items-center justify-center h-32">
