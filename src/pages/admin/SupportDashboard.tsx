@@ -27,9 +27,21 @@ import {
   User,
   Bot,
   RefreshCw,
-  ArrowLeft
+  ArrowLeft,
+  FileText,
+  ThumbsUp,
+  ThumbsDown
 } from "lucide-react";
 import { format } from "date-fns";
+
+import { 
+  useAdminSupportArticles, 
+  useCreateArticle, 
+  useUpdateArticle, 
+  useDeleteArticle,
+  SupportArticle 
+} from "@/hooks/useSupportArticles";
+import { Switch } from "@/components/ui/switch";
 
 const FAQ_CATEGORIES = [
   { value: 'account', label: 'Account' },
@@ -38,6 +50,17 @@ const FAQ_CATEGORIES = [
   { value: 'courses', label: 'Courses' },
   { value: 'certificates', label: 'Certificates' },
   { value: 'general', label: 'General' },
+];
+
+const ICON_OPTIONS = [
+  { value: 'BookOpen', label: 'Book' },
+  { value: 'GraduationCap', label: 'Graduation Cap' },
+  { value: 'Settings', label: 'Settings' },
+  { value: 'CreditCard', label: 'Credit Card' },
+  { value: 'Shield', label: 'Shield' },
+  { value: 'Wrench', label: 'Wrench' },
+  { value: 'HelpCircle', label: 'Help Circle' },
+  { value: 'FileText', label: 'File' },
 ];
 
 const SupportDashboard = () => {
@@ -49,6 +72,19 @@ const SupportDashboard = () => {
   const [editingFaq, setEditingFaq] = useState<any>(null);
   const [faqForm, setFaqForm] = useState({ category: '', question: '', answer: '', display_order: 0 });
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  
+  // Article state
+  const [articleDialogOpen, setArticleDialogOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<SupportArticle | null>(null);
+  const [articleForm, setArticleForm] = useState({
+    slug: '',
+    title: '',
+    description: '',
+    content: '',
+    icon_name: 'BookOpen',
+    display_order: 0,
+    is_active: true,
+  });
 
   // Handle ticket selection
   const handleTicketClick = (ticket: any) => {
@@ -98,6 +134,12 @@ const SupportDashboard = () => {
       return data;
     },
   });
+
+  // Fetch articles
+  const { data: articles, isLoading: articlesLoading } = useAdminSupportArticles();
+  const createArticle = useCreateArticle();
+  const updateArticle = useUpdateArticle();
+  const deleteArticle = useDeleteArticle();
 
   // Send admin reply
   const sendReplyMutation = useMutation({
@@ -180,6 +222,66 @@ const SupportDashboard = () => {
     setFaqDialogOpen(true);
   };
 
+  // Article helpers
+  const openEditArticle = (article: SupportArticle) => {
+    setEditingArticle(article);
+    setArticleForm({
+      slug: article.slug,
+      title: article.title,
+      description: article.description,
+      content: article.content,
+      icon_name: article.icon_name,
+      display_order: article.display_order,
+      is_active: article.is_active,
+    });
+    setArticleDialogOpen(true);
+  };
+
+  const handleSaveArticle = () => {
+    if (editingArticle) {
+      updateArticle.mutate({
+        id: editingArticle.id,
+        ...articleForm,
+      }, {
+        onSuccess: () => {
+          setArticleDialogOpen(false);
+          setEditingArticle(null);
+          setArticleForm({
+            slug: '',
+            title: '',
+            description: '',
+            content: '',
+            icon_name: 'BookOpen',
+            display_order: 0,
+            is_active: true,
+          });
+        }
+      });
+    } else {
+      createArticle.mutate(articleForm, {
+        onSuccess: () => {
+          setArticleDialogOpen(false);
+          setArticleForm({
+            slug: '',
+            title: '',
+            description: '',
+            content: '',
+            icon_name: 'BookOpen',
+            display_order: 0,
+            is_active: true,
+          });
+        }
+      });
+    }
+  };
+
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
       open: { variant: "default", label: "Open" },
@@ -226,6 +328,10 @@ const SupportDashboard = () => {
           <TabsTrigger value="faqs" className="gap-2">
             <HelpCircle className="h-4 w-4" />
             Manage FAQs
+          </TabsTrigger>
+          <TabsTrigger value="articles" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Manage Articles
           </TabsTrigger>
         </TabsList>
 
@@ -452,6 +558,179 @@ const SupportDashboard = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Articles Tab */}
+        <TabsContent value="articles" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Help Articles</CardTitle>
+                <CardDescription>Manage support articles with feedback tracking</CardDescription>
+              </div>
+              <Dialog open={articleDialogOpen} onOpenChange={setArticleDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => { 
+                    setEditingArticle(null); 
+                    setArticleForm({ 
+                      slug: '', 
+                      title: '', 
+                      description: '', 
+                      content: '', 
+                      icon_name: 'BookOpen', 
+                      display_order: 0, 
+                      is_active: true 
+                    }); 
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Article
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{editingArticle ? 'Edit Article' : 'Add New Article'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input
+                          value={articleForm.title}
+                          onChange={(e) => {
+                            const title = e.target.value;
+                            setArticleForm({ 
+                              ...articleForm, 
+                              title, 
+                              slug: editingArticle ? articleForm.slug : generateSlug(title) 
+                            });
+                          }}
+                          placeholder="Article title"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Slug</Label>
+                        <Input
+                          value={articleForm.slug}
+                          onChange={(e) => setArticleForm({ ...articleForm, slug: e.target.value })}
+                          placeholder="url-friendly-slug"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Icon</Label>
+                        <Select value={articleForm.icon_name} onValueChange={(v) => setArticleForm({ ...articleForm, icon_name: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select icon" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ICON_OPTIONS.map((icon) => (
+                              <SelectItem key={icon.value} value={icon.value}>{icon.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Display Order</Label>
+                        <Input
+                          type="number"
+                          value={articleForm.display_order}
+                          onChange={(e) => setArticleForm({ ...articleForm, display_order: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Active</Label>
+                        <div className="flex items-center gap-2 h-10">
+                          <Switch
+                            checked={articleForm.is_active}
+                            onCheckedChange={(checked) => setArticleForm({ ...articleForm, is_active: checked })}
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {articleForm.is_active ? 'Visible' : 'Hidden'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input
+                        value={articleForm.description}
+                        onChange={(e) => setArticleForm({ ...articleForm, description: e.target.value })}
+                        placeholder="Short description for the article card"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Content (Markdown supported)</Label>
+                      <Textarea
+                        value={articleForm.content}
+                        onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
+                        placeholder="Full article content in Markdown format..."
+                        rows={12}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleSaveArticle}
+                      disabled={!articleForm.title || !articleForm.slug || !articleForm.description || !articleForm.content || createArticle.isPending || updateArticle.isPending}
+                    >
+                      {editingArticle ? 'Update Article' : 'Create Article'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {articlesLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading articles...</div>
+                ) : articles?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No articles yet</p>
+                  </div>
+                ) : (
+                  articles?.map((article) => (
+                    <div key={article.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={article.is_active ? "default" : "secondary"}>
+                            {article.is_active ? 'Active' : 'Hidden'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">#{article.display_order}</span>
+                          <span className="font-medium truncate">{article.title}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="truncate">{article.description.slice(0, 60)}...</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="flex items-center gap-1 text-green-600">
+                              <ThumbsUp className="h-3 w-3" />
+                              {article.helpful_count}
+                            </span>
+                            <span className="flex items-center gap-1 text-red-500">
+                              <ThumbsDown className="h-3 w-3" />
+                              {article.not_helpful_count}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button variant="ghost" size="sm" onClick={() => openEditArticle(article)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => deleteArticle.mutate(article.id)}
+                          disabled={deleteArticle.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
