@@ -690,13 +690,12 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       </Button>
                       <Button
                         onClick={handleParsePDF}
-                        disabled={
-                          !formData.exam_name ||
-                          !formData.chapter_id ||
-                          !formData.topic_id ||
-                          !selectedFile ||
-                          isParsing
-                        }
+                          disabled={
+                            !formData.exam_name ||
+                            !formData.chapter_id ||
+                            !selectedFile ||
+                            isParsing
+                          }
                       >
                         Parse PDF & Extract Questions
                       </Button>
