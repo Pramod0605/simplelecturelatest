@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  useSubjectQuestions,
   useCreateQuestion,
   useUpdateQuestion,
   useDeleteQuestion,
@@ -43,6 +42,7 @@ import {
   useBulkVerifyQuestions,
   useBulkDeleteQuestions,
 } from "@/hooks/useSubjectQuestions";
+import { usePaginatedQuestions } from "@/hooks/usePaginatedQuestions";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectManagement";
 import { toast } from "@/hooks/use-toast";
 import { AIRephraseModal } from "./AIRephraseModal";
@@ -107,15 +107,32 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const { data: chapters } = useSubjectChapters(subjectId);
   const { data: topics } = useChapterTopics(filters.chapterId !== "all" ? filters.chapterId : questionForm.chapter_id);
   
-  const queryFilters = {
+  // Build filters for paginated query based on active tab
+  const paginatedFilters = useMemo(() => ({
     subjectId,
+    isAiGenerated: questionTypeTab === "previous_year" ? true : false,
     difficulty: filters.difficulty !== "all" ? filters.difficulty : undefined,
     isVerified: filters.verified === "verified" ? true : filters.verified === "unverified" ? false : undefined,
-    isAiGenerated: filters.aiGenerated === "ai" ? true : filters.aiGenerated === "manual" ? false : undefined,
     topicId: filters.topicId !== "all" ? filters.topicId : undefined,
-  };
+    chapterId: filters.chapterId !== "all" ? filters.chapterId : undefined,
+    searchQuery: filters.searchQuery || undefined,
+  }), [subjectId, questionTypeTab, filters]);
 
-  const { data: questions, isLoading } = useSubjectQuestions(queryFilters);
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = usePaginatedQuestions(paginatedFilters);
+
+  // Flatten all pages into a single array
+  const questions = useMemo(() => 
+    data?.pages.flatMap(page => page.questions) || [], 
+    [data]
+  );
+  const totalCount = data?.pages[0]?.totalCount || 0;
+
   const createQuestion = useCreateQuestion();
   const updateQuestion = useUpdateQuestion();
   const deleteQuestion = useDeleteQuestion();
@@ -160,10 +177,10 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   };
 
   const handleSelectAll = () => {
-    if (selectedQuestions.size === filteredQuestions.length) {
+    if (selectedQuestions.size === questions.length) {
       setSelectedQuestions(new Set());
     } else {
-      setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)));
+      setSelectedQuestions(new Set(questions.map(q => q.id)));
     }
   };
 
@@ -189,7 +206,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const handleBulkExport = () => {
     if (selectedQuestions.size === 0) return;
     
-    const selectedQuestionsData = filteredQuestions.filter(q => selectedQuestions.has(q.id));
+    const selectedQuestionsData = questions.filter(q => selectedQuestions.has(q.id));
     const exportData = selectedQuestionsData.map(q => ({
       topic_id: q.topic_id,
       question_text: q.question_text,
@@ -227,20 +244,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     });
   };
 
-  // Filter questions client-side for search
-  const filteredQuestions = questions?.filter(q => {
-    if (filters.searchQuery) {
-      return q.question_text.toLowerCase().includes(filters.searchQuery.toLowerCase());
-    }
-    return true;
-  }) || [];
-
-  // Separate questions by type: AI-generated (from previous year papers) vs manually created
-  const previousYearQuestions = filteredQuestions.filter(q => q.is_ai_generated === true);
-  const manualQuestions = filteredQuestions.filter(q => q.is_ai_generated === false);
-  
-  // Get the questions to display based on active tab
-  const displayedQuestions = questionTypeTab === "previous_year" ? previousYearQuestions : manualQuestions;
+  // Questions are now filtered server-side, no need for client-side filtering
 
   const resetForm = () => {
     setQuestionForm({
@@ -1009,11 +1013,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
             <TabsList>
               <TabsTrigger value="manual" className="gap-2">
                 Manually Created
-                <Badge variant="secondary" className="ml-1">{manualQuestions.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="previous_year" className="gap-2">
                 Previous Year Questions
-                <Badge variant="secondary" className="ml-1">{previousYearQuestions.length}</Badge>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -1028,23 +1030,53 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
             activeFilterCount={activeFilterCount}
           />
 
+          {/* Question Count */}
+          {!isLoading && (
+            <div className="text-sm text-muted-foreground mt-4">
+              Showing {questions.length} of {totalCount} questions
+            </div>
+          )}
+
           {/* Questions Grid */}
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : displayedQuestions && displayedQuestions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-              {displayedQuestions.map((question) => (
-                <QuestionPreview
-                  key={question.id}
-                  question={question}
-                  onEdit={setEditingQuestion}
-                  onDelete={(id) => setDeleteQuestionId(id)}
-                  onVerify={handleVerifyQuestion}
-                />
-              ))}
-            </div>
+          ) : questions.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                {questions.map((question) => (
+                  <QuestionPreview
+                    key={question.id}
+                    question={question}
+                    onEdit={setEditingQuestion}
+                    onDelete={(id) => setDeleteQuestionId(id)}
+                    onVerify={handleVerifyQuestion}
+                  />
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {hasNextPage && (
+                <div className="flex justify-center mt-6">
+                  <Button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    variant="outline"
+                    size="lg"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      `Load More Questions (${questions.length} of ${totalCount})`
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               {questionTypeTab === "previous_year" 
