@@ -106,7 +106,7 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : proxyUrl ? (
+        ) : iframeUrl ? (
           <div className="relative border rounded-lg overflow-hidden bg-muted/10">
             <div className="flex items-center justify-between p-2 bg-muted/50 border-b">
               <span className="text-sm font-medium">{derivedFileName}</span>
@@ -120,7 +120,7 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
               </Button>
             </div>
             <iframe
-              src={proxyUrl}
+              src={iframeUrl}
               className="w-full h-[600px]"
               title={`PDF Preview: ${derivedFileName}`}
             />
