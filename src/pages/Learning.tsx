@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft } from "lucide-react";
+import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen } from "lucide-react";
 import { SubjectNavigationBar } from "@/components/learning/SubjectNavigationBar";
 import { PodcastPlayer } from "@/components/learning/PodcastPlayer";
 import { MCQTest } from "@/components/learning/MCQTest";
@@ -230,34 +230,23 @@ export default function Learning() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        {/* Chapter-level tab selector */}
-                        <div className="mb-3 overflow-x-auto">
-                          <div className="flex gap-1 min-w-max p-1">
-                            {[
-                              { key: "videos", label: "Classes" },
-                              { key: "ai-assistant", label: "AI Assistant" },
-                              { key: "podcast", label: "Podcast" },
-                              { key: "mcqs", label: "MCQs" },
-                              { key: "dpt", label: "DPT" },
-                              { key: "notes", label: "Notes" },
-                              { key: "assignments", label: "Assignments" },
-                              { key: "previous-year", label: "Previous Year" },
-                            ].map((tab) => (
-                              <Button
-                                key={tab.key}
-                                variant={selectedChapter?.id === chapter.id && chapterTab === tab.key ? "default" : "outline"}
-                                size="sm"
-                                className="text-xs whitespace-nowrap h-7 px-2"
-                                onClick={() => handleChapterTabClick(chapter, tab.key)}
-                              >
-                                {tab.label}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
+                        {/* Chapter Content button */}
+                        <Button
+                          variant={selectedChapter?.id === chapter.id && !selectedTopic ? "secondary" : "ghost"}
+                          className="w-full justify-start text-sm mb-3 border border-dashed"
+                          onClick={() => {
+                            setSelectedChapter(chapter);
+                            setSelectedTopic(null);
+                            setChapterTab(null);
+                            setActiveTab("videos");
+                          }}
+                        >
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Chapter Content
+                        </Button>
 
                         {/* Topics section */}
-                        <div className="space-y-1 pl-2">
+                        <div className="space-y-1">
                           <p className="text-xs font-medium text-muted-foreground mb-2">Topics</p>
                           {chapter.topics?.length > 0 ? (
                             chapter.topics.map((topic: any) => (
@@ -361,63 +350,74 @@ export default function Learning() {
                   <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
                 </TabsContent>
               </Tabs>
-            ) : selectedChapter && chapterTab ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <h2 className="text-xl font-semibold">
+            ) : selectedChapter ? (
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-lg font-semibold">
                     Ch {selectedChapter.chapter_number}: {selectedChapter.title}
                   </h2>
-                  <span className="text-sm text-muted-foreground px-2 py-1 bg-muted rounded">
-                    Chapter Level Content
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
+                    Chapter Level
                   </span>
                 </div>
+                
+                <TabsList className="grid w-full grid-cols-8">
+                  <TabsTrigger value="videos">Classes</TabsTrigger>
+                  <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
+                  <TabsTrigger value="podcast">Podcast</TabsTrigger>
+                  <TabsTrigger value="mcqs">MCQs</TabsTrigger>
+                  <TabsTrigger value="dpt">DPT</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                  <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                  <TabsTrigger value="previous-year">Previous Year</TabsTrigger>
+                </TabsList>
 
-                {chapterTab === "videos" && (
+                <TabsContent value="videos">
                   <RecordedVideos 
                     chapterId={selectedChapter.id}
                     topicTitle={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`}
                   />
-                )}
+                </TabsContent>
 
-                {chapterTab === "ai-assistant" && (
+                <TabsContent value="ai-assistant">
                   <AITeachingAssistant 
                     chapterId={selectedChapter.id}
                     topicTitle={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`}
                     subjectName={selectedSubject?.name}
                   />
-                )}
+                </TabsContent>
 
-                {chapterTab === "podcast" && (
+                <TabsContent value="podcast">
                   <PodcastPlayer chapterId={selectedChapter.id} />
-                )}
+                </TabsContent>
 
-                {chapterTab === "mcqs" && (
+                <TabsContent value="mcqs">
                   <MCQTest chapterId={selectedChapter.id} chapterOnly />
-                )}
+                </TabsContent>
 
-                {chapterTab === "dpt" && (
+                <TabsContent value="dpt">
                   <DPTTest />
-                )}
+                </TabsContent>
 
-                {chapterTab === "notes" && (
+                <TabsContent value="notes">
                   <NotesViewer 
                     chapterId={selectedChapter.id}
                     title={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`} 
                   />
-                )}
+                </TabsContent>
 
-                {chapterTab === "assignments" && (
+                <TabsContent value="assignments">
                   <AssignmentViewer chapterId={selectedChapter.id} />
-                )}
+                </TabsContent>
 
-                {chapterTab === "previous-year" && (
+                <TabsContent value="previous-year">
                   <PreviousYearPapers 
                     subjectId={selectedSubjectId} 
                     chapterId={selectedChapter.id}
                     chapterOnly
                   />
-                )}
-              </div>
+                </TabsContent>
+              </Tabs>
             ) : (
               <div className="flex items-center justify-center h-[400px]">
                 <div className="text-center">
