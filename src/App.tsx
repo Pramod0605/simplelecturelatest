@@ -79,6 +79,7 @@ import HolidaysManager from "./pages/admin/HolidaysManager";
 import Documentation from "./pages/admin/Documentation";
 import GenerateSeedImages from "./pages/admin/GenerateSeedImages";
 import FileBrowser from "./pages/admin/FileBrowser";
+import PDFViewer from "./pages/admin/PDFViewer";
 import CounselorAvatars from "./pages/admin/CounselorAvatars";
 import FeaturedCoursesManager from "./pages/admin/FeaturedCoursesManager";
 import OrdersList from "./pages/admin/OrdersList";
@@ -199,6 +200,7 @@ const App = () => (
                 <Route path="settings/counselor-avatars" element={<CounselorAvatars />} />
                 <Route path="settings/featured-courses" element={<FeaturedCoursesManager />} />
                 <Route path="files" element={<FileBrowser />} />
+                <Route path="pdf-viewer" element={<PDFViewer />} />
                 
                 {/* Human Resource Routes */}
                 <Route path="hr/departments" element={<DepartmentsManager />} />
