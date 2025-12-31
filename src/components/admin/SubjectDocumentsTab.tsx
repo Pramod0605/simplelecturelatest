@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Upload, FileJson, FileText, Loader2, Check, Copy, Eye, EyeOff,
-  Clock, Trash2, Link as LinkIcon
+  Clock, Trash2, Link as LinkIcon, BookOpen, Filter
 } from "lucide-react";
 import { useDatalab } from "@/hooks/useDatalab";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAIAssistantDocuments, useAddAIAssistantDocument, useDeleteAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { format } from "date-fns";
 
 interface SubjectDocumentsTabProps {
@@ -40,14 +42,46 @@ export function SubjectDocumentsTab({
   const [showAllDocuments, setShowAllDocuments] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
   
+  // Filter states
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  
+  // Upload assignment states
+  const [uploadChapterId, setUploadChapterId] = useState<string | null>(null);
+  const [uploadTopicId, setUploadTopicId] = useState<string | null>(null);
+  
   const { parsePdfFile, parsePdfFromUrl, isLoading, progress } = useDatalab();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // Fetch AI assistant documents for this subject
-  const { data: documents, isLoading: isLoadingDocuments } = useAIAssistantDocuments(subjectId);
+  // Fetch chapters and topics
+  const { data: chapters } = useSubjectChapters(subjectId);
+  const { data: filterTopics } = useChapterTopics(selectedChapterId || undefined);
+  const { data: uploadTopics } = useChapterTopics(uploadChapterId || undefined);
+  
+  // Fetch AI assistant documents for this subject with filters
+  const { data: documents, isLoading: isLoadingDocuments } = useAIAssistantDocuments(
+    subjectId,
+    selectedChapterId,
+    selectedTopicId
+  );
   const addDocument = useAddAIAssistantDocument();
   const deleteDocument = useDeleteAIAssistantDocument();
+  
+  // Helper to get chapter/topic names
+  const getChapterName = (chapterId: string | null) => {
+    if (!chapterId || !chapters) return null;
+    const chapter = chapters.find(c => c.id === chapterId);
+    return chapter ? `Ch. ${chapter.chapter_number}: ${chapter.title}` : null;
+  };
+  
+  const getTopicName = (topicId: string | null, chapterId: string | null) => {
+    if (!topicId) return null;
+    // We need to find topic from the right chapter's topics
+    const chapter = chapters?.find(c => c.id === chapterId);
+    if (!chapter) return null;
+    return `Topic ${topicId.substring(0, 8)}...`; // Fallback since we don't have all topics loaded
+  };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -147,6 +181,8 @@ export function SubjectDocumentsTab({
       const sourceType = pdfUrl ? "url" : uploadedFileName?.endsWith(".json") ? "json" : "pdf";
       await addDocument.mutateAsync({
         subjectId,
+        chapterId: uploadChapterId || undefined,
+        topicId: uploadTopicId || undefined,
         displayName: uploadedFileName || (pdfUrl ? new URL(pdfUrl).pathname.split('/').pop() : "Pasted JSON"),
         sourceType,
         sourceUrl: pdfUrl || undefined,
@@ -167,6 +203,8 @@ export function SubjectDocumentsTab({
       setJsonText("");
       setPdfUrl("");
       setUploadedFileName("");
+      setUploadChapterId(null);
+      setUploadTopicId(null);
     } catch (error: any) {
       toast({
         title: "Save Failed",
@@ -216,7 +254,75 @@ export function SubjectDocumentsTab({
             Documents parsed and uploaded for the AI Teaching Assistant for {subjectName}.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Filter Section */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Filter className="h-4 w-4" />
+              <span className="font-medium">Filter by:</span>
+            </div>
+            
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              <div className="space-y-1">
+                <Label className="text-xs">Chapter</Label>
+                <Select 
+                  value={selectedChapterId || "all"} 
+                  onValueChange={(v) => {
+                    setSelectedChapterId(v === "all" ? null : v);
+                    setSelectedTopicId(null);
+                  }}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="All Chapters" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Chapters</SelectItem>
+                    {chapters?.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        {ch.chapter_number}. {ch.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedChapterId && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Topic</Label>
+                  <Select 
+                    value={selectedTopicId || "all"} 
+                    onValueChange={(v) => setSelectedTopicId(v === "all" ? null : v)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="All Topics in Chapter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Topics in Chapter</SelectItem>
+                      {filterTopics?.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.topic_number}. {t.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {(selectedChapterId || selectedTopicId) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedChapterId(null);
+                  setSelectedTopicId(null);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
           {isLoadingDocuments ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -224,7 +330,7 @@ export function SubjectDocumentsTab({
           ) : !documents || documents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No documents uploaded for AI Assistant yet.</p>
+              <p>No documents found{selectedChapterId ? " for selected filter" : ""}.</p>
               <p className="text-sm mt-1">Upload a PDF or JSON below to get started.</p>
             </div>
           ) : (
@@ -234,6 +340,7 @@ export function SubjectDocumentsTab({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Document Name</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Upload Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -249,6 +356,19 @@ export function SubjectDocumentsTab({
                               {doc.display_name || doc.file_name || "Untitled Document"}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {doc.chapter_id ? (
+                            <div className="flex items-center gap-1">
+                              <BookOpen className="h-3 w-3 text-muted-foreground" />
+                              <Badge variant="secondary" className="text-xs">
+                                {getChapterName(doc.chapter_id) || "Chapter"}
+                                {doc.topic_id && " • Topic"}
+                              </Badge>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">General</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
@@ -308,6 +428,60 @@ export function SubjectDocumentsTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Assign to Chapter/Topic */}
+          <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <BookOpen className="h-4 w-4" />
+              Assign Document Location (Optional)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs">Chapter</Label>
+                <Select 
+                  value={uploadChapterId || "none"} 
+                  onValueChange={(v) => {
+                    setUploadChapterId(v === "none" ? null : v);
+                    setUploadTopicId(null);
+                  }}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="General Subject Document" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">General Subject Document</SelectItem>
+                    {chapters?.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        {ch.chapter_number}. {ch.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {uploadChapterId && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Topic</Label>
+                  <Select 
+                    value={uploadTopicId || "none"} 
+                    onValueChange={(v) => setUploadTopicId(v === "none" ? null : v)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Chapter-level Document" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Chapter-level Document</SelectItem>
+                      {uploadTopics?.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.topic_number}. {t.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+
           <Tabs defaultValue="pdf" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="pdf" className="gap-2">
