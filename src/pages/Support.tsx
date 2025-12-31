@@ -19,7 +19,9 @@ import {
   GraduationCap,
   Shield,
   Wrench,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { SupportFAQSearch } from "@/components/support/SupportFAQSearch";
 import { SupportCategoryTabs } from "@/components/support/SupportCategoryTabs";
@@ -77,6 +79,7 @@ const Support = () => {
   const [showChat, setShowChat] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mainTab, setMainTab] = useState("faqs");
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
 
   const { data: faqs, isLoading: faqsLoading } = useSupportFAQs(selectedCategory);
   const { data: searchResults, isLoading: searchLoading } = useSearchFAQs(searchTerm);
@@ -163,6 +166,15 @@ const Support = () => {
 
   const displayFaqs = searchTerm.length >= 2 ? searchResults : faqs;
   const isLoadingFaqs = searchTerm.length >= 2 ? searchLoading : faqsLoading;
+  
+  // Show only 4 FAQs initially, all when searching or expanded
+  const visibleFaqs = searchTerm.length >= 2 ? displayFaqs : (showAllFaqs ? displayFaqs : displayFaqs?.slice(0, 4));
+  const hasMoreFaqs = (displayFaqs?.length || 0) > 4;
+
+  // Reset showAllFaqs when category changes
+  useEffect(() => {
+    setShowAllFaqs(false);
+  }, [selectedCategory]);
 
   // Check if AI has responded (show feedback buttons)
   const showFeedback = messages.length > 0 && messages[messages.length - 1]?.role === 'assistant';
@@ -297,10 +309,35 @@ const Support = () => {
                       </h2>
                     </div>
                     <SupportFAQs 
-                      faqs={displayFaqs} 
+                      faqs={visibleFaqs} 
                       isLoading={isLoadingFaqs}
                       searchTerm={searchTerm}
                     />
+                    
+                    {/* See More / Show Less Button */}
+                    {!searchTerm && hasMoreFaqs && (
+                      <div className="text-center mt-6">
+                        {!showAllFaqs ? (
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowAllFaqs(true)}
+                            className="gap-2"
+                          >
+                            See More ({(displayFaqs?.length || 0) - 4} more)
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            onClick={() => setShowAllFaqs(false)}
+                            className="gap-2"
+                          >
+                            Show Less
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </section>
 
                   <Separator className="my-8" />
