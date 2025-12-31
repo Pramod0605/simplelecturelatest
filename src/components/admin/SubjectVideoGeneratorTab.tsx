@@ -4,12 +4,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X, Link as LinkIcon, Clock, BookOpen } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
+import { format } from "date-fns";
 interface SubjectVideoGeneratorTabProps {
   subjectId: string;
   subjectName: string;
@@ -48,12 +50,28 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   }, [selectedChapterId]);
   
   const hasActiveFilters = selectedChapterId !== null;
+  const [showAllDocuments, setShowAllDocuments] = useState(false);
   
   const clearFilters = () => {
     setSelectedChapterId(null);
     setSelectedTopicId(null);
   };
-  
+
+  const displayedDocuments = showAllDocuments ? documents : documents?.slice(0, 5);
+
+  const getChapterName = (chapterId: string | null) => {
+    if (!chapterId || !chapters) return null;
+    const chapter = chapters.find(c => c.id === chapterId);
+    return chapter ? `Ch. ${chapter.chapter_number}` : null;
+  };
+
+  const getSourceIcon = (sourceType: string) => {
+    switch (sourceType) {
+      case "url": return <LinkIcon className="h-4 w-4 text-blue-500" />;
+      case "json": return <FileJson className="h-4 w-4 text-yellow-500" />;
+      default: return <FileText className="h-4 w-4 text-red-500" />;
+    }
+  };
   const selectedDocument = documents?.find(doc => doc.id === selectedDocumentId);
   const fullContent = selectedDocument?.full_content as Record<string, unknown> | null;
   
@@ -184,11 +202,14 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
           )}
         </div>
 
-        {/* Document Selector */}
-        <div className="space-y-2">
-          <Label>Select Document</Label>
+        {/* Document List */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Documents ({documents?.length || 0})
+          </Label>
           {isLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground p-8">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading documents...
             </div>
@@ -203,18 +224,92 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
               </p>
             </div>
           ) : (
-            <Select value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose a document..." />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                {documents.map((doc) => (
-                  <SelectItem key={doc.id} value={doc.id}>
-                    {doc.display_name || doc.file_name || "Untitled Document"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Document Name</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Upload Date</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedDocuments?.map((doc) => (
+                      <TableRow 
+                        key={doc.id}
+                        className={`cursor-pointer ${selectedDocumentId === doc.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                        onClick={() => setSelectedDocumentId(doc.id)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {getSourceIcon(doc.source_type)}
+                            <span className="truncate max-w-[200px]">
+                              {doc.display_name || doc.file_name || "Untitled"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {doc.chapter_id ? (
+                            <Badge variant="outline" className="text-xs">
+                              {getChapterName(doc.chapter_id)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-xs capitalize">
+                            {doc.source_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(doc.created_at), "MMM d, yyyy")}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            size="sm" 
+                            variant={selectedDocumentId === doc.id ? "default" : "outline"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDocumentId(doc.id);
+                            }}
+                          >
+                            {selectedDocumentId === doc.id ? "Selected" : "Select"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {documents.length > 5 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllDocuments(!showAllDocuments)}
+                  className="w-full"
+                >
+                  {showAllDocuments ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      Show All ({documents.length})
+                    </>
+                  )}
+                </Button>
+              )}
+            </>
           )}
         </div>
 
