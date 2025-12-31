@@ -723,9 +723,16 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                     </Badge>
                                     <Badge 
                                       variant={q.correct_answer ? "outline" : "destructive"} 
-                                      className="text-xs"
+                                      className="text-xs flex items-center gap-1"
                                     >
-                                      Ans: {q.correct_answer || "—"}
+                                      <span>Ans:</span>
+                                      {q.correct_answer ? (
+                                        <MathpixRenderer 
+                                          mmdText={q.correct_answer} 
+                                          inline={true}
+                                          className="inline [&_.prose]:inline [&_.prose]:prose-xs [&_p]:inline [&_p]:m-0"
+                                        />
+                                      ) : "—"}
                                     </Badge>
                                     <div 
                                       className="flex items-center gap-1.5 cursor-pointer"
