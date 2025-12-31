@@ -2,16 +2,15 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useB2Files } from "@/hooks/useB2Files";
-import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
 import {
   Folder,
   File,
   ChevronRight,
   Home,
-  Loader2,
-  Download,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 import {
   Table,
@@ -34,23 +33,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 
-function DownloadButton({ fileName }: { fileName: string }) {
-  const { downloadUrl, isLoading } = useB2DownloadUrl(fileName);
-
-  const handleDownload = () => {
-    if (downloadUrl) {
-      window.open(downloadUrl, '_blank');
-    }
+function ViewButton({ fileName }: { fileName: string }) {
+  const handleView = () => {
+    // Navigate to dedicated PDF viewer page (avoids Chrome blocking)
+    const encodedPath = encodeURIComponent(fileName);
+    window.open(`/admin/pdf-viewer?path=${encodedPath}`, "_blank");
   };
 
   return (
     <Button
       variant="ghost"
       size="sm"
-      onClick={handleDownload}
-      disabled={isLoading || !downloadUrl}
+      onClick={handleView}
+      title="View file"
     >
-      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+      <ExternalLink className="h-4 w-4" />
     </Button>
   );
 }
@@ -200,7 +197,7 @@ export function B2FileBrowser() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <DownloadButton fileName={file.fileName} />
+                      <ViewButton fileName={file.fileName} />
                       <Button
                         variant="ghost"
                         size="sm"

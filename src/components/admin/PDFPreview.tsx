@@ -103,13 +103,10 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
     setFetchError(null);
   };
 
-  const handleOpenInNewTab = async () => {
-    if (pdfBlobUrl) {
-      window.open(pdfBlobUrl, "_blank");
-    } else {
-      await loadPdf();
-      // After loading, the blob URL will be set, user can click again
-    }
+  const handleOpenInNewTab = () => {
+    // Navigate to dedicated PDF viewer page (avoids Chrome blocking)
+    const encodedPath = encodeURIComponent(pdfUrl);
+    window.open(`/admin/pdf-viewer?path=${encodedPath}`, "_blank");
   };
 
   const isLoading = isUrlLoading || isFetchingPdf;

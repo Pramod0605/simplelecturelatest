@@ -4,7 +4,6 @@ import { Upload, Loader2, FileText, ExternalLink, X } from "lucide-react";
 import { useB2Upload } from "@/hooks/useB2Upload";
 import { generateB2Path, B2PathParams } from "@/lib/b2PathGenerator";
 import { Progress } from "@/components/ui/progress";
-import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
 
 interface B2FileUploadWidgetProps {
   onFileUploaded: (url: string) => void;
@@ -132,8 +131,11 @@ interface B2UploadedFileActionsProps {
 }
 
 function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProps) {
-  const { downloadUrl, isLoading } = useB2DownloadUrl(filePath);
-  const effectiveUrl = downloadUrl || filePath;
+  const handleView = () => {
+    // Navigate to dedicated PDF viewer page (avoids Chrome blocking)
+    const encodedPath = encodeURIComponent(filePath);
+    window.open(`/admin/pdf-viewer?path=${encodedPath}`, "_blank");
+  };
 
   return (
     <>
@@ -141,15 +143,10 @@ function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProp
         type="button"
         variant="ghost"
         size="sm"
-        onClick={() => effectiveUrl && window.open(effectiveUrl, "_blank")}
-        disabled={isLoading || !effectiveUrl}
+        onClick={handleView}
         className="gap-1"
       >
-        {isLoading ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : (
-          <ExternalLink className="h-3 w-3" />
-        )}
+        <ExternalLink className="h-3 w-3" />
         View
       </Button>
       <Button
