@@ -305,7 +305,7 @@ export default function Learning() {
                   <TabsTrigger value="dpt">DPT</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                  <TabsTrigger value="previous-year">Previous Year</TabsTrigger>
+                  <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="videos">
@@ -370,7 +370,7 @@ export default function Learning() {
                   <TabsTrigger value="dpt">DPT</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
-                  <TabsTrigger value="previous-year">Previous Year</TabsTrigger>
+                  <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="videos">

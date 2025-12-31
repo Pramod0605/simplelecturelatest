@@ -332,9 +332,9 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Previous Year Papers</CardTitle>
+              <CardTitle>Mock & PYQs</CardTitle>
               <CardDescription>
-                Manage previous year examination papers for {subjectName}
+                Manage mock tests and previous year questions for {subjectName}
               </CardDescription>
             </div>
             <Dialog open={isAddOpen} onOpenChange={handleDialogClose}>

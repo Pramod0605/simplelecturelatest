@@ -213,7 +213,7 @@ export default function SubjectForm() {
           </TabsTrigger>
           <TabsTrigger value="previous-year" disabled={!isEdit} className="gap-2">
             <FileText className="h-4 w-4" />
-            Previous Year
+            Mock & PYQs
           </TabsTrigger>
           <TabsTrigger value="generate-video" disabled={!isEdit} className="gap-2">
             <Video className="h-4 w-4" />
