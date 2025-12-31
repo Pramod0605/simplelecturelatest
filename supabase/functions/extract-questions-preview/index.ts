@@ -263,16 +263,43 @@ function findQuestionPositions(text: string): { index: number; qNum: number }[] 
 function detectProficiencyQuestionNumbers(text: string): number[] {
   const numbers = new Set<number>();
   
-  // Find the questions section (before ANSWERS)
-  const answersMatch = text.search(/ANSWERS?\s+TO\s+PROFICIENCY/i);
-  const questionsSection = answersMatch !== -1 ? text.slice(0, answersMatch) : text;
+  // Find both sections - handle both orderings (answers before or after questions)
+  const answersHeaderMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST[^\n]*/i);
+  const questionsHeaderMatch = text.match(/##?\s*PROFICIENCY\s+TEST[^I\n]*\n/i);
+  
+  let questionsSection: string;
+  
+  const answersIdx = answersHeaderMatch?.index ?? -1;
+  const questionsIdx = questionsHeaderMatch?.index ?? -1;
+  
+  console.log(`Proficiency detection - answers at: ${answersIdx}, questions at: ${questionsIdx}`);
+  
+  if (questionsIdx !== -1 && answersIdx !== -1) {
+    if (questionsIdx > answersIdx) {
+      // Answers come BEFORE questions - extract from questions header onwards
+      questionsSection = text.slice(questionsIdx);
+      console.log(`Answers before questions - using text from position ${questionsIdx}`);
+    } else {
+      // Questions come BEFORE answers - extract between them
+      questionsSection = text.slice(questionsIdx, answersIdx);
+      console.log(`Questions before answers - using text from ${questionsIdx} to ${answersIdx}`);
+    }
+  } else if (questionsIdx !== -1) {
+    questionsSection = text.slice(questionsIdx);
+  } else {
+    // Fallback: use full text but exclude answers section
+    questionsSection = answersIdx !== -1 ? text.slice(answersIdx) : text;
+    // Actually for this case, maybe just search in full text for questions
+    questionsSection = text;
+    console.log("No clear section headers found, searching full text");
+  }
   
   // Patterns specifically for proficiency test question numbers
   const patterns = [
-    /(?:^|\n)\s*(\d{1,2})\.\s+/gm,           // "1. Question..."
-    /(?:^|\n)\s*(\d{1,2})\)\s+/gm,           // "1) Question..."
-    /(?:^|\n)\s*\((\d{1,2})\)\s+/gm,         // "(1) Question..."
-    /(?:^|\n)\s*Q\.?\s*(\d{1,2})[\.\):\s]/gmi, // "Q1." or "Q.1"
+    /(?:^|\n)\s*(\d{1,2})\.\s+(?!True|False|[A-D]\)|[$\\])/gm, // "1. Question..." but not "1. $x$" (answers)
+    /(?:^|\n)\s*(\d{1,2})\)\s+/gm,                              // "1) Question..."
+    /(?:^|\n)\s*\((\d{1,2})\)\s+/gm,                            // "(1) Question..."
+    /(?:^|\n)\s*Q\.?\s*(\d{1,2})[\.\):\s]/gmi,                  // "Q1." or "Q.1"
   ];
   
   for (const pattern of patterns) {
@@ -298,29 +325,47 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
   const answerMap = new Map<number, string>();
   
   // Find the ANSWERS section
-  const answerMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST/i);
+  const answerMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST[^\n]*/i);
   if (!answerMatch || answerMatch.index === undefined) {
     console.log("No proficiency answers section found");
     return answerMap;
   }
   
-  const answersSection = text.slice(answerMatch.index);
-  console.log(`Found proficiency answers section, length: ${answersSection.length}`);
+  // Find where questions section starts (to bound the answers section)
+  const questionsHeaderMatch = text.match(/##?\s*PROFICIENCY\s+TEST[^I\n]*\n/i);
+  const questionsIdx = questionsHeaderMatch?.index ?? -1;
+  const answersIdx = answerMatch.index;
+  
+  let answersSection: string;
+  if (questionsIdx !== -1 && questionsIdx > answersIdx) {
+    // Questions come AFTER answers - bound answers section to not include questions
+    answersSection = text.slice(answersIdx, questionsIdx);
+    console.log(`Found proficiency answers section (bounded), length: ${answersSection.length}`);
+  } else {
+    // Questions come before answers or no questions header - take rest of document
+    answersSection = text.slice(answersIdx);
+    console.log(`Found proficiency answers section, length: ${answersSection.length}`);
+  }
   
   // Split by question numbers and extract answers
-  // Pattern: number followed by period/paren, then answer text until next number
   const lines = answersSection.split('\n');
   let currentNum: number | null = null;
   let currentAnswer: string[] = [];
   
   for (const line of lines) {
+    // Skip the header line itself
+    if (/ANSWERS?\s+TO\s+PROFICIENCY/i.test(line)) continue;
+    
     // Check if line starts with a question number
     const numMatch = line.match(/^\s*(\d{1,2})[\.\)]\s*(.*)$/);
     
     if (numMatch) {
       // Save previous answer if exists
       if (currentNum !== null && currentAnswer.length > 0) {
-        answerMap.set(currentNum, currentAnswer.join(' ').trim());
+        const answerText = currentAnswer.join(' ').trim();
+        if (answerText) {
+          answerMap.set(currentNum, answerText);
+        }
       }
       
       // Start new answer
@@ -335,7 +380,10 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
   
   // Save last answer
   if (currentNum !== null && currentAnswer.length > 0) {
-    answerMap.set(currentNum, currentAnswer.join(' ').trim());
+    const answerText = currentAnswer.join(' ').trim();
+    if (answerText) {
+      answerMap.set(currentNum, answerText);
+    }
   }
   
   console.log(`Extracted ${answerMap.size} proficiency answers`);
