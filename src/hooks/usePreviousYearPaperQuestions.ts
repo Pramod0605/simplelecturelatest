@@ -48,15 +48,10 @@ export const usePreviousYearPaperQuestions = (paperId: string | null) => {
   });
 };
 
-// Fetch papers for a subject, optionally filtered by topic or chapter
-export const usePreviousYearPapersForSubject = (
-  subjectId: string | null, 
-  topicId?: string | null,
-  chapterId?: string,
-  chapterOnly?: boolean
-) => {
+// Fetch papers for a subject, optionally filtered by topic
+export const usePreviousYearPapersForSubject = (subjectId: string | null, topicId?: string | null) => {
   return useQuery({
-    queryKey: ["previous-year-papers-subject", subjectId, topicId, chapterId, chapterOnly],
+    queryKey: ["previous-year-papers-subject", subjectId, topicId],
     queryFn: async () => {
       if (!subjectId) return [];
 
@@ -65,11 +60,8 @@ export const usePreviousYearPapersForSubject = (
         .select("*")
         .eq("subject_id", subjectId);
 
-      if (chapterOnly && chapterId) {
-        // Chapter-level papers only: topic_id is NULL
-        query = query.is("topic_id", null);
-      } else if (topicId) {
-        // If topicId is provided, filter by topic OR show papers without topic_id (for backward compatibility)
+      // If topicId is provided, filter by topic OR show papers without topic_id (for backward compatibility)
+      if (topicId) {
         query = query.or(`topic_id.eq.${topicId},topic_id.is.null`);
       }
 

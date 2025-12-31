@@ -41,8 +41,6 @@ import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 interface PreviousYearPapersProps {
   subjectId: string | null;
   topicId?: string | null;
-  chapterId?: string;
-  chapterOnly?: boolean;
 }
 
 type TestState = "papers" | "setup" | "testing" | "results";
@@ -58,7 +56,7 @@ const TIME_OPTIONS = [
   { label: "Unlimited", value: 0 },
 ] as const;
 
-export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly }: PreviousYearPapersProps) {
+export function PreviousYearPapers({ subjectId, topicId }: PreviousYearPapersProps) {
   const [testState, setTestState] = useState<TestState>("papers");
   const [selectedPaper, setSelectedPaper] = useState<any>(null);
   const [selectedQuestionCount, setSelectedQuestionCount] = useState<number>(10);
@@ -70,7 +68,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionFilter, setQuestionFilter] = useState<"all" | "important">("all");
 
-  const { data: papers, isLoading: papersLoading } = usePreviousYearPapersForSubject(subjectId, topicId, chapterId, chapterOnly);
+  const { data: papers, isLoading: papersLoading } = usePreviousYearPapersForSubject(subjectId, topicId);
   const { data: paperQuestions, isLoading: questionsLoading } = usePreviousYearPaperQuestions(
     selectedPaper?.id || null
   );

@@ -26,8 +26,6 @@ export default function Learning() {
   const [searchParams] = useSearchParams();
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
-  const [selectedChapter, setSelectedChapter] = useState<any>(null);
-  const [chapterViewMode, setChapterViewMode] = useState<Record<string, 'topics' | 'chapter'>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
 
@@ -150,18 +148,6 @@ export default function Learning() {
   const handleSubjectChange = (subjectId: string) => {
     setSelectedSubjectId(subjectId);
     setSelectedTopic(null);
-    setSelectedChapter(null);
-  };
-
-  const handleChapterContentClick = (chapter: any) => {
-    setSelectedChapter(chapter);
-    setSelectedTopic(null);
-  };
-
-  const getChapterViewMode = (chapterId: string) => chapterViewMode[chapterId] || 'topics';
-  
-  const setChapterView = (chapterId: string, mode: 'topics' | 'chapter') => {
-    setChapterViewMode(prev => ({ ...prev, [chapterId]: mode }));
   };
 
   return (
@@ -230,68 +216,34 @@ export default function Learning() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        {/* Tab selector for Chapter Content vs Topics */}
-                        <div className="flex gap-1 mb-2 px-2">
-                          <Button
-                            variant={getChapterViewMode(chapter.id) === 'chapter' ? "secondary" : "ghost"}
-                            size="sm"
-                            className="flex-1 text-xs"
-                            onClick={() => {
-                              setChapterView(chapter.id, 'chapter');
-                              handleChapterContentClick(chapter);
-                            }}
-                          >
-                            Chapter Content
-                          </Button>
-                          <Button
-                            variant={getChapterViewMode(chapter.id) === 'topics' ? "secondary" : "ghost"}
-                            size="sm"
-                            className="flex-1 text-xs"
-                            onClick={() => setChapterView(chapter.id, 'topics')}
-                          >
-                            Topics
-                          </Button>
-                        </div>
-                        
-                        {getChapterViewMode(chapter.id) === 'topics' ? (
-                          <div className="space-y-1 pl-4">
-                            {chapter.topics?.length > 0 ? (
-                              chapter.topics.map((topic: any) => (
-                                <Button
-                                  key={topic.id}
-                                  variant={selectedTopic?.id === topic.id ? "secondary" : "ghost"}
-                                  className="w-full justify-start text-sm"
-                                  onClick={() => {
-                                    setSelectedTopic(topic);
-                                    setSelectedChapter(null);
-                                  }}
-                                >
-                                  {topic.completed ? (
-                                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                                  ) : (
-                                    <Circle className="h-4 w-4 mr-2" />
-                                  )}
-                                  <span className="flex-1 text-left truncate">{topic.title}</span>
-                                  {topic.estimated_duration_minutes && (
-                                    <span className="text-xs text-muted-foreground ml-2">
-                                      {topic.estimated_duration_minutes}m
-                                    </span>
-                                  )}
-                                </Button>
-                              ))
-                            ) : (
-                              <p className="text-sm text-muted-foreground py-2">
-                                No topics available
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="px-4 py-2">
-                            <p className="text-xs text-muted-foreground">
-                              View MCQs, Notes, and Previous Year content at chapter level
+                        <div className="space-y-1 pl-4">
+                          {chapter.topics?.length > 0 ? (
+                            chapter.topics.map((topic: any) => (
+                              <Button
+                                key={topic.id}
+                                variant={selectedTopic?.id === topic.id ? "secondary" : "ghost"}
+                                className="w-full justify-start text-sm"
+                                onClick={() => setSelectedTopic(topic)}
+                              >
+                                {topic.completed ? (
+                                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                                ) : (
+                                  <Circle className="h-4 w-4 mr-2" />
+                                )}
+                                <span className="flex-1 text-left truncate">{topic.title}</span>
+                                {topic.estimated_duration_minutes && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {topic.estimated_duration_minutes}m
+                                  </span>
+                                )}
+                              </Button>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground py-2">
+                              No topics available
                             </p>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
@@ -361,30 +313,6 @@ export default function Learning() {
 
                 <TabsContent value="previous-year">
                   <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
-                </TabsContent>
-              </Tabs>
-            ) : selectedChapter ? (
-              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold">Ch {selectedChapter.chapter_number}: {selectedChapter.title}</h2>
-                  <p className="text-sm text-muted-foreground">Chapter-level content</p>
-                </div>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="mcqs">MCQs</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
-                  <TabsTrigger value="previous-year">Previous Year</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="mcqs">
-                  <MCQTest chapterId={selectedChapter.id} />
-                </TabsContent>
-
-                <TabsContent value="notes">
-                  <NotesViewer content={selectedChapter.content_markdown} title={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`} />
-                </TabsContent>
-
-                <TabsContent value="previous-year">
-                  <PreviousYearPapers subjectId={selectedSubjectId} chapterId={selectedChapter.id} chapterOnly />
                 </TabsContent>
               </Tabs>
             ) : (
