@@ -33,9 +33,14 @@ export function useAIAssistantDocuments(
 
       if (chapterId) {
         query = query.eq("chapter_id", chapterId);
-      }
-      if (topicId) {
-        query = query.eq("topic_id", topicId);
+        
+        if (topicId) {
+          // Topic selected - show only topic-level documents
+          query = query.eq("topic_id", topicId);
+        } else {
+          // Chapter selected but no topic - show only chapter-level documents
+          query = query.is("topic_id", null);
+        }
       }
 
       const { data, error } = await query.order("created_at", { ascending: false });
