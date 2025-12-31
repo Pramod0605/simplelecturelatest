@@ -47,6 +47,7 @@ import {
 } from "@/hooks/usePreviousYearQuestions";
 import { useDatalab } from "@/hooks/useDatalab";
 import { useExtractQuestionsAI } from "@/hooks/useExtractQuestionsAI";
+import { MathpixRenderer } from './MathpixRenderer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -643,15 +644,23 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                                   Q{q.question_number || index + 1}
                                 </Badge>
                                 <div className="flex-1">
-                                  <p className="text-sm">
-                                    {q.question_text}
-                                  </p>
+                                  <div className="text-sm">
+                                    <MathpixRenderer 
+                                      mmdText={q.question_text} 
+                                      inline={true} 
+                                      className="[&_.prose]:prose-sm"
+                                    />
+                                  </div>
                                   {Object.keys(q.options).length > 0 && (
                                     <div className="mt-1 text-xs text-muted-foreground">
                                       {Object.entries(q.options).map(([key, val]) => (
-                                        <span key={key} className="mr-2">
-                                          {key}: {val.text.substring(0, 30)}
-                                          {val.text.length > 30 ? "..." : ""}
+                                        <span key={key} className="mr-2 inline-flex items-baseline gap-1">
+                                          <strong>{key}:</strong>
+                                          <MathpixRenderer 
+                                            mmdText={val.text.length > 50 ? val.text.substring(0, 50) + "..." : val.text} 
+                                            inline={true}
+                                            className="inline [&_.prose]:inline [&_.prose]:prose-xs"
+                                          />
                                         </span>
                                       ))}
                                     </div>
