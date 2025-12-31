@@ -64,35 +64,50 @@ const transformQuestion = (dbQuestion: {
   };
 };
 
-export const useMCQQuestions = (topicId: string) => {
+export const useMCQQuestions = (topicId?: string, chapterId?: string) => {
   return useQuery({
-    queryKey: ["mcq-questions", topicId],
+    queryKey: ["mcq-questions", topicId, chapterId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("questions")
         .select("*")
-        .eq("topic_id", topicId)
         .in("question_format", ["single_choice", "multiple_choice"])
         .order("created_at");
+
+      if (topicId) {
+        query = query.eq("topic_id", topicId);
+      } else if (chapterId) {
+        // Chapter-level questions: chapter_id matches and topic_id is NULL
+        query = query.eq("chapter_id", chapterId).is("topic_id", null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
       return (data || []).map(transformQuestion);
     },
-    enabled: !!topicId
+    enabled: !!(topicId || chapterId)
   });
 };
 
 // Get question counts by difficulty for the setup screen
-export const useMCQQuestionCounts = (topicId: string) => {
+export const useMCQQuestionCounts = (topicId?: string, chapterId?: string) => {
   return useQuery({
-    queryKey: ["mcq-question-counts", topicId],
+    queryKey: ["mcq-question-counts", topicId, chapterId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("questions")
         .select("difficulty")
-        .eq("topic_id", topicId)
         .in("question_format", ["single_choice", "multiple_choice"]);
+
+      if (topicId) {
+        query = query.eq("topic_id", topicId);
+      } else if (chapterId) {
+        query = query.eq("chapter_id", chapterId).is("topic_id", null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -113,6 +128,6 @@ export const useMCQQuestionCounts = (topicId: string) => {
 
       return counts;
     },
-    enabled: !!topicId
+    enabled: !!(topicId || chapterId)
   });
 };

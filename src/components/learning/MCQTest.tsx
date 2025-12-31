@@ -12,12 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 
 interface MCQTestProps {
-  topicId: string;
+  topicId?: string;
+  chapterId?: string;
 }
 
-export const MCQTest = ({ topicId }: MCQTestProps) => {
-  const { data: allQuestions = [], isLoading, error } = useMCQQuestions(topicId);
-  const { data: questionCounts } = useMCQQuestionCounts(topicId);
+export const MCQTest = ({ topicId, chapterId }: MCQTestProps) => {
+  const { data: allQuestions = [], isLoading, error } = useMCQQuestions(topicId, chapterId);
+  const { data: questionCounts } = useMCQQuestionCounts(topicId, chapterId);
   
   const [testState, setTestState] = useState<'setup' | 'testing' | 'results'>('setup');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('all');
