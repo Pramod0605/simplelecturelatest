@@ -257,6 +257,92 @@ function findQuestionPositions(text: string): { index: number; qNum: number }[] 
 }
 
 /**
+ * Detect actual question numbers in proficiency/practice documents
+ * Returns sorted array of unique question numbers found
+ */
+function detectProficiencyQuestionNumbers(text: string): number[] {
+  const numbers = new Set<number>();
+  
+  // Find the questions section (before ANSWERS)
+  const answersMatch = text.search(/ANSWERS?\s+TO\s+PROFICIENCY/i);
+  const questionsSection = answersMatch !== -1 ? text.slice(0, answersMatch) : text;
+  
+  // Patterns specifically for proficiency test question numbers
+  const patterns = [
+    /(?:^|\n)\s*(\d{1,2})\.\s+/gm,           // "1. Question..."
+    /(?:^|\n)\s*(\d{1,2})\)\s+/gm,           // "1) Question..."
+    /(?:^|\n)\s*\((\d{1,2})\)\s+/gm,         // "(1) Question..."
+    /(?:^|\n)\s*Q\.?\s*(\d{1,2})[\.\):\s]/gmi, // "Q1." or "Q.1"
+  ];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(questionsSection)) !== null) {
+      const qNum = parseInt(match[1], 10);
+      if (qNum >= 1 && qNum <= 50) { // Proficiency tests typically have <= 50 questions
+        numbers.add(qNum);
+      }
+    }
+  }
+  
+  const sorted = Array.from(numbers).sort((a, b) => a - b);
+  console.log(`Detected ${sorted.length} proficiency question numbers: ${sorted.join(", ")}`);
+  return sorted;
+}
+
+/**
+ * Extract answers from proficiency test ANSWERS section
+ * Returns map of question number -> answer text
+ */
+function extractProficiencyAnswers(text: string): Map<number, string> {
+  const answerMap = new Map<number, string>();
+  
+  // Find the ANSWERS section
+  const answerMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST/i);
+  if (!answerMatch || answerMatch.index === undefined) {
+    console.log("No proficiency answers section found");
+    return answerMap;
+  }
+  
+  const answersSection = text.slice(answerMatch.index);
+  console.log(`Found proficiency answers section, length: ${answersSection.length}`);
+  
+  // Split by question numbers and extract answers
+  // Pattern: number followed by period/paren, then answer text until next number
+  const lines = answersSection.split('\n');
+  let currentNum: number | null = null;
+  let currentAnswer: string[] = [];
+  
+  for (const line of lines) {
+    // Check if line starts with a question number
+    const numMatch = line.match(/^\s*(\d{1,2})[\.\)]\s*(.*)$/);
+    
+    if (numMatch) {
+      // Save previous answer if exists
+      if (currentNum !== null && currentAnswer.length > 0) {
+        answerMap.set(currentNum, currentAnswer.join(' ').trim());
+      }
+      
+      // Start new answer
+      currentNum = parseInt(numMatch[1], 10);
+      const answerStart = numMatch[2].trim();
+      currentAnswer = answerStart ? [answerStart] : [];
+    } else if (currentNum !== null && line.trim()) {
+      // Continue previous answer (multi-line)
+      currentAnswer.push(line.trim());
+    }
+  }
+  
+  // Save last answer
+  if (currentNum !== null && currentAnswer.length > 0) {
+    answerMap.set(currentNum, currentAnswer.join(' ').trim());
+  }
+  
+  console.log(`Extracted ${answerMap.size} proficiency answers`);
+  return answerMap;
+}
+
+/**
  * Create smart chunks with expected question ranges - IMPROVED with more overlap
  */
 function createSmartChunks(
@@ -357,7 +443,7 @@ function createSmartChunks(
 /**
  * Normalize raw extracted questions from AI response
  */
-function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
+function normalizeQuestions(raw: any[], isWrittenTest: boolean = false, proficiencyAnswers?: Map<number, string>): ExtractedQuestion[] {
   const seen = new Set<number>();
   const result: ExtractedQuestion[] = [];
   
@@ -367,7 +453,9 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
     seen.add(num);
     
     let options: Record<string, ExtractedOption> = {};
-    if (q.options) {
+    
+    // For written tests, don't extract options
+    if (!isWrittenTest && q.options) {
       if (Array.isArray(q.options)) {
         const labels = ["A", "B", "C", "D", "E"];
         q.options.forEach((opt: any, i: number) => {
@@ -393,12 +481,18 @@ function normalizeQuestions(raw: any[]): ExtractedQuestion[] {
     else if (rawDiff.includes("hard") || rawDiff.includes("advanced")) difficulty = "Advanced";
     else if (rawDiff.includes("intermediate")) difficulty = "Intermediate";
     
+    // For proficiency tests, get correct_answer from proficiencyAnswers map
+    let correctAnswer = "";
+    if (isWrittenTest && proficiencyAnswers) {
+      correctAnswer = proficiencyAnswers.get(num) || String(q.correct_answer || "");
+    }
+    
     result.push({
       question_number: num,
       question_text: String(q.question_text || q.text || q.question || ""),
       options,
-      correct_answer: "",
-      question_type: "mcq",
+      correct_answer: correctAnswer,
+      question_type: isWrittenTest ? "integer" : "mcq", // Use "integer" for subjective (no MCQ options)
       explanation: String(q.explanation || q.solution || ""),
       difficulty,
       marks: Number(q.marks || q.mark || 4),
@@ -446,9 +540,34 @@ serve(async (req) => {
 
     // Step 1: Extract answer key (NO AI - regex only)
     console.log("Extracting answer key...");
-    const answerKey = extractAnswerKey(extractionText);
-    const expectedQuestionCount = answerKey.size;
-    console.log(`🎯 EXPECTED QUESTIONS: ${expectedQuestionCount} (from answer key)`);
+    
+    // For proficiency tests, use different extraction logic
+    let answerKey: Map<number, string>;
+    let expectedQuestionCount: number;
+    let detectedProficiencyNumbers: number[] = [];
+    let proficiencyAnswers: Map<number, string> = new Map();
+    
+    if (isWrittenTest) {
+      // Detect actual question numbers for proficiency tests
+      detectedProficiencyNumbers = detectProficiencyQuestionNumbers(extractionText);
+      expectedQuestionCount = detectedProficiencyNumbers.length || 10; // Conservative default
+      
+      // Extract proficiency answers from ANSWERS section
+      proficiencyAnswers = extractProficiencyAnswers(extractionText);
+      
+      // Create a simple answer key for chunk processing (question number -> exists)
+      answerKey = new Map();
+      for (const num of detectedProficiencyNumbers) {
+        answerKey.set(num, proficiencyAnswers.get(num) || "");
+      }
+      
+      console.log(`🎯 PROFICIENCY: Detected ${expectedQuestionCount} questions, ${proficiencyAnswers.size} answers`);
+    } else {
+      // MCQ extraction - use existing logic
+      answerKey = extractAnswerKey(extractionText);
+      expectedQuestionCount = answerKey.size;
+      console.log(`🎯 EXPECTED QUESTIONS: ${expectedQuestionCount} (from answer key)`);
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -456,8 +575,23 @@ serve(async (req) => {
     }
 
     // Step 2: Create smart chunks with question ranges
-    const smartChunks = createSmartChunks(extractionText, expectedQuestionCount || 90, answerKey);
-    console.log(`Created ${smartChunks.length} parallel chunks`);
+    // For proficiency tests with few questions, use single chunk
+    let smartChunks: ChunkWithRange[];
+    if (isWrittenTest && expectedQuestionCount <= 30) {
+      // Single chunk for small proficiency tests
+      smartChunks = [{
+        text: extractionText,
+        chunkIndex: 0,
+        expectedRange: detectedProficiencyNumbers.length > 0 
+          ? detectedProficiencyNumbers 
+          : Array.from({ length: expectedQuestionCount }, (_, i) => i + 1),
+        answerKeySlice: answerKey,
+      }];
+      console.log(`Using single chunk for proficiency test with ${expectedQuestionCount} questions`);
+    } else {
+      smartChunks = createSmartChunks(extractionText, expectedQuestionCount || 90, answerKey);
+      console.log(`Created ${smartChunks.length} parallel chunks`);
+    }
 
     // Different tools schema for written vs MCQ tests
     const mcqTools = [
@@ -557,9 +691,81 @@ serve(async (req) => {
       let systemPrompt: string;
       let userPrompt: string;
       
-      if (isRecovery && targetQuestions && targetQuestions.length > 0) {
-        // IMPROVED recovery prompt - more explicit and structured
-        systemPrompt = `You are an expert exam paper parser. Your task is to find SPECIFIC questions from an exam document.
+      // Use different prompts for proficiency/written tests vs MCQ
+      if (isWrittenTest) {
+        // PROFICIENCY TEST PROMPTS - no MCQ options, extract only question text
+        if (isRecovery && targetQuestions && targetQuestions.length > 0) {
+          systemPrompt = `You are an expert question extractor for ${examName} proficiency/practice tests.
+
+CRITICAL INSTRUCTIONS:
+1. Find ONLY these specific questions: ${targetQuestions.join(", ")}
+2. This is a WRITTEN ANSWER test - there are NO MCQ OPTIONS (A,B,C,D)
+3. Extract the EXACT question text - do not paraphrase
+4. Preserve all math formulas, symbols, LaTeX exactly
+5. Do NOT invent or hallucinate questions that don't exist
+
+Return format:
+{
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "The full question text...",
+      "difficulty": "Medium",
+      "marks": 4
+    }
+  ]
+}`;
+          
+          userPrompt = `FIND THESE SPECIFIC QUESTIONS: ${targetQuestions.join(", ")}
+
+This is a PROFICIENCY/PRACTICE test with WRITTEN answers (not MCQ).
+Look for question numbers like: "1.", "1)", "(1)", "Q1."
+
+IMPORTANT: 
+- Extract ONLY the question text
+- Do NOT look for or add options (A,B,C,D)
+- Do NOT include answers - just the questions
+
+Document content:
+${chunkText}`;
+        } else {
+          // Initial proficiency extraction
+          const expectedNumbers = expectedRange.join(", ");
+          systemPrompt = `You are an expert question extractor for ${examName} proficiency/practice tests.
+
+EXTRACTION RULES:
+1. This is a WRITTEN ANSWER test - there are NO MCQ OPTIONS (A,B,C,D)
+2. Extract ONLY questions numbered: ${expectedNumbers}
+3. This paper has exactly ${expectedRange.length} questions
+4. Preserve exact question text including formulas, symbols, LaTeX
+5. Do NOT invent or hallucinate additional questions
+6. Do NOT add options - these are written answer questions
+7. Look for the QUESTIONS section, ignore the ANSWERS section
+
+CRITICAL: 
+- Extract ONLY ${expectedRange.length} questions
+- Do NOT extract more questions than exist
+- If you cannot find a question, skip it - do NOT make one up`;
+          
+          userPrompt = `Extract questions from this ${examName} proficiency/practice test.
+
+IMPORTANT:
+- This is a WRITTEN/SUBJECTIVE test, NOT MCQ
+- There are exactly ${expectedRange.length} questions numbered: ${expectedNumbers}
+- Extract ONLY the question text
+- Do NOT add options (A, B, C, D) - these are written answer questions
+- Ignore the "ANSWERS" section - only extract questions
+
+Look for the QUESTIONS section (before "ANSWERS TO PROFICIENCY TEST").
+
+Document content:
+${chunkText}`;
+        }
+      } else {
+        // MCQ PROMPTS - existing logic
+        if (isRecovery && targetQuestions && targetQuestions.length > 0) {
+          // IMPROVED recovery prompt - more explicit and structured
+          systemPrompt = `You are an expert exam paper parser. Your task is to find SPECIFIC questions from an exam document.
 
 CRITICAL INSTRUCTIONS:
 1. You MUST find questions numbered: ${targetQuestions.join(", ")}
@@ -580,8 +786,8 @@ Return format:
     }
   ]
 }`;
-        
-        userPrompt = `FIND THESE SPECIFIC QUESTIONS: ${targetQuestions.join(", ")}
+          
+          userPrompt = `FIND THESE SPECIFIC QUESTIONS: ${targetQuestions.join(", ")}
 
 Look carefully for each question number. Common patterns:
 - "Q16." or "16." at start of line
@@ -592,9 +798,9 @@ IMPORTANT: Extract ALL ${targetQuestions.length} questions listed above. Do not 
 
 Document content:
 ${chunkText}`;
-      } else {
-        // IMPROVED initial extraction prompt
-        systemPrompt = `You are an expert MCQ extractor for ${examName} exam papers.
+        } else {
+          // IMPROVED initial extraction prompt for MCQ
+          systemPrompt = `You are an expert MCQ extractor for ${examName} exam papers.
 
 EXTRACTION RULES:
 1. Extract ALL questions from ${rangeStr}
@@ -608,8 +814,8 @@ EXTRACTION RULES:
 CRITICAL: You MUST extract ALL questions in the range ${rangeStr}. Missing questions is not acceptable.
 
 Return structured JSON with the questions array.`;
-        
-        userPrompt = `Extract ${rangeStr} from this ${examName} ${year} ${paperType || ""} exam paper.
+          
+          userPrompt = `Extract ${rangeStr} from this ${examName} ${year} ${paperType || ""} exam paper.
 
 YOU MUST FIND AND EXTRACT THESE QUESTION NUMBERS: ${expectedRange.join(", ")}
 
@@ -620,6 +826,7 @@ Search the entire content carefully. Questions may use different formats:
 
 Content:
 ${chunkText}`;
+        }
       }
 
       const maxRetries = 2;
@@ -692,7 +899,16 @@ ${chunkText}`;
           if (parsed) {
             const rawQuestions = parsed.questions || (Array.isArray(parsed) ? parsed : []);
             if (Array.isArray(rawQuestions) && rawQuestions.length > 0) {
-              return normalizeQuestions(rawQuestions);
+              // For proficiency tests, filter to only detected question numbers
+              let filtered = rawQuestions;
+              if (isWrittenTest && detectedProficiencyNumbers.length > 0) {
+                filtered = rawQuestions.filter((q: any) => {
+                  const num = Number(q.question_number || q.number || 0);
+                  return detectedProficiencyNumbers.includes(num);
+                });
+                console.log(`Filtered to ${filtered.length} questions (only detected numbers)`);
+              }
+              return normalizeQuestions(filtered, isWrittenTest, proficiencyAnswers);
             }
           }
           
