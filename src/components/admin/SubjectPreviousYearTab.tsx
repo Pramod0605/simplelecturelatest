@@ -222,7 +222,12 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   };
 
   const handleSubmit = async () => {
-    if (!formData.chapter_id || !formData.topic_id) {
+    if (!formData.chapter_id) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a chapter",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -236,11 +241,11 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         pdfUrl = await uploadPDF.mutateAsync({ file: selectedFile, paperId: tempId });
       }
 
-      // Create the paper record with chapter and topic IDs
+      // Create the paper record with chapter and optional topic IDs
       const paper = await createPaper.mutateAsync({
         subject_id: subjectId,
         chapter_id: formData.chapter_id,
-        topic_id: formData.topic_id,
+        topic_id: formData.topic_id || undefined,
         year: formData.year,
         exam_name: formData.exam_name,
         paper_type: formData.paper_type || undefined,
@@ -258,7 +263,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         await bulkInsertQuestions.mutateAsync({
           questions: questionsWithImportance,
           paperId: paper.id,
-          topicId: formData.topic_id,
+          topicId: formData.topic_id || undefined,
           subjectId,
           chapterId: formData.chapter_id,
         });
@@ -404,7 +409,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Topic *</Label>
+                        <Label>Topic (Optional)</Label>
                         <Select
                           value={formData.topic_id}
                           onValueChange={(value) =>
@@ -413,7 +418,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                           disabled={!formData.chapter_id}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select topic" />
+                            <SelectValue placeholder="Select topic (optional)" />
                           </SelectTrigger>
                           <SelectContent>
                             {topics?.map((topic) => (
@@ -423,6 +428,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                             ))}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">Leave empty to associate with entire chapter</p>
                       </div>
                     </div>
 

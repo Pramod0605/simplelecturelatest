@@ -288,12 +288,12 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
       return;
     }
 
-    // Make topic selection required for better organization
-    if (!questionForm.topic_id) {
-      console.error("❌ Validation failed: No topic selected");
+    // Chapter is required, topic is optional
+    if (!questionForm.chapter_id) {
+      console.error("❌ Validation failed: No chapter selected");
       toast({
         title: "Validation Error",
-        description: "Please select a topic for this question",
+        description: "Please select a chapter for this question",
         variant: "destructive",
       });
       return;
@@ -304,7 +304,8 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     console.log("Question Form Data:", questionForm);
 
     const questionData: any = {
-      topic_id: questionForm.topic_id,
+      topic_id: questionForm.topic_id || null,
+      chapter_id: questionForm.chapter_id || null,
       question_text: questionForm.question_text.trim(),
       question_type: questionForm.question_format,
       question_format: questionForm.question_format,

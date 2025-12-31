@@ -18,7 +18,7 @@ export interface ExtractedQuestion {
 interface BulkInsertParams {
   questions: ExtractedQuestion[];
   paperId: string;
-  topicId: string;
+  topicId?: string;
   subjectId: string;
   chapterId: string;
 }
@@ -27,7 +27,7 @@ export const useBulkInsertPreviousYearQuestions = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ questions, paperId, topicId }: BulkInsertParams) => {
+    mutationFn: async ({ questions, paperId, topicId, chapterId }: BulkInsertParams) => {
       // Normalize difficulty to match DB constraint: 'Low', 'Medium', 'Intermediate', 'Advanced'
       const normalizeDifficulty = (diff: string): string => {
         const d = (diff || "medium").toLowerCase();
@@ -46,7 +46,8 @@ export const useBulkInsertPreviousYearQuestions = () => {
         explanation: q.explanation || null,
         difficulty: normalizeDifficulty(q.difficulty),
         marks: q.marks || 1,
-        topic_id: topicId,
+        topic_id: topicId || null,
+        chapter_id: chapterId || null,
         previous_year_paper_id: paperId,
         is_verified: false,
         is_ai_generated: true,

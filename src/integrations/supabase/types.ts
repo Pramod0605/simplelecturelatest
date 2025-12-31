@@ -3006,6 +3006,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          chapter_id: string | null
           contains_formula: boolean | null
           content_hash: string | null
           correct_answer: string
@@ -3031,6 +3032,7 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          chapter_id?: string | null
           contains_formula?: boolean | null
           content_hash?: string | null
           correct_answer: string
@@ -3056,6 +3058,7 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          chapter_id?: string | null
           contains_formula?: boolean | null
           content_hash?: string | null
           correct_answer?: string
@@ -3081,6 +3084,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "questions_previous_year_paper_id_fkey"
             columns: ["previous_year_paper_id"]
