@@ -15,6 +15,9 @@ verify_jwt = true
 [functions.b2-get-download-url]
 verify_jwt = true
 
+[functions.b2-proxy-file]
+verify_jwt = true
+
 [functions.ai-suggest-chapter-topic]
 verify_jwt = false
 
