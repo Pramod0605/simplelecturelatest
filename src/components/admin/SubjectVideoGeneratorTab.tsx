@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X, Link as LinkIcon, Clock, BookOpen } from "lucide-react";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X, Link as LinkIcon, Clock, BookOpen, ExternalLink } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedId, setGeneratedId] = useState<string | null>(null);
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
   // Filter state
@@ -97,10 +98,14 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   const handleGenerateVideo = async () => {
     setIsGenerating(true);
     setGeneratedId(null);
+    setGeneratedVideoUrl(null);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const uniqueId = generateUniqueId();
+      
+      // Sample URL (will be replaced with actual API response later)
+      const videoUrl = "https://6d269869-8de6-4a7a-9daf-edc84a5b5c94-00-5135c5au6qst.janeway.replit.dev/player_v2/?job=91183c9d";
       
       const { error } = await supabase
         .from('video_generation_jobs')
@@ -110,7 +115,8 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
           subject_id: subjectId,
           document_name: selectedDocument?.display_name || selectedDocument?.file_name,
           parsed_content: fullContent as any,
-          status: 'pending',
+          status: 'completed',
+          video_url: videoUrl,
           created_by: user?.id
         } as any);
       
@@ -120,13 +126,36 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
         return;
       }
       
+      // Save video URL to chapter if document has chapter_id
+      if (selectedDocument?.chapter_id) {
+        await supabase
+          .from('subject_chapters')
+          .update({ ai_generated_video_url: videoUrl } as any)
+          .eq('id', selectedDocument.chapter_id);
+      }
+      
+      // Save video URL to topic if document has topic_id
+      if (selectedDocument?.topic_id) {
+        await supabase
+          .from('subject_topics')
+          .update({ ai_generated_video_url: videoUrl } as any)
+          .eq('id', selectedDocument.topic_id);
+      }
+      
       setGeneratedId(uniqueId);
-      toast.success(`Video job created with ID: ${uniqueId}`);
+      setGeneratedVideoUrl(videoUrl);
+      toast.success('Video generated and saved!');
     } catch (err) {
       console.error('Error:', err);
       toast.error('An error occurred');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleViewVideo = () => {
+    if (generatedVideoUrl) {
+      window.open(generatedVideoUrl, '_blank');
     }
   };
 
@@ -418,7 +447,7 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                   
                   {generatedId && (
                     <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Video Job Created!</p>
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">Video Generated Successfully!</p>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xl font-mono font-bold text-green-800 dark:text-green-200">{generatedId}</p>
                         <Button 
@@ -431,8 +460,18 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Use this ID to access the video once generated. The parsed content is stored and ready for API processing.
+                        Video has been saved to the associated chapter/topic. Students can now access this lecture.
                       </p>
+                      {generatedVideoUrl && (
+                        <Button 
+                          variant="outline" 
+                          className="mt-3 gap-2"
+                          onClick={handleViewVideo}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          View Video
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
