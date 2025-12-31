@@ -8,11 +8,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
 interface PodcastPlayerProps {
-  topicId: string;
+  topicId?: string;
+  chapterId?: string;
 }
 
-export const PodcastPlayer = ({ topicId }: PodcastPlayerProps) => {
-  const podcasts = getPodcastsByTopic(topicId);
+export const PodcastPlayer = ({ topicId, chapterId }: PodcastPlayerProps) => {
+  const podcasts = getPodcastsByTopic(topicId || chapterId || '');
   const [selectedPodcast, setSelectedPodcast] = useState(podcasts[0]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);

@@ -41,6 +41,8 @@ import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 interface PreviousYearPapersProps {
   subjectId: string | null;
   topicId?: string | null;
+  chapterId?: string | null;
+  chapterOnly?: boolean;
 }
 
 type TestState = "papers" | "setup" | "testing" | "results";

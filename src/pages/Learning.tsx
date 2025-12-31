@@ -26,6 +26,8 @@ export default function Learning() {
   const [searchParams] = useSearchParams();
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [selectedChapter, setSelectedChapter] = useState<any>(null);
+  const [chapterTab, setChapterTab] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("videos");
 
@@ -148,6 +150,18 @@ export default function Learning() {
   const handleSubjectChange = (subjectId: string) => {
     setSelectedSubjectId(subjectId);
     setSelectedTopic(null);
+    setSelectedChapter(null);
+    setChapterTab(null);
+  };
+
+  const handleChapterTabClick = (chapter: any, tab: string) => {
+    setSelectedChapter(chapter);
+    setChapterTab(tab);
+    setSelectedTopic(null);
+    setActiveTab(tab);
+    if (tab === "ai-assistant") {
+      setSidebarCollapsed(true);
+    }
   };
 
   return (
@@ -216,14 +230,46 @@ export default function Learning() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="space-y-1 pl-4">
+                        {/* Chapter-level tab selector */}
+                        <div className="mb-3 overflow-x-auto">
+                          <div className="flex gap-1 min-w-max p-1">
+                            {[
+                              { key: "videos", label: "Classes" },
+                              { key: "ai-assistant", label: "AI Assistant" },
+                              { key: "podcast", label: "Podcast" },
+                              { key: "mcqs", label: "MCQs" },
+                              { key: "dpt", label: "DPT" },
+                              { key: "notes", label: "Notes" },
+                              { key: "assignments", label: "Assignments" },
+                              { key: "previous-year", label: "Previous Year" },
+                            ].map((tab) => (
+                              <Button
+                                key={tab.key}
+                                variant={selectedChapter?.id === chapter.id && chapterTab === tab.key ? "default" : "outline"}
+                                size="sm"
+                                className="text-xs whitespace-nowrap h-7 px-2"
+                                onClick={() => handleChapterTabClick(chapter, tab.key)}
+                              >
+                                {tab.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Topics section */}
+                        <div className="space-y-1 pl-2">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Topics</p>
                           {chapter.topics?.length > 0 ? (
                             chapter.topics.map((topic: any) => (
                               <Button
                                 key={topic.id}
                                 variant={selectedTopic?.id === topic.id ? "secondary" : "ghost"}
                                 className="w-full justify-start text-sm"
-                                onClick={() => setSelectedTopic(topic)}
+                                onClick={() => {
+                                  setSelectedTopic(topic);
+                                  setSelectedChapter(null);
+                                  setChapterTab(null);
+                                }}
                               >
                                 {topic.completed ? (
                                   <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
@@ -315,6 +361,63 @@ export default function Learning() {
                   <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
                 </TabsContent>
               </Tabs>
+            ) : selectedChapter && chapterTab ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-xl font-semibold">
+                    Ch {selectedChapter.chapter_number}: {selectedChapter.title}
+                  </h2>
+                  <span className="text-sm text-muted-foreground px-2 py-1 bg-muted rounded">
+                    Chapter Level Content
+                  </span>
+                </div>
+
+                {chapterTab === "videos" && (
+                  <RecordedVideos 
+                    chapterId={selectedChapter.id}
+                    topicTitle={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`}
+                  />
+                )}
+
+                {chapterTab === "ai-assistant" && (
+                  <AITeachingAssistant 
+                    chapterId={selectedChapter.id}
+                    topicTitle={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`}
+                    subjectName={selectedSubject?.name}
+                  />
+                )}
+
+                {chapterTab === "podcast" && (
+                  <PodcastPlayer chapterId={selectedChapter.id} />
+                )}
+
+                {chapterTab === "mcqs" && (
+                  <MCQTest chapterId={selectedChapter.id} chapterOnly />
+                )}
+
+                {chapterTab === "dpt" && (
+                  <DPTTest />
+                )}
+
+                {chapterTab === "notes" && (
+                  <NotesViewer 
+                    chapterId={selectedChapter.id}
+                    title={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`} 
+                  />
+                )}
+
+                {chapterTab === "assignments" && (
+                  <AssignmentViewer chapterId={selectedChapter.id} />
+                )}
+
+                {chapterTab === "previous-year" && (
+                  <PreviousYearPapers 
+                    subjectId={selectedSubjectId} 
+                    chapterId={selectedChapter.id}
+                    chapterOnly
+                  />
+                )}
+              </div>
             ) : (
               <div className="flex items-center justify-center h-[400px]">
                 <div className="text-center">

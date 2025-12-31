@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface RecordedVideosProps {
-  topicId: string;
+  topicId?: string;
+  chapterId?: string;
   // Direct video from subject_topics table
   topicVideoId?: string;
   topicVideoPlatform?: string;
@@ -18,7 +19,7 @@ interface RecordedVideosProps {
   aiGeneratedVideoUrl?: string;
 }
 
-export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topicTitle, aiGeneratedVideoUrl }: RecordedVideosProps) => {
+export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPlatform, topicTitle, aiGeneratedVideoUrl }: RecordedVideosProps) => {
   const { data: additionalVideos, isLoading } = useTopicVideos(topicId);
   const [selectedVideo, setSelectedVideo] = useState<TopicVideo | null>(null);
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
