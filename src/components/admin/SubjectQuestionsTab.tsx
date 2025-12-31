@@ -64,6 +64,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const [editingQuestion, setEditingQuestion] = useState<any>(null);
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
   
+  // Question type tab: "manual" or "previous_year"
+  const [questionTypeTab, setQuestionTypeTab] = useState<"manual" | "previous_year">("manual");
+  
   // Enhanced filters
   const [filters, setFilters] = useState({
     difficulty: "all",
@@ -231,6 +234,13 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     }
     return true;
   }) || [];
+
+  // Separate questions by type: previous year vs manual
+  const previousYearQuestions = filteredQuestions.filter(q => q.previous_year_paper_id !== null);
+  const manualQuestions = filteredQuestions.filter(q => q.previous_year_paper_id === null);
+  
+  // Get the questions to display based on active tab
+  const displayedQuestions = questionTypeTab === "previous_year" ? previousYearQuestions : manualQuestions;
 
   const resetForm = () => {
     setQuestionForm({
@@ -994,6 +1004,20 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
           </div>
         </CardHeader>
         <CardContent>
+          {/* Question Type Tabs */}
+          <Tabs value={questionTypeTab} onValueChange={(v) => setQuestionTypeTab(v as "manual" | "previous_year")} className="mb-6">
+            <TabsList>
+              <TabsTrigger value="manual" className="gap-2">
+                Manually Created
+                <Badge variant="secondary" className="ml-1">{manualQuestions.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="previous_year" className="gap-2">
+                Previous Year Questions
+                <Badge variant="secondary" className="ml-1">{previousYearQuestions.length}</Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* Filters */}
           <QuestionFilters
             filters={filters}
@@ -1009,9 +1033,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : filteredQuestions && filteredQuestions.length > 0 ? (
+          ) : displayedQuestions && displayedQuestions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-              {filteredQuestions.map((question) => (
+              {displayedQuestions.map((question) => (
                 <QuestionPreview
                   key={question.id}
                   question={question}
@@ -1023,7 +1047,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No questions found. Try adjusting your filters or create a new question.
+              {questionTypeTab === "previous_year" 
+                ? "No previous year questions found. Import from previous year papers."
+                : "No manually created questions found. Create a new question to get started."}
             </div>
           )}
 
