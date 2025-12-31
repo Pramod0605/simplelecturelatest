@@ -14,6 +14,7 @@ import { DPTTest } from "@/components/learning/DPTTest";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
 import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
 import { PreviousYearPapers } from "@/components/learning/PreviousYearPapers";
+import { CourseWelcomeCards } from "@/components/learning/CourseWelcomeCards";
 import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
@@ -419,14 +420,7 @@ export default function Learning() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <div className="flex items-center justify-center h-[400px]">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Welcome to {course?.name}</h3>
-                  <p className="text-muted-foreground">
-                    Select a topic from the sidebar to start learning
-                  </p>
-                </div>
-              </div>
+              <CourseWelcomeCards courseName={course?.name || "this course"} />
             )}
           </main>
         </div>
