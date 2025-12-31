@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink, X, Loader2 } from "lucide-react";
 import {
@@ -18,48 +18,116 @@ interface PDFPreviewProps {
 
 export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isFetchingPdf, setIsFetchingPdf] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Derive a human-friendly file name from the URL/path if not explicitly provided
   const derivedFileName = fileName || decodeURIComponent(pdfUrl.split("/").pop() || "Document");
 
-  // Get authorized download URL for B2 files
-  const { downloadUrl, proxyUrl, isLoading, error } = useB2DownloadUrl(pdfUrl);
+  // Get proxy URL for B2 files
+  const { proxyUrl, isLoading: isUrlLoading, error: urlError } = useB2DownloadUrl(pdfUrl);
 
-  // Get auth token for proxy requests
+  // Cleanup blob URL on unmount or when closing
   useEffect(() => {
-    const getToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        setAuthToken(session.access_token);
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
       }
     };
-    getToken();
-  }, []);
+  }, [pdfBlobUrl]);
 
-  // Build proxy URL with auth token for iframe
-  const iframeUrl = proxyUrl && authToken 
-    ? `${proxyUrl}&token=${encodeURIComponent(authToken)}`
-    : null;
+  const loadPdf = useCallback(async () => {
+    if (!proxyUrl) return;
+    
+    setIsFetchingPdf(true);
+    setFetchError(null);
 
-  const handleRetry = () => {
-    window.location.reload();
+    try {
+      // Get current session for auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Fetch PDF through proxy with Authorization header
+      const response = await fetch(proxyUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to load PDF: ${response.status} - ${errorText}`);
+      }
+
+      // Create blob URL from response
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Cleanup old blob URL if exists
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+      
+      setPdfBlobUrl(blobUrl);
+    } catch (error) {
+      console.error("PDF fetch error:", error);
+      
+      // Check if it's a blocker issue
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        setFetchError("Your browser may be blocking this request. Please disable ad blockers or allowlist this site.");
+      } else {
+        setFetchError(error instanceof Error ? error.message : "Failed to load PDF");
+      }
+    } finally {
+      setIsFetchingPdf(false);
+    }
+  }, [proxyUrl, pdfBlobUrl]);
+
+  // Load PDF when opening the preview
+  useEffect(() => {
+    if (isOpen && proxyUrl && !pdfBlobUrl && !isFetchingPdf && !fetchError) {
+      loadPdf();
+    }
+  }, [isOpen, proxyUrl, pdfBlobUrl, isFetchingPdf, fetchError, loadPdf]);
+
+  // Cleanup when closing
+  const handleClose = () => {
+    setIsOpen(false);
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
+    }
+    setFetchError(null);
   };
 
+  const handleOpenInNewTab = async () => {
+    if (pdfBlobUrl) {
+      window.open(pdfBlobUrl, "_blank");
+    } else {
+      await loadPdf();
+      // After loading, the blob URL will be set, user can click again
+    }
+  };
+
+  const isLoading = isUrlLoading || isFetchingPdf;
+  const error = urlError || fetchError;
+
   if (error) {
-    const errorType = error.includes('404') ? 'not found in storage' :
-                     error.includes('401') || error.includes('403') ? 'authorization failed' :
-                     'unknown error';
-    
     return (
       <Alert variant="destructive">
         <AlertDescription className="flex items-center justify-between">
-          <span>Failed to load PDF: {errorType} - {error}</span>
+          <span>{error}</span>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleRetry}
+            onClick={() => {
+              setFetchError(null);
+              loadPdf();
+            }}
             className="ml-4"
           >
             Retry
@@ -92,8 +160,8 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => iframeUrl && window.open(iframeUrl, "_blank")}
-          disabled={isLoading || !iframeUrl}
+          onClick={handleOpenInNewTab}
+          disabled={isLoading}
           className="gap-2"
         >
           <ExternalLink className="h-4 w-4" />
@@ -106,7 +174,7 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : iframeUrl ? (
+        ) : pdfBlobUrl ? (
           <div className="relative border rounded-lg overflow-hidden bg-muted/10">
             <div className="flex items-center justify-between p-2 bg-muted/50 border-b">
               <span className="text-sm font-medium">{derivedFileName}</span>
@@ -114,13 +182,13 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
             <iframe
-              src={iframeUrl}
+              src={pdfBlobUrl}
               className="w-full h-[600px]"
               title={`PDF Preview: ${derivedFileName}`}
             />
