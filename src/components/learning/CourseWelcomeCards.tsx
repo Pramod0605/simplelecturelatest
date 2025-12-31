@@ -60,7 +60,7 @@ export function CourseWelcomeCards({ courseName }: CourseWelcomeCardsProps) {
                     ? 'scale-75 opacity-40 blur-sm z-10'
                     : 'scale-50 opacity-0 blur-md z-0'
                 }
-                ${isPrev ? '-translate-x-48' : isNext ? 'translate-x-48' : ''}
+                ${isPrev ? '-translate-y-24' : isNext ? 'translate-y-24' : ''}
               `}
               style={{ width: '500px', maxWidth: '90vw' }}
             >
