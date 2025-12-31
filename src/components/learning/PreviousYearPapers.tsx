@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -52,6 +52,7 @@ interface PreviousYearPapersProps {
 }
 
 type TestState = "papers" | "setup" | "testing" | "results";
+type PaperCategory = "previous_year" | "proficiency" | "exam";
 
 const QUESTION_OPTIONS = [5, 10, 15, 20, 25] as const;
 const TIME_OPTIONS = [
@@ -77,6 +78,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionFilter, setQuestionFilter] = useState<"all" | "important">("all");
+  const [activeCategory, setActiveCategory] = useState<PaperCategory>("previous_year");
 
   const { data: papers, isLoading: papersLoading } = usePreviousYearPapersForSubject(subjectId, topicId, chapterId, chapterOnly);
   const { data: paperQuestions, isLoading: questionsLoading } = usePreviousYearPaperQuestions(
@@ -84,6 +86,22 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   );
   const uploadAnswerImage = useUploadAnswerImage();
   const submitWrittenAnswer = useSubmitWrittenAnswer();
+
+  // Filter papers by category
+  const filteredPapers = useMemo(() => {
+    if (!papers) return [];
+    return papers.filter(p => (p.paper_category || "previous_year") === activeCategory);
+  }, [papers, activeCategory]);
+
+  // Count papers by category
+  const paperCounts = useMemo(() => {
+    if (!papers) return { previous_year: 0, proficiency: 0, exam: 0 };
+    return papers.reduce((acc, p) => {
+      const category = (p.paper_category || "previous_year") as PaperCategory;
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, { previous_year: 0, proficiency: 0, exam: 0 } as Record<PaperCategory, number>);
+  }, [papers]);
 
   // Timer effect
   useEffect(() => {
@@ -234,18 +252,21 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   if (testState === "papers") {
     if (papersLoading) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-10 w-full" />
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       );
     }
@@ -270,63 +291,96 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
           <h2 className="text-xl font-semibold">Mock & PYQs</h2>
           <Badge variant="secondary">{papers.length} Papers</Badge>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {papers.map((paper) => (
-            <Card key={paper.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {paper.exam_name} {paper.year}
-                    </CardTitle>
-                    {paper.paper_type && (
-                      <CardDescription>{paper.paper_type}</CardDescription>
-                    )}
-                  </div>
-                  <Badge variant="outline">{paper.year}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                    <span>{paper.total_questions || "N/A"} Questions</span>
-                  </div>
-                  {paper.document_type && paper.document_type !== "mcq" && (
-                    <Badge variant="secondary" className="text-xs">
-                      {paper.document_type === "practice" ? (
-                        <><Pencil className="h-3 w-3 mr-1" /> Written</>
-                      ) : (
-                        <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
-                      )}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {paper.pdf_url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => window.open(paper.pdf_url, "_blank")}
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      PDF
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleStartSetup(paper)}
-                  >
-                    <Play className="h-4 w-4 mr-1" />
-                    Start to Solve
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        
+        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as PaperCategory)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="previous_year" className="gap-2">
+              Previous Year
+              {paperCounts.previous_year > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.previous_year}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="proficiency" className="gap-2">
+              Proficiency
+              {paperCounts.proficiency > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.proficiency}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="exam" className="gap-2">
+              Exam
+              {paperCounts.exam > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.exam}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeCategory} className="mt-4">
+            {filteredPapers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPapers.map((paper) => (
+                  <Card key={paper.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-lg">
+                            {paper.exam_name} {paper.year}
+                          </CardTitle>
+                          {paper.paper_type && (
+                            <CardDescription>{paper.paper_type}</CardDescription>
+                          )}
+                        </div>
+                        <Badge variant="outline">{paper.year}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span>{paper.total_questions || "N/A"} Questions</span>
+                        </div>
+                        {paper.document_type && paper.document_type !== "mcq" && (
+                          <Badge variant="secondary" className="text-xs">
+                            {paper.document_type === "practice" ? (
+                              <><Pencil className="h-3 w-3 mr-1" /> Written</>
+                            ) : (
+                              <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {paper.pdf_url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => window.open(paper.pdf_url, "_blank")}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            PDF
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleStartSetup(paper)}
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Start to Solve
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p>No {activeCategory === "previous_year" ? "previous year papers" : activeCategory === "proficiency" ? "proficiency tests" : "exam papers"} available</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
