@@ -173,26 +173,51 @@ export function JsonUploadParseWidget({
           className="hidden"
         />
 
-        {/* Parse PDF Button */}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleParsePdf}
-          disabled={!pdfUrl || isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Parsing...
-            </>
-          ) : (
-            <>
-              <FileJson className="h-4 w-4 mr-2" />
-              Parse PDF to JSON
-            </>
-          )}
-        </Button>
+        {/* Parse PDF Button - only show if no JSON exists (since auto-parse handles initial parsing) */}
+        {!hasJson && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleParsePdf}
+            disabled={!pdfUrl || isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Parsing...
+              </>
+            ) : (
+              <>
+                <FileJson className="h-4 w-4 mr-2" />
+                Parse PDF to JSON
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Re-parse Button - only show if JSON exists */}
+        {hasJson && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleParsePdf}
+            disabled={!pdfUrl || isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Re-parsing...
+              </>
+            ) : (
+              <>
+                <FileJson className="h-4 w-4 mr-2" />
+                Re-parse PDF
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Clear JSON Button */}
         {hasJson && (

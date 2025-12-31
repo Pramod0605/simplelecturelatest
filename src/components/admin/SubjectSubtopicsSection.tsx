@@ -42,6 +42,8 @@ import {
   useDeleteSubtopic,
 } from "@/hooks/useSubtopics";
 import { toast } from "@/hooks/use-toast";
+import { useDatalab } from "@/hooks/useDatalab";
+import { useAddAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
 
 interface SubtopicsSectionProps {
   topicId: string;
@@ -87,6 +89,45 @@ export function SubjectSubtopicsSection({
   const createSubtopic = useCreateSubtopic();
   const updateSubtopic = useUpdateSubtopic();
   const deleteSubtopic = useDeleteSubtopic();
+  
+  // PDF parsing hooks for auto-parse after upload
+  const { parsePdfFromUrl, isLoading: isParsingPdf } = useDatalab();
+  const addDocument = useAddAIAssistantDocument();
+
+  // Auto-parse handler for subtopic PDF uploads
+  const handleSubtopicPdfUploadAndParse = async (pdfUrl: string) => {
+    const result = await parsePdfFromUrl(pdfUrl);
+    if (result) {
+      const parsedContent = result.content_json || result;
+      setSubtopicForm(prev => ({ ...prev, content_json: parsedContent }));
+      
+      if (subjectId) {
+        try {
+          const fileName = pdfUrl.split('/').pop() || "document.pdf";
+          await addDocument.mutateAsync({
+            subjectId,
+            chapterId,
+            topicId,
+            displayName: `${subtopicForm.title || 'Subtopic'} (${topicTitle})`,
+            sourceType: "pdf",
+            sourceUrl: pdfUrl,
+            fileName,
+            contentPreview: JSON.stringify(parsedContent).substring(0, 500),
+            fullContent: parsedContent,
+          });
+          toast({
+            title: "PDF Parsed & Saved",
+            description: `Document parsed and added to AI Assistant`,
+          });
+        } catch (error) {
+          toast({
+            title: "PDF Parsed",
+            description: `Parsed successfully but couldn't save to Documents`,
+          });
+        }
+      }
+    }
+  };
 
   const resetForm = () => {
     setSubtopicForm({
@@ -396,6 +437,8 @@ export function SubjectSubtopicsSection({
                 onFileUploaded={(url) =>
                   setSubtopicForm({ ...subtopicForm, pdf_url: url })
                 }
+                onParseAfterUpload={handleSubtopicPdfUploadAndParse}
+                isParsingPdf={isParsingPdf}
                 label="Upload Subtopic PDF"
                 acceptedTypes="application/pdf"
                 maxSizeMB={50}
