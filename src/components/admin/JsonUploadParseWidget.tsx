@@ -88,6 +88,8 @@ export function JsonUploadParseWidget({
           const fileName = pdfUrl.split('/').pop() || "document.pdf";
           await addDocument.mutateAsync({
             subjectId,
+            chapterId,
+            topicId,
             displayName: parentName ? `${entityName} (${parentName})` : `${entityName} (${entityType})`,
             sourceType: "pdf",
             sourceUrl: pdfUrl,
