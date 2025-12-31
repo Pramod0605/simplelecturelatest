@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UseB2DownloadUrlResult {
   downloadUrl: string | null;
+  proxyUrl: string | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -11,12 +12,14 @@ const urlCache = new Map<string, { url: string; expiresAt: number }>();
 
 export function useB2DownloadUrl(filePath: string | null | undefined): UseB2DownloadUrlResult {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!filePath) {
       setDownloadUrl(null);
+      setProxyUrl(null);
       setError(null);
       setIsLoading(false);
       return;
@@ -25,12 +28,23 @@ export function useB2DownloadUrl(filePath: string | null | undefined): UseB2Down
     // If it's already a full URL (from old Supabase storage), use it directly
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       setDownloadUrl(filePath);
+      setProxyUrl(filePath);
       setError(null);
       setIsLoading(false);
       return;
     }
 
-    // Check cache first
+    // Generate proxy URL immediately (doesn't require B2 auth)
+    const generateProxyUrl = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const proxyBaseUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/b2-proxy-file`;
+        setProxyUrl(`${proxyBaseUrl}?path=${encodeURIComponent(filePath)}`);
+      }
+    };
+    generateProxyUrl();
+
+    // Check cache first for direct URL
     const cached = urlCache.get(filePath);
     const now = Date.now();
     
@@ -76,5 +90,5 @@ export function useB2DownloadUrl(filePath: string | null | undefined): UseB2Down
     fetchUrl();
   }, [filePath]);
 
-  return { downloadUrl, isLoading, error };
+  return { downloadUrl, proxyUrl, isLoading, error };
 }

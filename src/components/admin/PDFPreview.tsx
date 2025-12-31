@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink, X, Loader2 } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PDFPreviewProps {
   pdfUrl: string;
@@ -17,13 +18,29 @@ interface PDFPreviewProps {
 
 export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   // Derive a human-friendly file name from the URL/path if not explicitly provided
   const derivedFileName = fileName || decodeURIComponent(pdfUrl.split("/").pop() || "Document");
 
   // Get authorized download URL for B2 files
-  const { downloadUrl, isLoading, error } = useB2DownloadUrl(pdfUrl);
-  const effectiveUrl = downloadUrl || pdfUrl;
+  const { downloadUrl, proxyUrl, isLoading, error } = useB2DownloadUrl(pdfUrl);
+
+  // Get auth token for proxy requests
+  useEffect(() => {
+    const getToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        setAuthToken(session.access_token);
+      }
+    };
+    getToken();
+  }, []);
+
+  // Build proxy URL with auth token for iframe
+  const iframeUrl = proxyUrl && authToken 
+    ? `${proxyUrl}&token=${encodeURIComponent(authToken)}`
+    : null;
 
   const handleRetry = () => {
     window.location.reload();
@@ -75,8 +92,8 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => effectiveUrl && window.open(effectiveUrl, "_blank")}
-          disabled={isLoading || !effectiveUrl}
+          onClick={() => downloadUrl && window.open(downloadUrl, "_blank")}
+          disabled={isLoading || !downloadUrl}
           className="gap-2"
         >
           <ExternalLink className="h-4 w-4" />
@@ -89,7 +106,7 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : (
+        ) : proxyUrl ? (
           <div className="relative border rounded-lg overflow-hidden bg-muted/10">
             <div className="flex items-center justify-between p-2 bg-muted/50 border-b">
               <span className="text-sm font-medium">{derivedFileName}</span>
@@ -103,10 +120,14 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
               </Button>
             </div>
             <iframe
-              src={effectiveUrl}
+              src={proxyUrl}
               className="w-full h-[600px]"
               title={`PDF Preview: ${derivedFileName}`}
             />
+          </div>
+        ) : (
+          <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
+            <span className="text-muted-foreground">Unable to load preview</span>
           </div>
         )}
       </CollapsibleContent>
