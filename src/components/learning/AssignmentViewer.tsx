@@ -10,10 +10,11 @@ import { mockAssignments, mockQuestions } from "@/data/mockLearning";
 import { useToast } from "@/hooks/use-toast";
 
 interface AssignmentViewerProps {
-  topicId: string;
+  topicId?: string;
+  chapterId?: string;
 }
 
-export const AssignmentViewer = ({ topicId }: AssignmentViewerProps) => {
+export const AssignmentViewer = ({ topicId, chapterId }: AssignmentViewerProps) => {
   const { toast } = useToast();
   const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});

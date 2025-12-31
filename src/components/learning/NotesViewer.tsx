@@ -13,8 +13,9 @@ import html2canvas from 'html2canvas';
 import { useRef } from 'react';
 
 interface NotesViewerProps {
-  content: string;
+  content?: string;
   title: string;
+  chapterId?: string;
 }
 
 export const NotesViewer = ({ content, title }: NotesViewerProps) => {
