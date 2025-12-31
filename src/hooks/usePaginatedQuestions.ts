@@ -118,5 +118,6 @@ export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
+    placeholderData: (previousData) => previousData,
   });
 };

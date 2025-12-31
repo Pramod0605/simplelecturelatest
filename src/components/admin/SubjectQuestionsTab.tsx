@@ -121,6 +121,7 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
   const {
     data,
     isLoading,
+    isFetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -1038,26 +1039,39 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
           )}
 
           {/* Questions Grid */}
-          {isLoading ? (
+          {isLoading && questions.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : questions.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                {questions.map((question) => (
-                  <QuestionPreview
-                    key={question.id}
-                    question={question}
-                    onEdit={setEditingQuestion}
-                    onDelete={(id) => setDeleteQuestionId(id)}
-                    onVerify={handleVerifyQuestion}
-                  />
-                ))}
-              </div>
+          ) : (
+            <div className="relative">
+              {/* Loading overlay when switching tabs */}
+              {isFetching && !isFetchingNextPage && questions.length > 0 && (
+                <div className="absolute inset-0 bg-background/60 flex items-center justify-center z-10 rounded-lg">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              
+              {questions.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                  {questions.map((question) => (
+                    <QuestionPreview
+                      key={question.id}
+                      question={question}
+                      onEdit={setEditingQuestion}
+                      onDelete={(id) => setDeleteQuestionId(id)}
+                      onVerify={handleVerifyQuestion}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No questions found. {activeFilterCount > 0 ? "Try clearing some filters." : "Add your first question!"}
+                </div>
+              )}
 
               {/* Load More Button */}
-              {hasNextPage && (
+              {hasNextPage && questions.length > 0 && (
                 <div className="flex justify-center mt-6">
                   <Button
                     onClick={() => fetchNextPage()}
@@ -1076,12 +1090,6 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
                   </Button>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              {questionTypeTab === "previous_year" 
-                ? "No previous year questions found. Import from previous year papers."
-                : "No manually created questions found. Create a new question to get started."}
             </div>
           )}
 
