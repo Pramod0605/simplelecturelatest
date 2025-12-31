@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   usePreviousYearPapers,
   useCreatePreviousYearPaper,
@@ -62,6 +63,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 
+type PaperCategory = "previous_year" | "proficiency" | "exam";
+
 interface SubjectPreviousYearTabProps {
   subjectId: string;
   subjectName: string;
@@ -73,6 +76,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<Step>("form");
+  const [activeTab, setActiveTab] = useState<PaperCategory>("previous_year");
   const [formData, setFormData] = useState({
     year: new Date().getFullYear(),
     exam_name: "",
@@ -81,6 +85,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
     chapter_id: "",
     topic_id: "",
     document_type: "mcq" as "mcq" | "practice" | "proficiency",
+    paper_category: "previous_year" as PaperCategory,
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
@@ -157,6 +162,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       chapter_id: "",
       topic_id: "",
       document_type: "mcq",
+      paper_category: activeTab,
     });
     setSelectedFile(null);
     setExtractedQuestions([]);
@@ -165,6 +171,22 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
     setExtractionMeta(null);
     setCurrentStep("form");
   };
+
+  // Filter papers by category
+  const filteredPapers = useMemo(() => {
+    if (!papers) return [];
+    return papers.filter(p => (p.paper_category || "previous_year") === activeTab);
+  }, [papers, activeTab]);
+
+  // Count papers by category
+  const paperCounts = useMemo(() => {
+    if (!papers) return { previous_year: 0, proficiency: 0, exam: 0 };
+    return papers.reduce((acc, p) => {
+      const category = (p.paper_category || "previous_year") as PaperCategory;
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, { previous_year: 0, proficiency: 0, exam: 0 } as Record<PaperCategory, number>);
+  }, [papers]);
 
   const handleParsePDF = async () => {
     if (!selectedFile) return;
@@ -256,6 +278,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         pdf_url: pdfUrl,
         total_questions: extractedQuestions.length || formData.total_questions,
         document_type: formData.document_type,
+        paper_category: formData.paper_category,
       });
 
       // If we have extracted questions, save them with importance flags
@@ -337,7 +360,13 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                 Manage mock tests and previous year questions for {subjectName}
               </CardDescription>
             </div>
-            <Dialog open={isAddOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isAddOpen} onOpenChange={(open) => {
+              if (open) {
+                // Set initial category to match active tab
+                setFormData(prev => ({ ...prev, paper_category: activeTab }));
+              }
+              handleDialogClose(open);
+            }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -346,9 +375,11 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader>
-                  <DialogTitle>Add Previous Year Paper</DialogTitle>
+                  <DialogTitle>
+                    Add {activeTab === "previous_year" ? "Previous Year Paper" : activeTab === "proficiency" ? "Proficiency Test" : "Exam Paper"}
+                  </DialogTitle>
                   <DialogDescription>
-                    Add a new previous year examination paper and extract questions
+                    Add a new {activeTab === "previous_year" ? "previous year examination paper" : activeTab === "proficiency" ? "proficiency test" : "mock exam"} and extract questions
                   </DialogDescription>
                 </DialogHeader>
 
@@ -392,6 +423,27 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                         />
                       </div>
 
+                      <div className="space-y-2">
+                        <Label>Category *</Label>
+                        <Select
+                          value={formData.paper_category}
+                          onValueChange={(value: PaperCategory) =>
+                            setFormData({ ...formData, paper_category: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="previous_year">Previous Year Paper</SelectItem>
+                            <SelectItem value="proficiency">Proficiency Test</SelectItem>
+                            <SelectItem value="exam">Exam / Mock Test</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Document Type *</Label>
                         <Select
@@ -773,70 +825,93 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : papers && papers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Exam Name</TableHead>
-                  <TableHead>Paper Type</TableHead>
-                  <TableHead>Questions</TableHead>
-                  <TableHead>PDF</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {papers.map((paper) => (
-                  <TableRow key={paper.id}>
-                    <TableCell className="font-medium">{paper.year}</TableCell>
-                    <TableCell>{paper.exam_name}</TableCell>
-                    <TableCell>
-                      {paper.paper_type ? (
-                        <Badge variant="outline">{paper.paper_type}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{paper.total_questions || 0}</TableCell>
-                    <TableCell>
-                      {paper.pdf_url ? (
-                        <a
-                          href={paper.pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <FileText className="h-4 w-4" />
-                          View
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteId(paper.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PaperCategory)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="previous_year" className="gap-2">
+                Previous Year
+                {paperCounts.previous_year > 0 && (
+                  <Badge variant="secondary" className="ml-1">{paperCounts.previous_year}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="proficiency" className="gap-2">
+                Proficiency Test
+                {paperCounts.proficiency > 0 && (
+                  <Badge variant="secondary" className="ml-1">{paperCounts.proficiency}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="exam" className="gap-2">
+                Exam
+                {paperCounts.exam > 0 && (
+                  <Badge variant="secondary" className="ml-1">{paperCounts.exam}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : filteredPapers.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Year</TableHead>
+                    <TableHead>Exam Name</TableHead>
+                    <TableHead>Paper Type</TableHead>
+                    <TableHead>Questions</TableHead>
+                    <TableHead>PDF</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>No previous year papers added yet</p>
-              <p className="text-sm mt-2">Click "Add Paper" to get started</p>
-            </div>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {filteredPapers.map((paper) => (
+                    <TableRow key={paper.id}>
+                      <TableCell className="font-medium">{paper.year}</TableCell>
+                      <TableCell>{paper.exam_name}</TableCell>
+                      <TableCell>
+                        {paper.paper_type ? (
+                          <Badge variant="outline">{paper.paper_type}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{paper.total_questions || 0}</TableCell>
+                      <TableCell>
+                        {paper.pdf_url ? (
+                          <a
+                            href={paper.pdf_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <FileText className="h-4 w-4" />
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(paper.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p>No {activeTab === "previous_year" ? "previous year papers" : activeTab === "proficiency" ? "proficiency tests" : "exam papers"} added yet</p>
+                <p className="text-sm mt-2">Click "Add Paper" to get started</p>
+              </div>
+            )}
+          </Tabs>
         </CardContent>
       </Card>
 

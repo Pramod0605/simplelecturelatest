@@ -3860,6 +3860,7 @@ export type Database = {
           document_type: string | null
           exam_name: string
           id: string
+          paper_category: string | null
           paper_type: string | null
           pdf_url: string | null
           subject_id: string
@@ -3873,6 +3874,7 @@ export type Database = {
           document_type?: string | null
           exam_name: string
           id?: string
+          paper_category?: string | null
           paper_type?: string | null
           pdf_url?: string | null
           subject_id: string
@@ -3886,6 +3888,7 @@ export type Database = {
           document_type?: string | null
           exam_name?: string
           id?: string
+          paper_category?: string | null
           paper_type?: string | null
           pdf_url?: string | null
           subject_id?: string
