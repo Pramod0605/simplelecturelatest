@@ -1,3 +1,4 @@
+// Support page - v2
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -340,9 +341,9 @@ const Support = () => {
                                       </div>
                                     );
                                   }
-                                  // Bullet points
-                                  if (line.startsWith('- ')) {
-                                    const content = line.replace('- ', '');
+                                  // Bullet points (handles both - and • formats)
+                                  if (line.startsWith('- ') || line.startsWith('• ')) {
+                                    const content = line.replace(/^[-•]\s/, '');
                                     return (
                                       <div key={index} className="flex gap-3 ml-2">
                                         <span className="text-primary">•</span>
