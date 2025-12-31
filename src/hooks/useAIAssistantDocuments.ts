@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 export interface AIAssistantDocument {
   id: string;
   subject_id: string;
+  chapter_id: string | null;
+  topic_id: string | null;
   display_name: string | null;
   source_type: string;
   source_url: string | null;
@@ -16,15 +18,27 @@ export interface AIAssistantDocument {
   created_by: string | null;
 }
 
-export function useAIAssistantDocuments(subjectId: string) {
+export function useAIAssistantDocuments(
+  subjectId: string,
+  chapterId?: string | null,
+  topicId?: string | null
+) {
   return useQuery({
-    queryKey: ["ai-assistant-documents", subjectId],
+    queryKey: ["ai-assistant-documents", subjectId, chapterId, topicId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("ai_assistant_documents")
         .select("*")
-        .eq("subject_id", subjectId)
-        .order("created_at", { ascending: false });
+        .eq("subject_id", subjectId);
+
+      if (chapterId) {
+        query = query.eq("chapter_id", chapterId);
+      }
+      if (topicId) {
+        query = query.eq("topic_id", topicId);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
       return data as AIAssistantDocument[];
@@ -40,6 +54,8 @@ export function useAddAIAssistantDocument() {
   return useMutation({
     mutationFn: async ({
       subjectId,
+      chapterId,
+      topicId,
       displayName,
       sourceType,
       sourceUrl,
@@ -48,6 +64,8 @@ export function useAddAIAssistantDocument() {
       fullContent,
     }: {
       subjectId: string;
+      chapterId?: string;
+      topicId?: string;
       displayName?: string;
       sourceType: "pdf" | "json" | "url";
       sourceUrl?: string;
@@ -61,6 +79,8 @@ export function useAddAIAssistantDocument() {
         .from("ai_assistant_documents")
         .insert({
           subject_id: subjectId,
+          chapter_id: chapterId || null,
+          topic_id: topicId || null,
           display_name: displayName || fileName || "Untitled Document",
           source_type: sourceType,
           source_url: sourceUrl,
@@ -77,7 +97,7 @@ export function useAddAIAssistantDocument() {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["ai-assistant-documents", variables.subjectId] });
+      queryClient.invalidateQueries({ queryKey: ["ai-assistant-documents"] });
     },
     onError: (error: any) => {
       toast({

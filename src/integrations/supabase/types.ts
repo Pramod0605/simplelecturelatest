@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       ai_assistant_documents: {
         Row: {
+          chapter_id: string | null
           content_preview: string | null
           created_at: string
           created_by: string | null
@@ -27,9 +28,11 @@ export type Database = {
           source_url: string | null
           status: string | null
           subject_id: string
+          topic_id: string | null
           updated_at: string
         }
         Insert: {
+          chapter_id?: string | null
           content_preview?: string | null
           created_at?: string
           created_by?: string | null
@@ -41,9 +44,11 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           subject_id: string
+          topic_id?: string | null
           updated_at?: string
         }
         Update: {
+          chapter_id?: string | null
           content_preview?: string | null
           created_at?: string
           created_by?: string | null
@@ -55,14 +60,29 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           subject_id?: string
+          topic_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_assistant_documents_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "subject_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_assistant_documents_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assistant_documents_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "subject_topics"
             referencedColumns: ["id"]
           },
         ]
