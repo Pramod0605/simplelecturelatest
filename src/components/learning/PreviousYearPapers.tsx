@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,9 @@ import {
   Timer,
   AlertCircle,
   Star,
+  Upload,
+  Image as ImageIcon,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -36,7 +40,9 @@ import {
   usePreviousYearPaperQuestions,
   PaperQuestion,
 } from "@/hooks/usePreviousYearPaperQuestions";
+import { useUploadAnswerImage, useSubmitWrittenAnswer } from "@/hooks/useStudentAnswers";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
+import { toast } from "@/hooks/use-toast";
 
 interface PreviousYearPapersProps {
   subjectId: string | null;
@@ -66,6 +72,8 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const [testQuestions, setTestQuestions] = useState<PaperQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answerImages, setAnswerImages] = useState<Record<string, string>>({});
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionFilter, setQuestionFilter] = useState<"all" | "important">("all");
@@ -74,6 +82,8 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const { data: paperQuestions, isLoading: questionsLoading } = usePreviousYearPaperQuestions(
     selectedPaper?.id || null
   );
+  const uploadAnswerImage = useUploadAnswerImage();
+  const submitWrittenAnswer = useSubmitWrittenAnswer();
 
   // Timer effect
   useEffect(() => {
@@ -109,10 +119,47 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     const count = selectedQuestionCount === -1 ? shuffled.length : Math.min(selectedQuestionCount, shuffled.length);
     setTestQuestions(shuffled.slice(0, count));
     setAnswers({});
+    setAnswerImages({});
     setFlaggedQuestions(new Set());
     setCurrentQuestionIndex(0);
     setTimeRemaining(selectedTime === 0 ? null : selectedTime * 60);
     setTestState("testing");
+  };
+
+  // Check if paper is a written answer type
+  const isWrittenAnswerPaper = selectedPaper?.document_type === "practice" || 
+                               selectedPaper?.document_type === "proficiency";
+
+  // Check if question requires written answer
+  const isWrittenAnswerQuestion = (question: PaperQuestion): boolean => {
+    // If paper type is practice/proficiency, all questions are written
+    if (isWrittenAnswerPaper) return true;
+    // Otherwise check question format
+    return question.question_format === "subjective" && 
+           (!question.options || Object.keys(question.options).length === 0);
+  };
+
+  const handleImageUpload = async (questionId: string, file: File) => {
+    if (!selectedPaper) return;
+    
+    setUploadingImage(questionId);
+    try {
+      const imageUrl = await uploadAnswerImage.mutateAsync({ file, questionId });
+      setAnswerImages(prev => ({ ...prev, [questionId]: imageUrl }));
+      
+      // Also save to database
+      await submitWrittenAnswer.mutateAsync({
+        questionId,
+        paperId: selectedPaper.id,
+        answerImageUrl: imageUrl,
+      });
+      
+      toast({ title: "Image uploaded", description: "Your answer image has been saved" });
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+    } finally {
+      setUploadingImage(null);
+    }
   };
 
   const handleAnswer = (questionId: string, answer: string) => {
@@ -144,6 +191,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     setSelectedPaper(null);
     setTestQuestions([]);
     setAnswers({});
+    setAnswerImages({});
     setFlaggedQuestions(new Set());
   };
 
@@ -239,11 +287,20 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <FileText className="h-4 w-4" />
                     <span>{paper.total_questions || "N/A"} Questions</span>
                   </div>
+                  {paper.document_type && paper.document_type !== "mcq" && (
+                    <Badge variant="secondary" className="text-xs">
+                      {paper.document_type === "practice" ? (
+                        <><Pencil className="h-3 w-3 mr-1" /> Written</>
+                      ) : (
+                        <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
+                      )}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {paper.pdf_url && (
@@ -483,7 +540,78 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                 </Button>
               </div>
 
-              {isIntegerQuestion(currentQuestion) ? (
+              {isWrittenAnswerQuestion(currentQuestion) ? (
+                // Written answer question - show textarea and image upload
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Pencil className="h-4 w-4" />
+                    <span>Write your answer below or upload an image of your handwritten solution</span>
+                  </div>
+                  
+                  <Textarea
+                    placeholder="Type your answer here..."
+                    value={answers[currentQuestion.id] || ""}
+                    onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
+                    className="min-h-[120px]"
+                  />
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">OR</span>
+                    </div>
+                  </div>
+                  
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/50 transition-colors">
+                    {uploadingImage === currentQuestion.id ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        <span className="text-sm text-muted-foreground">Uploading...</span>
+                      </div>
+                    ) : answerImages[currentQuestion.id] ? (
+                      <div className="space-y-3">
+                        <img 
+                          src={answerImages[currentQuestion.id]} 
+                          alt="Your answer" 
+                          className="max-h-48 mx-auto rounded-lg shadow-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setAnswerImages(prev => {
+                              const next = { ...prev };
+                              delete next[currentQuestion.id];
+                              return next;
+                            });
+                          }}
+                        >
+                          Remove & Upload New
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm font-medium">Click to upload image</span>
+                        <span className="text-xs text-muted-foreground">
+                          JPG, PNG up to 10MB
+                        </span>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(currentQuestion.id, file);
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              ) : isIntegerQuestion(currentQuestion) ? (
                 // Integer type question - show text input
                 <div className="space-y-3">
                   <Label className="text-sm text-muted-foreground">
