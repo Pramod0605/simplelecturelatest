@@ -155,7 +155,12 @@ export default function VerifyUploadedQuestions() {
                       {getStatusBadge(doc)}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(doc.created_at), 'dd/MM/yyyy')}
+                      <div className="flex flex-col text-sm text-muted-foreground">
+                        <span>{format(new Date(doc.created_at), 'dd/MM/yyyy')}</span>
+                        <span className="text-xs text-muted-foreground/70">
+                          {format(new Date(doc.created_at), 'HH:mm')}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
