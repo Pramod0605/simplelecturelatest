@@ -268,7 +268,12 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                         <TableCell className="text-muted-foreground text-sm">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {format(new Date(doc.created_at), "MMM d, yyyy")}
+                            <div className="flex flex-col">
+                              <span>{format(new Date(doc.created_at), "MMM d, yyyy")}</span>
+                              <span className="text-xs text-muted-foreground/70">
+                                {format(new Date(doc.created_at), "HH:mm")}
+                              </span>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

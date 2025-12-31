@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -391,7 +392,14 @@ export default function UploadQuestionBank() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col text-sm text-muted-foreground">
+                            <span>{format(new Date(doc.created_at), 'dd/MM/yyyy')}</span>
+                            <span className="text-xs text-muted-foreground/70">
+                              {format(new Date(doc.created_at), 'HH:mm')}
+                            </span>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             {doc.status === 'pending' && (
