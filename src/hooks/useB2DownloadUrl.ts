@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseB2DownloadUrlResult {
@@ -9,17 +9,21 @@ interface UseB2DownloadUrlResult {
 }
 
 const urlCache = new Map<string, { url: string; expiresAt: number }>();
+const SUPABASE_URL = "https://oxwhqvsoelqqsblmqkxx.supabase.co";
 
 export function useB2DownloadUrl(filePath: string | null | undefined): UseB2DownloadUrlResult {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Compute proxy URL synchronously (no state needed)
+  const proxyUrl = filePath && !filePath.startsWith('http')
+    ? `${SUPABASE_URL}/functions/v1/b2-proxy-file?path=${encodeURIComponent(filePath)}`
+    : filePath?.startsWith('http') ? filePath : null;
 
   useEffect(() => {
     if (!filePath) {
       setDownloadUrl(null);
-      setProxyUrl(null);
       setError(null);
       setIsLoading(false);
       return;
@@ -28,21 +32,10 @@ export function useB2DownloadUrl(filePath: string | null | undefined): UseB2Down
     // If it's already a full URL (from old Supabase storage), use it directly
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       setDownloadUrl(filePath);
-      setProxyUrl(filePath);
       setError(null);
       setIsLoading(false);
       return;
     }
-
-    // Generate proxy URL immediately (doesn't require B2 auth)
-    const generateProxyUrl = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const proxyBaseUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/b2-proxy-file`;
-        setProxyUrl(`${proxyBaseUrl}?path=${encodeURIComponent(filePath)}`);
-      }
-    };
-    generateProxyUrl();
 
     // Check cache first for direct URL
     const cached = urlCache.get(filePath);
@@ -56,16 +49,20 @@ export function useB2DownloadUrl(filePath: string | null | undefined): UseB2Down
     }
 
     // Fetch authorized URL from B2
+    let isMounted = true;
+    
     const fetchUrl = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const { data, error } = await supabase.functions.invoke('b2-get-download-url', {
+        const { data, error: fetchError } = await supabase.functions.invoke('b2-get-download-url', {
           body: { filePath }
         });
 
-        if (error) throw error;
+        if (!isMounted) return;
+
+        if (fetchError) throw fetchError;
         if (!data?.downloadUrl) throw new Error('No download URL returned');
 
         const url = data.downloadUrl;
@@ -79,15 +76,22 @@ export function useB2DownloadUrl(filePath: string | null | undefined): UseB2Down
 
         setDownloadUrl(url);
       } catch (err) {
+        if (!isMounted) return;
         console.error('Error fetching B2 download URL:', err);
         setError(err instanceof Error ? err.message : 'Failed to get download URL');
         setDownloadUrl(null);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchUrl();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [filePath]);
 
   return { downloadUrl, proxyUrl, isLoading, error };
