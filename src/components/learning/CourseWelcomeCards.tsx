@@ -39,7 +39,7 @@ export function CourseWelcomeCards({ courseName }: CourseWelcomeCardsProps) {
       </div>
 
       {/* Carousel Container */}
-      <div className="relative h-[200px] w-full max-w-2xl flex items-center justify-center overflow-hidden">
+      <div className="relative h-[350px] w-full max-w-4xl flex items-center justify-center overflow-hidden">
         {instructions.map((item, index) => {
           const isActive = index === activeIndex;
           const isPrev = index === (activeIndex - 1 + instructions.length) % instructions.length;
