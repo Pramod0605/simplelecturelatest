@@ -255,9 +255,9 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Previous Year Papers</h3>
+            <h3 className="text-lg font-medium mb-2">No Mock Tests or PYQs</h3>
             <p className="text-muted-foreground">
-              No previous year papers are available for this subject yet.
+              No mock tests or previous year questions are available for this subject yet.
             </p>
           </CardContent>
         </Card>
@@ -267,7 +267,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Previous Year Papers</h2>
+          <h2 className="text-xl font-semibold">Mock & PYQs</h2>
           <Badge variant="secondary">{papers.length} Papers</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
