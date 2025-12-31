@@ -14,7 +14,7 @@ import { DPTTest } from "@/components/learning/DPTTest";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
 import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
 import { PreviousYearPapers } from "@/components/learning/PreviousYearPapers";
-import { CourseWelcomeCards } from "@/components/learning/CourseWelcomeCards";
+import { CourseWelcomeCards } from "@/components/learning/CourseWelcomeCards"; 
 import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
