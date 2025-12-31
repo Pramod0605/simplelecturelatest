@@ -235,9 +235,9 @@ export function SubjectQuestionsTab({ subjectId, subjectName }: SubjectQuestions
     return true;
   }) || [];
 
-  // Separate questions by type: previous year vs manual
-  const previousYearQuestions = filteredQuestions.filter(q => q.previous_year_paper_id !== null);
-  const manualQuestions = filteredQuestions.filter(q => q.previous_year_paper_id === null);
+  // Separate questions by type: AI-generated (from previous year papers) vs manually created
+  const previousYearQuestions = filteredQuestions.filter(q => q.is_ai_generated === true);
+  const manualQuestions = filteredQuestions.filter(q => q.is_ai_generated === false);
   
   // Get the questions to display based on active tab
   const displayedQuestions = questionTypeTab === "previous_year" ? previousYearQuestions : manualQuestions;
