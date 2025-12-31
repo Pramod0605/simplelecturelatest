@@ -84,6 +84,8 @@ import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminCategories } from "@/hooks/useAdminCategories";
+import { useDatalab } from "@/hooks/useDatalab";
+import { useAddAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
 
 interface SubjectChaptersTabProps {
   subjectId: string;
@@ -193,6 +195,80 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
   const bulkImport = useBulkImportChapters();
   const updateChapterOrder = useUpdateChapterOrder();
   const updateTopicOrder = useUpdateTopicOrder();
+  
+  // PDF parsing hooks for auto-parse after upload
+  const { parsePdfFromUrl, isLoading: isParsingPdf } = useDatalab();
+  const addDocument = useAddAIAssistantDocument();
+
+  // Auto-parse handler for chapter PDF uploads
+  const handleChapterPdfUploadAndParse = async (pdfUrl: string) => {
+    const result = await parsePdfFromUrl(pdfUrl);
+    if (result) {
+      const parsedContent = result.content_json || result;
+      setChapterForm(prev => ({ ...prev, content_json: parsedContent }));
+      
+      if (subjectId) {
+        try {
+          const fileName = pdfUrl.split('/').pop() || "document.pdf";
+          await addDocument.mutateAsync({
+            subjectId,
+            chapterId: editingChapter?.id,
+            displayName: `${chapterForm.title || 'Chapter'} (chapter)`,
+            sourceType: "pdf",
+            sourceUrl: pdfUrl,
+            fileName,
+            contentPreview: JSON.stringify(parsedContent).substring(0, 500),
+            fullContent: parsedContent,
+          });
+          toast({
+            title: "PDF Parsed & Saved",
+            description: `Document parsed and added to AI Assistant`,
+          });
+        } catch (error) {
+          toast({
+            title: "PDF Parsed",
+            description: `Parsed successfully but couldn't save to Documents`,
+          });
+        }
+      }
+    }
+  };
+
+  // Auto-parse handler for topic PDF uploads
+  const handleTopicPdfUploadAndParse = async (pdfUrl: string) => {
+    const result = await parsePdfFromUrl(pdfUrl);
+    if (result) {
+      const parsedContent = result.content_json || result;
+      setTopicForm(prev => ({ ...prev, content_json: parsedContent }));
+      
+      if (subjectId) {
+        try {
+          const chapterName = selectedChapter ? chapters?.find(c => c.id === selectedChapter)?.title : undefined;
+          const fileName = pdfUrl.split('/').pop() || "document.pdf";
+          await addDocument.mutateAsync({
+            subjectId,
+            chapterId: selectedChapter || undefined,
+            topicId: editingTopic?.id,
+            displayName: chapterName ? `${topicForm.title || 'Topic'} (${chapterName})` : `${topicForm.title || 'Topic'} (topic)`,
+            sourceType: "pdf",
+            sourceUrl: pdfUrl,
+            fileName,
+            contentPreview: JSON.stringify(parsedContent).substring(0, 500),
+            fullContent: parsedContent,
+          });
+          toast({
+            title: "PDF Parsed & Saved",
+            description: `Document parsed and added to AI Assistant`,
+          });
+        } catch (error) {
+          toast({
+            title: "PDF Parsed",
+            description: `Parsed successfully but couldn't save to Documents`,
+          });
+        }
+      }
+    }
+  };
 
   // Fetch all subjects for bulk operations
   const { data: allSubjects } = useQuery({
@@ -1079,6 +1155,8 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                           onFileUploaded={(url) =>
                             setChapterForm({ ...chapterForm, pdf_url: url })
                           }
+                          onParseAfterUpload={handleChapterPdfUploadAndParse}
+                          isParsingPdf={isParsingPdf}
                           label="Upload Chapter PDF"
                           acceptedTypes="application/pdf"
                           maxSizeMB={50}
@@ -1439,6 +1517,8 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                 onFileUploaded={(url) =>
                   setTopicForm({ ...topicForm, pdf_url: url })
                 }
+                onParseAfterUpload={handleTopicPdfUploadAndParse}
+                isParsingPdf={isParsingPdf}
                 label="Upload Topic PDF"
                 acceptedTypes="application/pdf"
                 maxSizeMB={50}

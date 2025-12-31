@@ -20,6 +20,9 @@ interface B2FileUploadWidgetProps {
     topicId?: string;
     subtopicId?: string;
   };
+  // Auto-parse PDF after upload
+  onParseAfterUpload?: (pdfUrl: string) => Promise<void>;
+  isParsingPdf?: boolean;
 }
 
 export function B2FileUploadWidget({
@@ -29,7 +32,9 @@ export function B2FileUploadWidget({
   maxSizeMB = 50,
   label = "Upload File",
   pathParams,
-  metadata
+  metadata,
+  onParseAfterUpload,
+  isParsingPdf = false,
 }: B2FileUploadWidgetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localFileUrl, setLocalFileUrl] = useState(currentFileUrl || "");
@@ -58,8 +63,12 @@ export function B2FileUploadWidget({
     if (result) {
       setLocalFileUrl(result.filePath);
       onFileUploaded(result.filePath);
+      
+      // Auto-parse if callback provided
+      if (onParseAfterUpload) {
+        await onParseAfterUpload(result.filePath);
+      }
     }
-
 
     // Reset input
     if (fileInputRef.current) {
@@ -90,13 +99,18 @@ export function B2FileUploadWidget({
         type="button"
         variant="outline"
         onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
+        disabled={uploading || isParsingPdf}
         className="w-full"
       >
         {uploading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Uploading... {progress}%
+          </>
+        ) : isParsingPdf ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Parsing PDF with AI...
           </>
         ) : (
           <>
