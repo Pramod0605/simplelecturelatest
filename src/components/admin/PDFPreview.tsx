@@ -92,8 +92,8 @@ export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => downloadUrl && window.open(downloadUrl, "_blank")}
-          disabled={isLoading || !downloadUrl}
+          onClick={() => iframeUrl && window.open(iframeUrl, "_blank")}
+          disabled={isLoading || !iframeUrl}
           className="gap-2"
         >
           <ExternalLink className="h-4 w-4" />
