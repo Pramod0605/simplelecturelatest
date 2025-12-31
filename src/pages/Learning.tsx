@@ -262,7 +262,7 @@ export default function Learning() {
             {selectedTopic ? (
               <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
                 <TabsList className="grid w-full grid-cols-8">
-                  <TabsTrigger value="videos">Videos</TabsTrigger>
+                  <TabsTrigger value="videos">Classes</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                   <TabsTrigger value="podcast">Podcast</TabsTrigger>
                   <TabsTrigger value="mcqs">MCQs</TabsTrigger>
