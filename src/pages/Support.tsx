@@ -4,9 +4,23 @@ import { Helmet } from "react-helmet-async";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { HelpCircle, MessageSquare, ArrowLeft, BookOpen } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  HelpCircle, 
+  MessageSquare, 
+  ArrowLeft, 
+  BookOpen,
+  FileText,
+  Ticket,
+  CreditCard,
+  Settings,
+  GraduationCap,
+  Shield,
+  Wrench,
+  ArrowRight
+} from "lucide-react";
 import { SupportFAQSearch } from "@/components/support/SupportFAQSearch";
 import { SupportCategoryTabs } from "@/components/support/SupportCategoryTabs";
 import { SupportFAQs } from "@/components/support/SupportFAQs";
@@ -16,7 +30,45 @@ import { SupportTicketList } from "@/components/support/SupportTicketList";
 import { useSupportFAQs, useSearchFAQs } from "@/hooks/useSupportFAQs";
 import { useSupportAssistant } from "@/hooks/useSupportAssistant";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+
+const ARTICLES = [
+  {
+    id: "getting-started",
+    title: "Getting Started",
+    description: "Learn how to navigate the platform and start your learning journey.",
+    icon: BookOpen,
+  },
+  {
+    id: "course-navigation",
+    title: "Course Navigation",
+    description: "Master the course interface, video player, and learning materials.",
+    icon: GraduationCap,
+  },
+  {
+    id: "account-settings",
+    title: "Account Settings",
+    description: "Manage your profile, preferences, and notification settings.",
+    icon: Settings,
+  },
+  {
+    id: "payment-billing",
+    title: "Payment & Billing",
+    description: "Understand payment methods, invoices, and subscription management.",
+    icon: CreditCard,
+  },
+  {
+    id: "certificates",
+    title: "Certificates & Progress",
+    description: "Track your progress and download course completion certificates.",
+    icon: Shield,
+  },
+  {
+    id: "technical-support",
+    title: "Technical Support",
+    description: "Troubleshoot common issues with video playback, login, and more.",
+    icon: Wrench,
+  },
+];
 
 const Support = () => {
   const navigate = useNavigate();
@@ -24,6 +76,7 @@ const Support = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showChat, setShowChat] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [mainTab, setMainTab] = useState("faqs");
 
   const { data: faqs, isLoading: faqsLoading } = useSupportFAQs(selectedCategory);
   const { data: searchResults, isLoading: searchLoading } = useSearchFAQs(searchTerm);
@@ -57,13 +110,14 @@ const Support = () => {
       .order('created_at', { ascending: true });
 
     if (ticketMessages) {
-      setMessages(ticketMessages.map((m, i) => ({
+      setMessages(ticketMessages.map((m) => ({
         id: m.id,
         role: m.sender_type === 'user' ? 'user' as const : 'assistant' as const,
         content: m.content,
         createdAt: new Date(m.created_at)
       })));
       setCurrentTicketId(ticketId);
+      setMainTab("faqs");
       setShowChat(true);
     }
   };
@@ -126,6 +180,16 @@ const Support = () => {
         {/* Hero Section */}
         <section className="bg-gradient-to-b from-primary/5 to-background py-12 md:py-16">
           <div className="container mx-auto px-4">
+            {/* Back Button */}
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate(-1)}
+              className="mb-6 gap-2 -ml-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go Back
+            </Button>
+
             <div className="text-center max-w-3xl mx-auto mb-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary mb-4">
                 <HelpCircle className="h-5 w-5" />
@@ -144,95 +208,157 @@ const Support = () => {
         </section>
 
         <div className="container mx-auto px-4 py-8">
-          {showChat ? (
-            <div className="max-w-3xl mx-auto">
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToFAQs}
-                className="mb-4 gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to FAQs
-              </Button>
-              
-              <SupportChat
-                messages={messages}
-                isLoading={chatLoading}
-                onSendMessage={(msg) => sendMessage(msg)}
-                ticketId={currentTicketId}
-                onResolve={handleResolve}
-                onEscalate={handleEscalate}
-                showFeedback={showFeedback}
-              />
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Category Tabs */}
-              {!searchTerm && (
-                <div className="flex justify-center">
-                  <SupportCategoryTabs 
-                    selectedCategory={selectedCategory} 
-                    onCategoryChange={setSelectedCategory} 
-                  />
-                </div>
-              )}
+          <Tabs value={mainTab} onValueChange={setMainTab} className="w-full max-w-4xl mx-auto">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsTrigger value="articles" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Articles
+              </TabsTrigger>
+              <TabsTrigger value="faqs" className="gap-2">
+                <HelpCircle className="h-4 w-4" />
+                FAQs
+              </TabsTrigger>
+              <TabsTrigger value="tickets" className="gap-2">
+                <Ticket className="h-4 w-4" />
+                My Support Tickets
+              </TabsTrigger>
+            </TabsList>
 
-              {/* FAQs Section */}
-              <section className="max-w-4xl mx-auto">
-                <div className="flex items-center gap-2 mb-6">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold">
-                    {searchTerm ? `Search Results for "${searchTerm}"` : "Frequently Asked Questions"}
-                  </h2>
-                </div>
-                <SupportFAQs 
-                  faqs={displayFaqs} 
-                  isLoading={isLoadingFaqs}
-                  searchTerm={searchTerm}
-                />
-              </section>
-
-              <Separator className="my-8" />
-
-              {/* Chat Section */}
-              <section className="max-w-3xl mx-auto">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-full text-secondary-foreground mb-4">
-                    <MessageSquare className="h-5 w-5" />
-                    <span className="font-medium">Still need help?</span>
-                  </div>
-                  <h2 className="text-2xl font-bold mb-2">Chat with our AI Assistant</h2>
-                  <p className="text-muted-foreground">
-                    Our AI can help with account, payment, technical, and course-related support questions.
-                  </p>
-                </div>
-
-                {isAuthenticated ? (
-                  <SupportTicketForm onSubmit={handleStartChat} isLoading={chatLoading} />
-                ) : (
-                  <Card>
-                    <CardContent className="py-8 text-center">
-                      <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">Login Required</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Please log in to start a support conversation
-                      </p>
-                      <Button onClick={() => navigate('/auth?tab=login')}>
-                        Log In to Continue
-                      </Button>
+            {/* Articles Tab */}
+            <TabsContent value="articles">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {ARTICLES.map((article) => (
+                  <Card 
+                    key={article.id} 
+                    className="hover:shadow-md transition-shadow cursor-pointer group"
+                  >
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <article.icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <CardTitle className="text-lg">{article.title}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="mb-4">
+                        {article.description}
+                      </CardDescription>
+                      <div className="flex items-center text-primary text-sm font-medium group-hover:gap-2 transition-all">
+                        Read more <ArrowRight className="h-4 w-4 ml-1" />
+                      </div>
                     </CardContent>
                   </Card>
-                )}
-              </section>
+                ))}
+              </div>
+            </TabsContent>
 
-              {/* User's Tickets */}
-              {isAuthenticated && (
-                <section className="max-w-3xl mx-auto mt-8">
-                  <SupportTicketList onSelectTicket={loadTicketMessages} />
-                </section>
+            {/* FAQs Tab */}
+            <TabsContent value="faqs">
+              {showChat ? (
+                <div className="space-y-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleBackToFAQs}
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to FAQs
+                  </Button>
+                  
+                  <SupportChat
+                    messages={messages}
+                    isLoading={chatLoading}
+                    onSendMessage={(msg) => sendMessage(msg)}
+                    ticketId={currentTicketId}
+                    onResolve={handleResolve}
+                    onEscalate={handleEscalate}
+                    showFeedback={showFeedback}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Category Tabs */}
+                  {!searchTerm && (
+                    <div className="flex justify-center">
+                      <SupportCategoryTabs 
+                        selectedCategory={selectedCategory} 
+                        onCategoryChange={setSelectedCategory} 
+                      />
+                    </div>
+                  )}
+
+                  {/* FAQs Section */}
+                  <section>
+                    <div className="flex items-center gap-2 mb-6">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      <h2 className="text-xl font-semibold">
+                        {searchTerm ? `Search Results for "${searchTerm}"` : "Frequently Asked Questions"}
+                      </h2>
+                    </div>
+                    <SupportFAQs 
+                      faqs={displayFaqs} 
+                      isLoading={isLoadingFaqs}
+                      searchTerm={searchTerm}
+                    />
+                  </section>
+
+                  <Separator className="my-8" />
+
+                  {/* Chat Section */}
+                  <section>
+                    <div className="text-center mb-6">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-full text-secondary-foreground mb-4">
+                        <MessageSquare className="h-5 w-5" />
+                        <span className="font-medium">Still need help?</span>
+                      </div>
+                      <h2 className="text-2xl font-bold mb-2">Chat with our AI Assistant</h2>
+                      <p className="text-muted-foreground">
+                        Our AI can help with account, payment, technical, and course-related support questions.
+                      </p>
+                    </div>
+
+                    {isAuthenticated ? (
+                      <SupportTicketForm onSubmit={handleStartChat} isLoading={chatLoading} />
+                    ) : (
+                      <Card className="max-w-md mx-auto">
+                        <CardContent className="py-8 text-center">
+                          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <h3 className="font-semibold mb-2">Login Required</h3>
+                          <p className="text-muted-foreground mb-4">
+                            Please log in to start a support conversation
+                          </p>
+                          <Button onClick={() => navigate('/auth?tab=login')}>
+                            Log In to Continue
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </section>
+                </div>
               )}
-            </div>
-          )}
+            </TabsContent>
+
+            {/* My Support Tickets Tab */}
+            <TabsContent value="tickets">
+              {isAuthenticated ? (
+                <SupportTicketList onSelectTicket={loadTicketMessages} />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Ticket className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Login Required</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Please log in to view your support tickets
+                    </p>
+                    <Button onClick={() => navigate('/auth?tab=login')}>
+                      Log In
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       
