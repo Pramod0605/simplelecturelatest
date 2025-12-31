@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check } from "lucide-react";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
+import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -22,7 +23,36 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   const [generatedId, setGeneratedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
-  const { data: documents, isLoading } = useAIAssistantDocuments(subjectId);
+  // Filter state
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  
+  // Fetch chapters and topics
+  const { data: chapters } = useSubjectChapters(subjectId);
+  const { data: topics } = useChapterTopics(selectedChapterId || undefined);
+  
+  const { data: documents, isLoading } = useAIAssistantDocuments(
+    subjectId,
+    selectedChapterId,
+    selectedTopicId
+  );
+  
+  // Reset document selection when filters change
+  useEffect(() => {
+    setSelectedDocumentId("");
+  }, [selectedChapterId, selectedTopicId]);
+  
+  // Reset topic when chapter changes
+  useEffect(() => {
+    setSelectedTopicId(null);
+  }, [selectedChapterId]);
+  
+  const hasActiveFilters = selectedChapterId !== null;
+  
+  const clearFilters = () => {
+    setSelectedChapterId(null);
+    setSelectedTopicId(null);
+  };
   
   const selectedDocument = documents?.find(doc => doc.id === selectedDocumentId);
   const fullContent = selectedDocument?.full_content as Record<string, unknown> | null;
@@ -103,6 +133,57 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Filter Section */}
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>Filter by:</span>
+          </div>
+          
+          <Select
+            value={selectedChapterId || "all"}
+            onValueChange={(val) => setSelectedChapterId(val === "all" ? null : val)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Chapters" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="all">All Chapters</SelectItem>
+              {chapters?.map((chapter) => (
+                <SelectItem key={chapter.id} value={chapter.id}>
+                  Ch {chapter.chapter_number}: {chapter.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {selectedChapterId && (
+            <Select
+              value={selectedTopicId || "all"}
+              onValueChange={(val) => setSelectedTopicId(val === "all" ? null : val)}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All Topics" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="all">All Topics</SelectItem>
+                {topics?.map((topic) => (
+                  <SelectItem key={topic.id} value={topic.id}>
+                    Topic {topic.topic_number}: {topic.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          )}
+        </div>
+
         {/* Document Selector */}
         <div className="space-y-2">
           <Label>Select Document</Label>
@@ -114,8 +195,12 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
           ) : !documents || documents.length === 0 ? (
             <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30 text-center">
               <FileJson className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No documents found.</p>
-              <p className="text-xs mt-1">Go to the Documents tab to upload and parse PDFs first.</p>
+              <p>No documents found{hasActiveFilters ? " for selected filters" : ""}.</p>
+              <p className="text-xs mt-1">
+                {hasActiveFilters 
+                  ? "Try clearing filters or select different chapter/topic." 
+                  : "Go to the Documents tab to upload and parse PDFs first."}
+              </p>
             </div>
           ) : (
             <Select value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
