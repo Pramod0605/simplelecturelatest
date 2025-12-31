@@ -3989,6 +3989,83 @@ export type Database = {
           },
         ]
       }
+      support_article_feedback: {
+        Row: {
+          article_id: string
+          created_at: string | null
+          id: string
+          is_helpful: boolean
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string | null
+          id?: string
+          is_helpful: boolean
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string | null
+          id?: string
+          is_helpful?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_article_feedback_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "support_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_articles: {
+        Row: {
+          content: string
+          created_at: string | null
+          description: string
+          display_order: number | null
+          helpful_count: number | null
+          icon_name: string | null
+          id: string
+          is_active: boolean | null
+          not_helpful_count: number | null
+          slug: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          description: string
+          display_order?: number | null
+          helpful_count?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          not_helpful_count?: number | null
+          slug: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          description?: string
+          display_order?: number | null
+          helpful_count?: number | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          not_helpful_count?: number | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       support_faqs: {
         Row: {
           answer: string
