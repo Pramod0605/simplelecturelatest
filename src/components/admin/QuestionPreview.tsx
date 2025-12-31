@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { MathpixRenderer } from "./MathpixRenderer";
 
 interface QuestionPreviewProps {
   question: any;
@@ -22,30 +23,16 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
   const renderContent = (content: string, containsFormula: boolean, images?: string[]) => {
     if (!content) return null;
     
-    // Extract image references from text
-    const imagePattern = /\[Image \d+\]/g;
-    const parts = content.split(imagePattern);
-    const imageMatches = content.match(imagePattern) || [];
-    
     return (
       <div className="prose prose-sm max-w-none space-y-2">
-        {parts.map((part, index) => (
-          <div key={index}>
-            {containsFormula ? (
-              <div className="font-mono bg-muted p-2 rounded text-sm whitespace-pre-wrap">
-                {part.trim()}
-              </div>
-            ) : (
-              <p className="whitespace-pre-wrap">{part.trim()}</p>
-            )}
-            {images && images[index] && (
-              <img 
-                src={images[index]} 
-                alt={`Content image ${index + 1}`}
-                className="max-w-full h-auto rounded border my-2"
-              />
-            )}
-          </div>
+        <MathpixRenderer mmdText={content} inline={true} />
+        {images?.map((img, index) => (
+          <img 
+            key={index}
+            src={img} 
+            alt={`Content image ${index + 1}`}
+            className="max-w-full h-auto rounded border my-2"
+          />
         ))}
       </div>
     );
@@ -77,7 +64,7 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <CardTitle className="text-base line-clamp-2">
-                {question.question_text}
+                <MathpixRenderer mmdText={question.question_text} inline={true} className="[&_.prose]:m-0" />
               </CardTitle>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge className={getDifficultyColor(question.difficulty)}>
