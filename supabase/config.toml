@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.b2-proxy-file]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-suggest-chapter-topic]
 verify_jwt = false
