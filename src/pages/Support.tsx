@@ -300,21 +300,66 @@ const Support = () => {
                           <CollapsibleContent>
                             <div className="px-6 pb-6">
                               <Separator className="mb-4" />
-                              <div className="prose prose-sm dark:prose-invert max-w-none">
+                              <div className="prose prose-sm dark:prose-invert max-w-none space-y-2">
                                 {article.content.split('\n').map((line, index) => {
+                                  // Helper to render inline bold text
+                                  const renderWithBold = (text: string) => {
+                                    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+                                    return parts.map((part, i) => {
+                                      if (part.startsWith('**') && part.endsWith('**')) {
+                                        return <strong key={i} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
+                                      }
+                                      return part;
+                                    });
+                                  };
+
+                                  // Main header (##)
                                   if (line.startsWith('## ')) {
-                                    return <h2 key={index} className="text-xl font-bold mt-4 mb-3 text-foreground">{line.replace('## ', '')}</h2>;
-                                  } else if (line.startsWith('**') && line.endsWith('**')) {
-                                    return <h3 key={index} className="font-semibold mt-4 mb-2 text-foreground">{line.replace(/\*\*/g, '')}</h3>;
-                                  } else if (line.match(/^\d+\./)) {
-                                    return <p key={index} className="ml-4 text-muted-foreground">{line}</p>;
-                                  } else if (line.startsWith('- ')) {
-                                    return <p key={index} className="ml-4 text-muted-foreground">• {line.replace('- ', '')}</p>;
-                                  } else if (line.trim() === '') {
-                                    return <div key={index} className="h-2" />;
-                                  } else {
-                                    return <p key={index} className="text-muted-foreground">{line}</p>;
+                                    return (
+                                      <h2 key={index} className="text-xl font-bold mt-6 mb-3 text-foreground border-b pb-2">
+                                        {line.replace('## ', '')}
+                                      </h2>
+                                    );
                                   }
+                                  // Subheader (###)
+                                  if (line.startsWith('### ')) {
+                                    return (
+                                      <h3 key={index} className="text-lg font-semibold mt-5 mb-2 text-foreground">
+                                        {line.replace('### ', '')}
+                                      </h3>
+                                    );
+                                  }
+                                  // Numbered list items
+                                  if (line.match(/^\d+\.\s/)) {
+                                    const content = line.replace(/^\d+\.\s/, '');
+                                    const number = line.match(/^(\d+)\./)?.[1];
+                                    return (
+                                      <div key={index} className="flex gap-3 ml-2">
+                                        <span className="text-primary font-medium shrink-0">{number}.</span>
+                                        <span className="text-muted-foreground">{renderWithBold(content)}</span>
+                                      </div>
+                                    );
+                                  }
+                                  // Bullet points
+                                  if (line.startsWith('- ')) {
+                                    const content = line.replace('- ', '');
+                                    return (
+                                      <div key={index} className="flex gap-3 ml-2">
+                                        <span className="text-primary">•</span>
+                                        <span className="text-muted-foreground">{renderWithBold(content)}</span>
+                                      </div>
+                                    );
+                                  }
+                                  // Empty lines
+                                  if (line.trim() === '') {
+                                    return <div key={index} className="h-1" />;
+                                  }
+                                  // Regular paragraph with bold support
+                                  return (
+                                    <p key={index} className="text-muted-foreground leading-relaxed">
+                                      {renderWithBold(line)}
+                                    </p>
+                                  );
                                 })}
                               </div>
                               
