@@ -278,6 +278,7 @@ export default function Learning() {
                     topicVideoId={selectedTopic.video_id}
                     topicVideoPlatform={selectedTopic.video_platform}
                     topicTitle={selectedTopic.title}
+                    aiGeneratedVideoUrl={selectedTopic.ai_generated_video_url}
                   />
                 </TabsContent>
 

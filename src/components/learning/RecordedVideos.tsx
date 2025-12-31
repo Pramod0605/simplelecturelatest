@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Video } from "lucide-react";
+import { Play, Video, Sparkles, ExternalLink } from "lucide-react";
 import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,9 +14,11 @@ interface RecordedVideosProps {
   topicVideoId?: string;
   topicVideoPlatform?: string;
   topicTitle?: string;
+  // AI Generated lecture video URL
+  aiGeneratedVideoUrl?: string;
 }
 
-export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topicTitle }: RecordedVideosProps) => {
+export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topicTitle, aiGeneratedVideoUrl }: RecordedVideosProps) => {
   const { data: additionalVideos, isLoading } = useTopicVideos(topicId);
   const [selectedVideo, setSelectedVideo] = useState<TopicVideo | null>(null);
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
@@ -86,7 +88,7 @@ export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topi
     );
   }
 
-  if (allVideos.length === 0) {
+  if (allVideos.length === 0 && !aiGeneratedVideoUrl) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -104,26 +106,70 @@ export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topi
 
   return (
     <div className="space-y-4">
-      {/* Language Tabs */}
-      <Tabs value={filterLanguage} onValueChange={setFilterLanguage} className="w-full">
-        <TabsList className="h-auto flex-wrap gap-1">
-          <TabsTrigger value="all" className="text-xs px-3 py-1.5">
-            All ({allVideos.length})
-          </TabsTrigger>
-          {availableLanguages.map((lang) => {
-            const langLabel = getLanguageLabel(lang);
-            const count = allVideos.filter(v => v.language === lang).length;
-            return (
-              <TabsTrigger key={lang} value={lang} className="text-xs px-3 py-1.5">
-                {langLabel} ({count})
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+      {/* AI Generated Lecture Video */}
+      {aiGeneratedVideoUrl && (
+        <Card
+          className="cursor-pointer hover:border-violet-500 transition-colors overflow-hidden border-violet-200 dark:border-violet-800"
+          onClick={() => window.open(aiGeneratedVideoUrl, '_blank')}
+        >
+          <CardHeader className="p-0">
+            <div className="relative aspect-video bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
+              <div className="text-center">
+                <Sparkles className="h-16 w-16 mx-auto text-violet-500 mb-2" />
+                <p className="text-lg font-semibold text-violet-700 dark:text-violet-300">
+                  AI Generated Lecture
+                </p>
+              </div>
+              
+              {/* Play overlay */}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <div className="bg-violet-500 rounded-full p-4">
+                  <Play className="h-8 w-8 text-white" />
+                </div>
+              </div>
 
-      {/* Video Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* Badges */}
+              <Badge className="absolute top-2 left-2 bg-violet-500 hover:bg-violet-600">
+                <Sparkles className="h-3 w-3 mr-1" />
+                AI Lecture
+              </Badge>
+              <Badge variant="outline" className="absolute top-2 right-2 bg-background/80">
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Opens in new tab
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <h3 className="font-semibold">{topicTitle} - AI Generated Lecture</h3>
+            <p className="text-sm text-muted-foreground">
+              Watch the AI-generated video lecture with embedded player
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Language Tabs */}
+      {allVideos.length > 0 && (
+        <>
+          <Tabs value={filterLanguage} onValueChange={setFilterLanguage} className="w-full">
+            <TabsList className="h-auto flex-wrap gap-1">
+              <TabsTrigger value="all" className="text-xs px-3 py-1.5">
+                All ({allVideos.length})
+              </TabsTrigger>
+              {availableLanguages.map((lang) => {
+                const langLabel = getLanguageLabel(lang);
+                const count = allVideos.filter(v => v.language === lang).length;
+                return (
+                  <TabsTrigger key={lang} value={lang} className="text-xs px-3 py-1.5">
+                    {langLabel} ({count})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+
+          {/* Video Grid */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredVideos.map((video) => (
           <Card
             key={video.id}
@@ -182,7 +228,9 @@ export const RecordedVideos = ({ topicId, topicVideoId, topicVideoPlatform, topi
             </CardContent>
           </Card>
         ))}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Video Player Dialog */}
       <Dialog open={!!selectedVideo} onOpenChange={() => setSelectedVideo(null)}>
