@@ -13,6 +13,7 @@ export interface SubjectQuestion {
   marks: number;
   difficulty: string;
   topic_id?: string;
+  chapter_id?: string;
   subtopic_id?: string;
   is_verified: boolean;
   is_ai_generated: boolean;

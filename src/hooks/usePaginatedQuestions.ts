@@ -44,21 +44,23 @@ export interface PaginatedQuestionsFilters {
   chapterId?: string;
   isVerified?: boolean;
   searchQuery?: string;
+  chapterOnly?: boolean; // When true, only show questions with topic_id = NULL for the chapter
 }
 
 export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
   return useInfiniteQuery({
     queryKey: ["paginated-questions", filters],
     queryFn: async ({ pageParam = 0 }) => {
+      // Use LEFT JOIN to include questions with topic_id = NULL (chapter-level questions)
       let query = supabase
         .from("questions")
         .select(`
           *,
-          subject_topics!inner(
+          subject_topics(
             id,
             title,
             chapter_id,
-            subject_chapters!inner(
+            subject_chapters(
               id,
               title,
               subject_id
@@ -66,9 +68,13 @@ export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
           )
         `, { count: "exact" });
 
-      // Filter by subject
+      // Filter by subject - handle both topic-based and chapter-based questions
       if (filters.subjectId) {
-        query = query.eq('subject_topics.subject_chapters.subject_id', filters.subjectId);
+        // For questions with topics, filter via topic->chapter->subject chain
+        // For chapter-level questions (topic_id = NULL), we need to use chapter_id directly
+        query = query.or(
+          `subject_topics.subject_chapters.subject_id.eq.${filters.subjectId},and(topic_id.is.null,chapter_id.in.(select id from subject_chapters where subject_id = '${filters.subjectId}'))`
+        );
       }
 
       // Filter by AI-generated status
@@ -81,9 +87,17 @@ export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
         query = query.eq("topic_id", filters.topicId);
       }
 
-      // Filter by chapter
+      // Filter by chapter - include both topic-based and chapter-level questions
       if (filters.chapterId) {
-        query = query.eq("subject_topics.chapter_id", filters.chapterId);
+        if (filters.chapterOnly) {
+          // Only show chapter-level questions (topic_id is NULL)
+          query = query.eq("chapter_id", filters.chapterId).is("topic_id", null);
+        } else {
+          // Show all questions for the chapter (both topic-based and chapter-level)
+          query = query.or(
+            `subject_topics.chapter_id.eq.${filters.chapterId},and(chapter_id.eq.${filters.chapterId},topic_id.is.null)`
+          );
+        }
       }
 
       // Filter by difficulty

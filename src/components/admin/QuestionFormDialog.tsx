@@ -142,11 +142,6 @@ export function QuestionFormDialog({ isOpen, onClose, editQuestion }: QuestionFo
       return;
     }
 
-    if (!formData.topic_id) {
-      toast.error("Please select a topic");
-      return;
-    }
-
     if (!formData.question_text || !formData.correct_answer) {
       toast.error("Question text and correct answer are required");
       return;
@@ -173,7 +168,8 @@ export function QuestionFormDialog({ isOpen, onClose, editQuestion }: QuestionFo
         correct_answer: formData.correct_answer.toUpperCase(),
         explanation: formData.explanation || null,
         options: Object.keys(formData.options).length > 0 ? formData.options : null,
-        topic_id: formData.topic_id,
+        topic_id: formData.topic_id || null,
+        chapter_id: formData.chapter_id || null,
         is_verified: false,
         is_ai_generated: false,
         contains_formula: formData.contains_formula,
