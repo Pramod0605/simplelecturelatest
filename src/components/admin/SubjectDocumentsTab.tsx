@@ -378,7 +378,14 @@ export function SubjectDocumentsTab({
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground text-sm">
                             <Clock className="h-3 w-3" />
-                            {doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : "-"}
+                            <div className="flex flex-col">
+                              <span>{doc.created_at ? format(new Date(doc.created_at), "MMM d, yyyy") : "-"}</span>
+                              {doc.created_at && (
+                                <span className="text-xs text-muted-foreground/70">
+                                  {format(new Date(doc.created_at), "HH:mm")}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
