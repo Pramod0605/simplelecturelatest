@@ -414,10 +414,13 @@ serve(async (req) => {
   }
 
   try {
-    const { contentJson, contentMarkdown, examName, year, paperType } = await req.json();
+    const { contentJson, contentMarkdown, examName, year, paperType, documentType } = await req.json();
     
     console.log("=== Starting IMPROVED MCQ Extraction ===");
-    console.log(`Exam: ${examName}  Year: ${year} Type: ${paperType}`);
+    console.log(`Exam: ${examName}  Year: ${year} Type: ${paperType} DocumentType: ${documentType || 'mcq'}`);
+
+    // For practice/proficiency tests, extraction is different
+    const isWrittenTest = documentType === "practice" || documentType === "proficiency";
 
     let extractionText = "";
     if (contentMarkdown && typeof contentMarkdown === "string" && contentMarkdown.length > 100) {
@@ -456,7 +459,8 @@ serve(async (req) => {
     const smartChunks = createSmartChunks(extractionText, expectedQuestionCount || 90, answerKey);
     console.log(`Created ${smartChunks.length} parallel chunks`);
 
-    const tools = [
+    // Different tools schema for written vs MCQ tests
+    const mcqTools = [
       {
         type: "function",
         function: {
@@ -498,6 +502,41 @@ serve(async (req) => {
         },
       },
     ];
+
+    const writtenTools = [
+      {
+        type: "function",
+        function: {
+          name: "extract_questions",
+          description: "Extract written answer questions from exam paper content (no options needed).",
+          parameters: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question_number: { type: "number" },
+                    question_text: { type: "string" },
+                    correct_answer: { type: "string" },
+                    difficulty: { type: "string" },
+                    marks: { type: "number" },
+                    explanation: { type: "string" },
+                  },
+                  required: ["question_number", "question_text"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["questions"],
+            additionalProperties: false,
+          },
+        },
+      },
+    ];
+
+    const tools = isWrittenTest ? writtenTools : mcqTools;
 
     const tool_choice = { type: "function", function: { name: "extract_questions" } };
 

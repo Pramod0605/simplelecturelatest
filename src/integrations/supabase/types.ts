@@ -3546,6 +3546,54 @@ export type Database = {
         }
         Relationships: []
       }
+      student_answers: {
+        Row: {
+          answer_image_url: string | null
+          answer_text: string | null
+          created_at: string | null
+          id: string
+          paper_id: string
+          question_id: string
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          answer_image_url?: string | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          paper_id: string
+          question_id: string
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          answer_image_url?: string | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          paper_id?: string
+          question_id?: string
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_answers_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "subject_previous_year_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_followups: {
         Row: {
           completed_at: string | null
@@ -3809,6 +3857,7 @@ export type Database = {
         Row: {
           chapter_id: string | null
           created_at: string | null
+          document_type: string | null
           exam_name: string
           id: string
           paper_type: string | null
@@ -3821,6 +3870,7 @@ export type Database = {
         Insert: {
           chapter_id?: string | null
           created_at?: string | null
+          document_type?: string | null
           exam_name: string
           id?: string
           paper_type?: string | null
@@ -3833,6 +3883,7 @@ export type Database = {
         Update: {
           chapter_id?: string | null
           created_at?: string | null
+          document_type?: string | null
           exam_name?: string
           id?: string
           paper_type?: string | null

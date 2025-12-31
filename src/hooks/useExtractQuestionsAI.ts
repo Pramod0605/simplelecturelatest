@@ -9,6 +9,7 @@ interface ExtractQuestionsParams {
   examName: string;
   year: number;
   paperType?: string;
+  documentType?: "mcq" | "practice" | "proficiency";
 }
 
 export interface ExtractQuestionsResponse {
@@ -43,9 +44,10 @@ export function useExtractQuestionsAI() {
       examName,
       year,
       paperType,
+      documentType,
     }: ExtractQuestionsParams): Promise<ExtractQuestionsResponse> => {
       const { data, error } = await supabase.functions.invoke("extract-questions-preview", {
-        body: { contentJson, contentMarkdown, examName, year, paperType },
+        body: { contentJson, contentMarkdown, examName, year, paperType, documentType },
       });
 
       if (error) {

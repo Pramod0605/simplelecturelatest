@@ -79,6 +79,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
     total_questions: 0,
     chapter_id: "",
     topic_id: "",
+    document_type: "mcq" as "mcq" | "practice" | "proficiency",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
@@ -154,6 +155,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       total_questions: 0,
       chapter_id: "",
       topic_id: "",
+      document_type: "mcq",
     });
     setSelectedFile(null);
     setExtractedQuestions([]);
@@ -186,10 +188,11 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       try {
         const aiResult = await extractQuestionsAI.mutateAsync({
           contentJson: result.content_json,
-          contentMarkdown: result.content_markdown, // Pass markdown for better extraction
+          contentMarkdown: result.content_markdown,
           examName: formData.exam_name,
           year: formData.year,
           paperType: formData.paper_type,
+          documentType: formData.document_type,
         });
 
         setExtractionMeta({
@@ -251,6 +254,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
         paper_type: formData.paper_type || undefined,
         pdf_url: pdfUrl,
         total_questions: extractedQuestions.length || formData.total_questions,
+        document_type: formData.document_type,
       });
 
       // If we have extracted questions, save them with importance flags
@@ -374,16 +378,48 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="paper-type">Paper Type</Label>
-                      <Input
-                        id="paper-type"
-                        placeholder="e.g., Phase 1, Main, Advanced"
-                        value={formData.paper_type}
-                        onChange={(e) =>
-                          setFormData({ ...formData, paper_type: e.target.value })
-                        }
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="paper-type">Paper Type</Label>
+                        <Input
+                          id="paper-type"
+                          placeholder="e.g., Phase 1, Main, Advanced"
+                          value={formData.paper_type}
+                          onChange={(e) =>
+                            setFormData({ ...formData, paper_type: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Document Type *</Label>
+                        <Select
+                          value={formData.document_type}
+                          onValueChange={(value: "mcq" | "practice" | "proficiency") =>
+                            setFormData({ ...formData, document_type: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mcq">
+                              MCQ Test (Questions with Options)
+                            </SelectItem>
+                            <SelectItem value="practice">
+                              Practice Test (Written Answers)
+                            </SelectItem>
+                            <SelectItem value="proficiency">
+                              Proficiency Test (Written Answers)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {formData.document_type === "mcq" 
+                            ? "Students select from options" 
+                            : "Students write/upload answers"}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

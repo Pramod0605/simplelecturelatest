@@ -12,6 +12,7 @@ export interface PreviousYearPaper {
   paper_type?: string;
   pdf_url?: string;
   total_questions: number;
+  document_type?: "mcq" | "practice" | "proficiency";
   created_at: string;
 }
 
