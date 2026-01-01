@@ -357,31 +357,61 @@ function detectProficiencyQuestionNumbers(text: string): number[] {
 function extractProficiencyAnswers(text: string): Map<number, string> {
   const answerMap = new Map<number, string>();
   
-  // Find the ANSWERS section
+  // Find the ANSWERS section header
   const answerMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST[^\n]*/i);
   if (!answerMatch || answerMatch.index === undefined) {
     console.log("No proficiency answers section found");
     return answerMap;
   }
   
-  // Use findProficiencyQuestionsSection to get the questions section start
-  const { startIdx: questionsStartIdx } = findProficiencyQuestionsSection(text);
-  const answersIdx = answerMatch.index;
+  const answersHeaderEnd = answerMatch.index + answerMatch[0].length;
+  
+  // Find where the QUESTIONS section starts by searching AFTER the answers header
+  // Look for "PROFICIENCY TEST" that is NOT part of "ANSWERS TO PROFICIENCY TEST"
+  const textAfterAnswersHeader = text.slice(answersHeaderEnd);
+  
+  const questionsPatterns = [
+    /(?:^|\n)##?\s*PROFICIENCY\s+TEST(?:-[IVX]+)?(?:\s|$)/im,
+    /(?:^|\n)PROFICIENCY\s+TEST(?:-[IVX]+)?(?:\s|$)/im,
+    /(?:^|\n)##?\s*Mathematics(?:\s|$)/im, // Sometimes page 2 starts with # Mathematics
+  ];
+  
+  let questionsIdx = -1;
+  for (const pattern of questionsPatterns) {
+    const match = textAfterAnswersHeader.match(pattern);
+    if (match && match.index !== undefined) {
+      // Make sure this is not another ANSWERS header
+      if (!/ANSWERS?\s+TO/i.test(match[0])) {
+        questionsIdx = answersHeaderEnd + match.index;
+        console.log(`Found questions section header at position ${questionsIdx}: "${match[0].trim().slice(0, 50)}"`);
+        break;
+      }
+    }
+  }
+  
+  // Also look for the first numbered question pattern (1. ...) after answers header
+  const firstQuestionMatch = textAfterAnswersHeader.match(/(?:^|\n)\s*1\.\s+[A-Z]/m);
+  if (firstQuestionMatch && firstQuestionMatch.index !== undefined) {
+    const firstQIdx = answersHeaderEnd + firstQuestionMatch.index;
+    // Use this if it comes before our header match (or if no header found)
+    if (questionsIdx === -1 || firstQIdx < questionsIdx) {
+      console.log(`Found first question (1.) at position ${firstQIdx}`);
+      questionsIdx = firstQIdx;
+    }
+  }
   
   let answersSection: string;
-  if (questionsStartIdx > 0 && questionsStartIdx > answersIdx) {
-    // Questions come AFTER answers - bound answers section to not include questions
-    answersSection = text.slice(answersIdx, questionsStartIdx);
-    console.log(`Found proficiency answers section (bounded), length: ${answersSection.length}`);
-  } else if (questionsStartIdx > 0 && questionsStartIdx < answersIdx) {
-    // Questions come BEFORE answers - answers section is from answers to end
-    answersSection = text.slice(answersIdx);
-    console.log(`Found proficiency answers section (after questions), length: ${answersSection.length}`);
+  if (questionsIdx > answersHeaderEnd) {
+    // Extract answers section between header and questions
+    answersSection = text.slice(answerMatch.index, questionsIdx);
+    console.log(`Found proficiency answers section from ${answerMatch.index} to ${questionsIdx}, length: ${answersSection.length}`);
   } else {
-    // No clear questions section - use a limited portion after answers header
-    answersSection = text.slice(answersIdx, answersIdx + 5000); // Limit to avoid picking up questions
-    console.log(`Found proficiency answers section (limited), length: ${answersSection.length}`);
+    // No questions section found after - use a generous portion
+    answersSection = text.slice(answerMatch.index, answerMatch.index + 8000);
+    console.log(`Found proficiency answers section (generous limit), length: ${answersSection.length}`);
   }
+  
+  console.log(`Answers section preview: "${answersSection.slice(0, 300).replace(/\n/g, '\\n')}..."`);
   
   // Split by question numbers and extract answers
   const lines = answersSection.split('\n');
@@ -391,9 +421,11 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
   for (const line of lines) {
     // Skip the header line itself
     if (/ANSWERS?\s+TO\s+PROFICIENCY/i.test(line)) continue;
+    // Skip empty lines or lines that are just markdown headers
+    if (/^#\s*$/.test(line.trim())) continue;
     
-    // Check if line starts with a question number
-    const numMatch = line.match(/^\s*(\d{1,2})[\.\)]\s*(.*)$/);
+    // Check if line starts with a question number - more flexible pattern
+    const numMatch = line.match(/^\s*[#*\-]*\s*(\d{1,2})[\.\)]\s*(.*)$/);
     
     if (numMatch) {
       // Save previous answer if exists
@@ -401,6 +433,7 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
         const answerText = currentAnswer.join(' ').trim();
         if (answerText) {
           answerMap.set(currentNum, answerText);
+          console.log(`Saved answer ${currentNum}: "${answerText.slice(0, 50)}..."`);
         }
       }
       
@@ -419,10 +452,11 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
     const answerText = currentAnswer.join(' ').trim();
     if (answerText) {
       answerMap.set(currentNum, answerText);
+      console.log(`Saved answer ${currentNum}: "${answerText.slice(0, 50)}..."`);
     }
   }
   
-  console.log(`Extracted ${answerMap.size} proficiency answers`);
+  console.log(`Extracted ${answerMap.size} proficiency answers: ${Array.from(answerMap.keys()).sort((a,b) => a-b).join(', ')}`);
   return answerMap;
 }
 
