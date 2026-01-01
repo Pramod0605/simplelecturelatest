@@ -213,12 +213,56 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     setFlaggedQuestions(new Set());
   };
 
+  // Normalize math notation for answer comparison (e.g., 5² ↔ 5^2)
+  const normalizeAnswer = (answer: string): string => {
+    if (!answer) return '';
+    
+    let normalized = answer.trim().toUpperCase();
+    
+    // Superscript mappings: ⁰¹²³⁴⁵⁶⁷⁸⁹ → ^0 ^1 ^2 etc.
+    const superscriptMap: Record<string, string> = {
+      '⁰': '^0', '¹': '^1', '²': '^2', '³': '^3', '⁴': '^4',
+      '⁵': '^5', '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9',
+      'ⁿ': '^N', 'ⁱ': '^I', 'ˣ': '^X',
+    };
+    
+    // Subscript mappings: ₀₁₂₃₄₅₆₇₈₉ → _0 _1 _2 etc.
+    const subscriptMap: Record<string, string> = {
+      '₀': '_0', '₁': '_1', '₂': '_2', '₃': '_3', '₄': '_4',
+      '₅': '_5', '₆': '_6', '₇': '_7', '₈': '_8', '₉': '_9',
+      'ₙ': '_N', 'ₓ': '_X',
+    };
+    
+    // Apply superscript normalization
+    Object.entries(superscriptMap).forEach(([unicode, caret]) => {
+      normalized = normalized.replace(new RegExp(unicode, 'g'), caret);
+    });
+    
+    // Apply subscript normalization
+    Object.entries(subscriptMap).forEach(([unicode, underscore]) => {
+      normalized = normalized.replace(new RegExp(unicode, 'g'), underscore);
+    });
+    
+    // Normalize common math symbols
+    normalized = normalized
+      .replace(/×/g, '*')      // multiplication
+      .replace(/÷/g, '/')      // division
+      .replace(/−/g, '-')      // minus sign
+      .replace(/±/g, '+-')     // plus-minus
+      .replace(/√/g, 'SQRT')   // square root
+      .replace(/∞/g, 'INF')    // infinity
+      .replace(/π/g, 'PI')     // pi
+      .replace(/\s+/g, '');    // remove all whitespace
+    
+    return normalized;
+  };
+
   const calculateScore = useCallback(() => {
     let correct = 0;
     testQuestions.forEach((q) => {
       const userAnswer = answers[q.id]?.trim();
       const correctAnswer = q.correct_answer?.trim();
-      if (userAnswer && correctAnswer && userAnswer.toUpperCase() === correctAnswer.toUpperCase()) {
+      if (userAnswer && correctAnswer && normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer)) {
         correct++;
       }
     });
@@ -842,7 +886,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
           {testQuestions.map((q, idx) => {
             const userAnswer = answers[q.id]?.trim();
             const correctAnswer = q.correct_answer?.trim();
-            const isCorrect = userAnswer && correctAnswer && userAnswer.toUpperCase() === correctAnswer.toUpperCase();
+            const isCorrect = userAnswer && correctAnswer && normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
             const isInteger = isIntegerQuestion(q);
 
             return (
