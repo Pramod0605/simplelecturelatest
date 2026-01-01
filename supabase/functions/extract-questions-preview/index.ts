@@ -257,49 +257,82 @@ function findQuestionPositions(text: string): { index: number; qNum: number }[] 
 }
 
 /**
+ * Find the questions section in a proficiency test document
+ * Returns the portion of text containing only the questions (not answers)
+ */
+function findProficiencyQuestionsSection(text: string): { section: string; startIdx: number } {
+  // Match "# PROFICIENCY TEST" or "## PROFICIENCY TEST" but NOT "ANSWERS TO PROFICIENCY TEST"
+  // The key is to match the header that starts the questions section
+  const questionsPatterns = [
+    /(?:^|\n)##?\s*PROFICIENCY\s+TEST(?:-[IVX]+)?(?:\s|$)/im, // # PROFICIENCY TEST or ## PROFICIENCY TEST-I
+    /(?:^|\n)PROFICIENCY\s+TEST(?:-[IVX]+)?(?:\s|$)/im, // PROFICIENCY TEST without #
+  ];
+  
+  const answersPattern = /ANSWERS?\s+TO\s+PROFICIENCY\s+TEST/i;
+  const answersMatch = text.match(answersPattern);
+  const answersIdx = answersMatch?.index ?? -1;
+  
+  let questionsIdx = -1;
+  for (const pattern of questionsPatterns) {
+    const match = text.match(pattern);
+    if (match && match.index !== undefined) {
+      // Make sure this is not the ANSWERS header
+      const matchText = match[0];
+      if (!/ANSWERS?\s+TO/i.test(matchText)) {
+        questionsIdx = match.index;
+        break;
+      }
+    }
+  }
+  
+  console.log(`Proficiency section detection - answers at: ${answersIdx}, questions at: ${questionsIdx}`);
+  
+  if (questionsIdx !== -1 && answersIdx !== -1) {
+    if (questionsIdx > answersIdx) {
+      // Answers come BEFORE questions - extract from questions header onwards
+      console.log(`Answers before questions - using text from position ${questionsIdx}`);
+      return { section: text.slice(questionsIdx), startIdx: questionsIdx };
+    } else {
+      // Questions come BEFORE answers - extract between them
+      console.log(`Questions before answers - using text from ${questionsIdx} to ${answersIdx}`);
+      return { section: text.slice(questionsIdx, answersIdx), startIdx: questionsIdx };
+    }
+  } else if (questionsIdx !== -1) {
+    return { section: text.slice(questionsIdx), startIdx: questionsIdx };
+  } else if (answersIdx !== -1) {
+    // No questions header found, but answers found - questions are likely after answers
+    // Try searching after the answers section for question patterns
+    const afterAnswers = text.slice(answersIdx);
+    const firstQuestionMatch = afterAnswers.match(/(?:^|\n)\s*1\.\s+[A-Z]/m);
+    if (firstQuestionMatch && firstQuestionMatch.index !== undefined) {
+      const qStartIdx = answersIdx + firstQuestionMatch.index;
+      console.log(`Found questions after answers section at position ${qStartIdx}`);
+      return { section: text.slice(qStartIdx), startIdx: qStartIdx };
+    }
+  }
+  
+  // Fallback: use full text
+  console.log("No clear section headers found, searching full text");
+  return { section: text, startIdx: 0 };
+}
+
+/**
  * Detect actual question numbers in proficiency/practice documents
  * Returns sorted array of unique question numbers found
  */
 function detectProficiencyQuestionNumbers(text: string): number[] {
   const numbers = new Set<number>();
   
-  // Find both sections - handle both orderings (answers before or after questions)
-  const answersHeaderMatch = text.match(/ANSWERS?\s+TO\s+PROFICIENCY\s+TEST[^\n]*/i);
-  const questionsHeaderMatch = text.match(/##?\s*PROFICIENCY\s+TEST[^I\n]*\n/i);
-  
-  let questionsSection: string;
-  
-  const answersIdx = answersHeaderMatch?.index ?? -1;
-  const questionsIdx = questionsHeaderMatch?.index ?? -1;
-  
-  console.log(`Proficiency detection - answers at: ${answersIdx}, questions at: ${questionsIdx}`);
-  
-  if (questionsIdx !== -1 && answersIdx !== -1) {
-    if (questionsIdx > answersIdx) {
-      // Answers come BEFORE questions - extract from questions header onwards
-      questionsSection = text.slice(questionsIdx);
-      console.log(`Answers before questions - using text from position ${questionsIdx}`);
-    } else {
-      // Questions come BEFORE answers - extract between them
-      questionsSection = text.slice(questionsIdx, answersIdx);
-      console.log(`Questions before answers - using text from ${questionsIdx} to ${answersIdx}`);
-    }
-  } else if (questionsIdx !== -1) {
-    questionsSection = text.slice(questionsIdx);
-  } else {
-    // Fallback: use full text but exclude answers section
-    questionsSection = answersIdx !== -1 ? text.slice(answersIdx) : text;
-    // Actually for this case, maybe just search in full text for questions
-    questionsSection = text;
-    console.log("No clear section headers found, searching full text");
-  }
+  // Get only the questions section
+  const { section: questionsSection } = findProficiencyQuestionsSection(text);
   
   // Patterns specifically for proficiency test question numbers
+  // CRITICAL: Exclude patterns that look like answers (starting with $, x=, True, False, etc.)
   const patterns = [
-    /(?:^|\n)\s*(\d{1,2})\.\s+(?!True|False|[A-D]\)|[$\\])/gm, // "1. Question..." but not "1. $x$" (answers)
-    /(?:^|\n)\s*(\d{1,2})\)\s+/gm,                              // "1) Question..."
-    /(?:^|\n)\s*\((\d{1,2})\)\s+/gm,                            // "(1) Question..."
-    /(?:^|\n)\s*Q\.?\s*(\d{1,2})[\.\):\s]/gmi,                  // "Q1." or "Q.1"
+    /(?:^|\n)\s*(\d{1,2})\.\s+(?![Tt]rue|[Ff]alse|[A-D]\)|[$\\]|x\s*=|[a-z]\s*=)/gm, // "1. Question..." but not "1. $x$" or "1. x ="
+    /(?:^|\n)\s*(\d{1,2})\)\s+(?![Tt]rue|[Ff]alse|[A-D]\)|[$\\])/gm,                   // "1) Question..."
+    /(?:^|\n)\s*\((\d{1,2})\)\s+/gm,                                                     // "(1) Question..."
+    /(?:^|\n)\s*Q\.?\s*(\d{1,2})[\.\):\s]/gmi,                                           // "Q1." or "Q.1"
   ];
   
   for (const pattern of patterns) {
@@ -331,20 +364,23 @@ function extractProficiencyAnswers(text: string): Map<number, string> {
     return answerMap;
   }
   
-  // Find where questions section starts (to bound the answers section)
-  const questionsHeaderMatch = text.match(/##?\s*PROFICIENCY\s+TEST[^I\n]*\n/i);
-  const questionsIdx = questionsHeaderMatch?.index ?? -1;
+  // Use findProficiencyQuestionsSection to get the questions section start
+  const { startIdx: questionsStartIdx } = findProficiencyQuestionsSection(text);
   const answersIdx = answerMatch.index;
   
   let answersSection: string;
-  if (questionsIdx !== -1 && questionsIdx > answersIdx) {
+  if (questionsStartIdx > 0 && questionsStartIdx > answersIdx) {
     // Questions come AFTER answers - bound answers section to not include questions
-    answersSection = text.slice(answersIdx, questionsIdx);
+    answersSection = text.slice(answersIdx, questionsStartIdx);
     console.log(`Found proficiency answers section (bounded), length: ${answersSection.length}`);
-  } else {
-    // Questions come before answers or no questions header - take rest of document
+  } else if (questionsStartIdx > 0 && questionsStartIdx < answersIdx) {
+    // Questions come BEFORE answers - answers section is from answers to end
     answersSection = text.slice(answersIdx);
-    console.log(`Found proficiency answers section, length: ${answersSection.length}`);
+    console.log(`Found proficiency answers section (after questions), length: ${answersSection.length}`);
+  } else {
+    // No clear questions section - use a limited portion after answers header
+    answersSection = text.slice(answersIdx, answersIdx + 5000); // Limit to avoid picking up questions
+    console.log(`Found proficiency answers section (limited), length: ${answersSection.length}`);
   }
   
   // Split by question numbers and extract answers
@@ -623,12 +659,16 @@ serve(async (req) => {
     }
 
     // Step 2: Create smart chunks with question ranges
-    // For proficiency tests with few questions, use single chunk
+    // For proficiency tests with few questions, use single chunk with ONLY questions section
     let smartChunks: ChunkWithRange[];
     if (isWrittenTest && expectedQuestionCount <= 30) {
-      // Single chunk for small proficiency tests
+      // Get only the questions section (not answers) for AI extraction
+      const { section: questionsOnlyText } = findProficiencyQuestionsSection(extractionText);
+      console.log(`Using questions-only section for AI, length: ${questionsOnlyText.length} (vs full: ${extractionText.length})`);
+      
+      // Single chunk for small proficiency tests - use ONLY questions section
       smartChunks = [{
-        text: extractionText,
+        text: questionsOnlyText,
         chunkIndex: 0,
         expectedRange: detectedProficiencyNumbers.length > 0 
           ? detectedProficiencyNumbers 
