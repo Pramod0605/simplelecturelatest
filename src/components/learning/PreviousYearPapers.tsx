@@ -890,11 +890,17 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                           "p-3 rounded",
                           isCorrect ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                         )}>
-                          <span className="font-medium">Your answer:</span> {userAnswer || "Not answered"}
+                          <span className="font-medium">Your answer:</span>{" "}
+                          {userAnswer ? (
+                            <MathpixRenderer mmdText={userAnswer} inline className="inline" />
+                          ) : (
+                            "Not answered"
+                          )}
                         </div>
                         {!isCorrect && (
                           <div className="p-3 rounded bg-green-100 text-green-800">
-                            <span className="font-medium">Correct answer:</span> {correctAnswer}
+                            <span className="font-medium">Correct answer:</span>{" "}
+                            <MathpixRenderer mmdText={correctAnswer || ""} inline className="inline" />
                           </div>
                         )}
                       </div>
