@@ -1,5 +1,8 @@
 project_id = "oxwhqvsoelqqsblmqkxx"
 
+[functions.ai-compare-math-answers]
+verify_jwt = true
+
 [functions.ai-support-assistant]
 verify_jwt = false
 

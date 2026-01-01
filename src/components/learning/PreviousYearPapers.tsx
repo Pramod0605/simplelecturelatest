@@ -33,6 +33,7 @@ import {
   Upload,
   Image as ImageIcon,
   Pencil,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -43,6 +44,7 @@ import {
 import { useUploadAnswerImage, useSubmitWrittenAnswer } from "@/hooks/useStudentAnswers";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PreviousYearPapersProps {
   subjectId: string | null;
@@ -79,6 +81,10 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionFilter, setQuestionFilter] = useState<"all" | "important">("all");
   const [activeCategory, setActiveCategory] = useState<PaperCategory>("previous_year");
+  
+  // AI grading state
+  const [aiGradingStatus, setAiGradingStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [aiVerdicts, setAiVerdicts] = useState<Record<string, boolean>>({});
 
   const { data: papers, isLoading: papersLoading } = usePreviousYearPapersForSubject(subjectId, topicId, chapterId, chapterOnly);
   const { data: paperQuestions, isLoading: questionsLoading } = usePreviousYearPaperQuestions(
@@ -197,10 +203,16 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   };
 
   const handleSubmit = () => {
+    // Reset AI grading state for new results
+    setAiGradingStatus("idle");
+    setAiVerdicts({});
     setTestState("results");
   };
 
   const handleRetake = () => {
+    // Reset AI grading state
+    setAiGradingStatus("idle");
+    setAiVerdicts({});
     setTestState("setup");
   };
 
@@ -211,13 +223,59 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     setAnswers({});
     setAnswerImages({});
     setFlaggedQuestions(new Set());
+    // Reset AI grading state
+    setAiGradingStatus("idle");
+    setAiVerdicts({});
   };
 
-  // Normalize math notation for answer comparison (e.g., 5² ↔ 5^2)
+  // Normalize math notation for answer comparison (e.g., 5² ↔ 5^2, $x^2$ ↔ x^2)
   const normalizeAnswer = (answer: string): string => {
     if (!answer) return '';
     
-    let normalized = answer.trim().toUpperCase();
+    let normalized = answer.trim();
+    
+    // Remove LaTeX math delimiters
+    normalized = normalized
+      .replace(/\$\$/g, '')     // display math $$...$$
+      .replace(/\$/g, '')       // inline math $...$
+      .replace(/\\\(/g, '')     // \( ... \)
+      .replace(/\\\)/g, '')
+      .replace(/\\\[/g, '')     // \[ ... \]
+      .replace(/\\\]/g, '');
+    
+    // Remove LaTeX formatting tokens
+    normalized = normalized
+      .replace(/\\left/g, '')
+      .replace(/\\right/g, '')
+      .replace(/\\displaystyle/g, '')
+      .replace(/\\text\{([^}]*)\}/g, '$1')  // \text{abc} → abc
+      .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+      .replace(/\\mathbf\{([^}]*)\}/g, '$1');
+    
+    // Convert LaTeX operators to plain equivalents
+    normalized = normalized
+      .replace(/\\times/g, '*')
+      .replace(/\\cdot/g, '*')
+      .replace(/\\div/g, '/')
+      .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')  // \frac{a}{b} → (a)/(b)
+      .replace(/\\lt/g, '<')
+      .replace(/\\gt/g, '>')
+      .replace(/\\leq/g, '<=')
+      .replace(/\\le/g, '<=')
+      .replace(/\\geq/g, '>=')
+      .replace(/\\ge/g, '>=')
+      .replace(/\\neq/g, '!=')
+      .replace(/\\ne/g, '!=')
+      .replace(/\\pm/g, '+-')
+      .replace(/\\sqrt/g, 'SQRT')
+      .replace(/\\infty/g, 'INF')
+      .replace(/\\pi/g, 'PI');
+    
+    // Remove braces (so a^{2} becomes a^2)
+    normalized = normalized.replace(/[{}]/g, '');
+    
+    // Uppercase for case-insensitive comparison
+    normalized = normalized.toUpperCase();
     
     // Superscript mappings: ⁰¹²³⁴⁵⁶⁷⁸⁹ → ^0 ^1 ^2 etc.
     const superscriptMap: Record<string, string> = {
@@ -243,18 +301,127 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
       normalized = normalized.replace(new RegExp(unicode, 'g'), underscore);
     });
     
-    // Normalize common math symbols
+    // Normalize Unicode math symbols
     normalized = normalized
       .replace(/×/g, '*')      // multiplication
       .replace(/÷/g, '/')      // division
-      .replace(/−/g, '-')      // minus sign
+      .replace(/−/g, '-')      // minus sign (unicode)
       .replace(/±/g, '+-')     // plus-minus
       .replace(/√/g, 'SQRT')   // square root
       .replace(/∞/g, 'INF')    // infinity
       .replace(/π/g, 'PI')     // pi
+      .replace(/≤/g, '<=')     // less than or equal
+      .replace(/≥/g, '>=')     // greater than or equal
+      .replace(/≠/g, '!=')     // not equal
       .replace(/\s+/g, '');    // remove all whitespace
     
     return normalized;
+  };
+
+  // Wrap plain text in math delimiters if it looks like math
+  const toInlineMathIfNeeded = (text: string): string => {
+    if (!text) return '';
+    // Already has math delimiters
+    if (text.includes('$') || text.includes('\\(') || text.includes('\\[')) {
+      return text;
+    }
+    // Looks like math if it contains these characters
+    const looksLikeMath = /[\^_<>=+\-*/\\]/.test(text) || /\d+[a-zA-Z]|[a-zA-Z]\d+/.test(text);
+    if (looksLikeMath) {
+      return `$${text}$`;
+    }
+    return text;
+  };
+
+  // Check if fast normalization matches
+  const fastIsCorrect = (userAnswer: string | undefined, correctAnswer: string | undefined): boolean => {
+    if (!userAnswer || !correctAnswer) return false;
+    return normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
+  };
+
+  // AI-based answer comparison for mismatches
+  const runAiGrading = useCallback(async () => {
+    // Find questions that failed fast check and need AI verification
+    const needsAiCheck: { id: string; user_answer: string; correct_answer: string }[] = [];
+    
+    testQuestions.forEach((q) => {
+      const userAnswer = answers[q.id]?.trim();
+      const correctAnswer = q.correct_answer?.trim();
+      const isInteger = isIntegerQuestion(q);
+      
+      // Only check typed answers that failed fast normalization
+      if (isInteger && userAnswer && correctAnswer && !fastIsCorrect(userAnswer, correctAnswer)) {
+        needsAiCheck.push({
+          id: q.id,
+          user_answer: userAnswer,
+          correct_answer: correctAnswer,
+        });
+      }
+    });
+
+    if (needsAiCheck.length === 0) {
+      setAiGradingStatus("done");
+      return;
+    }
+
+    setAiGradingStatus("loading");
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-compare-math-answers', {
+        body: { items: needsAiCheck },
+      });
+
+      if (error) {
+        console.error('AI grading error:', error);
+        toast({
+          title: "AI grading unavailable",
+          description: "Using text-based matching instead.",
+          variant: "destructive",
+        });
+        setAiGradingStatus("error");
+        return;
+      }
+
+      // Process AI results
+      const newVerdicts: Record<string, boolean> = {};
+      if (data?.results && Array.isArray(data.results)) {
+        data.results.forEach((result: { id: string; is_equivalent: boolean }) => {
+          newVerdicts[result.id] = result.is_equivalent;
+        });
+      }
+      
+      setAiVerdicts(newVerdicts);
+      setAiGradingStatus("done");
+    } catch (err) {
+      console.error('AI grading failed:', err);
+      setAiGradingStatus("error");
+    }
+  }, [testQuestions, answers]);
+
+  // Trigger AI grading when entering results state
+  useEffect(() => {
+    if (testState === "results" && aiGradingStatus === "idle") {
+      runAiGrading();
+    }
+  }, [testState, aiGradingStatus, runAiGrading]);
+
+  // Combined check: fast normalization OR AI verdict
+  const isAnswerCorrect = (questionId: string, userAnswer: string | undefined, correctAnswer: string | undefined): boolean => {
+    if (!userAnswer || !correctAnswer) return false;
+    // First try fast normalization
+    if (fastIsCorrect(userAnswer, correctAnswer)) return true;
+    // Fall back to AI verdict if available
+    if (aiVerdicts[questionId] !== undefined) return aiVerdicts[questionId];
+    return false;
+  };
+
+  // Check if a question is still being AI-checked
+  const isBeingAiChecked = (questionId: string, userAnswer: string | undefined, correctAnswer: string | undefined): boolean => {
+    if (!userAnswer || !correctAnswer) return false;
+    // Not checking if fast match
+    if (fastIsCorrect(userAnswer, correctAnswer)) return false;
+    // Still loading and no verdict yet
+    return aiGradingStatus === "loading" && aiVerdicts[questionId] === undefined;
   };
 
   const calculateScore = useCallback(() => {
@@ -262,12 +429,12 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     testQuestions.forEach((q) => {
       const userAnswer = answers[q.id]?.trim();
       const correctAnswer = q.correct_answer?.trim();
-      if (userAnswer && correctAnswer && normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer)) {
+      if (isAnswerCorrect(q.id, userAnswer, correctAnswer)) {
         correct++;
       }
     });
     return correct;
-  }, [testQuestions, answers]);
+  }, [testQuestions, answers, aiVerdicts]);
 
   const isIntegerQuestion = (question: PaperQuestion): boolean => {
     return question.question_type === "integer" || 
@@ -847,6 +1014,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   if (testState === "results") {
     const score = calculateScore();
     const percentage = Math.round((score / testQuestions.length) * 100);
+    const isGradingInProgress = aiGradingStatus === "loading";
 
     return (
       <div className="space-y-6">
@@ -854,25 +1022,35 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <div className={cn(
-                "inline-flex items-center justify-center h-24 w-24 rounded-full text-3xl font-bold",
-                percentage >= 70 ? "bg-green-100 text-green-700" : 
-                percentage >= 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
-              )}>
-                {percentage}%
-              </div>
+              {isGradingInProgress ? (
+                <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-muted">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className={cn(
+                  "inline-flex items-center justify-center h-24 w-24 rounded-full text-3xl font-bold",
+                  percentage >= 70 ? "bg-green-100 text-green-700" : 
+                  percentage >= 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                )}>
+                  {percentage}%
+                </div>
+              )}
               <div>
-                <h3 className="text-xl font-semibold">Test Completed!</h3>
+                <h3 className="text-xl font-semibold">
+                  {isGradingInProgress ? "Grading in progress..." : "Test Completed!"}
+                </h3>
                 <p className="text-muted-foreground">
-                  You scored {score} out of {testQuestions.length} questions
+                  {isGradingInProgress 
+                    ? "AI is checking your answers for mathematical equivalence" 
+                    : `You scored ${score} out of ${testQuestions.length} questions`}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-4">
-                <Button variant="outline" onClick={handleRetake}>
+                <Button variant="outline" onClick={handleRetake} disabled={isGradingInProgress}>
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Retake Test
                 </Button>
-                <Button onClick={handleBackToPapers}>
+                <Button onClick={handleBackToPapers} disabled={isGradingInProgress}>
                   Back to Papers
                 </Button>
               </div>
@@ -886,12 +1064,14 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
           {testQuestions.map((q, idx) => {
             const userAnswer = answers[q.id]?.trim();
             const correctAnswer = q.correct_answer?.trim();
-            const isCorrect = userAnswer && correctAnswer && normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
             const isInteger = isIntegerQuestion(q);
+            const isChecking = isBeingAiChecked(q.id, userAnswer, correctAnswer);
+            const isCorrect = isAnswerCorrect(q.id, userAnswer, correctAnswer);
 
             return (
               <Card key={q.id} className={cn(
                 "border-l-4",
+                isChecking ? "border-l-yellow-500" : 
                 isCorrect ? "border-l-green-500" : "border-l-red-500"
               )}>
                 <CardContent className="pt-4 space-y-3">
@@ -910,7 +1090,12 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                         </Badge>
                       )}
                     </div>
-                    {isCorrect ? (
+                    {isChecking ? (
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Checking...
+                      </Badge>
+                    ) : isCorrect ? (
                       <Badge variant="outline" className="text-green-600 border-green-600">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Correct
@@ -932,16 +1117,17 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                       <div className="flex flex-col gap-2 text-sm">
                         <div className={cn(
                           "p-3 rounded",
+                          isChecking ? "bg-yellow-100 text-yellow-800" :
                           isCorrect ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                         )}>
                           <span className="font-medium">Your answer:</span>{" "}
                           {userAnswer ? (
-                            <MathpixRenderer mmdText={userAnswer} inline className="inline" />
+                            <MathpixRenderer mmdText={toInlineMathIfNeeded(userAnswer)} inline className="inline" />
                           ) : (
                             "Not answered"
                           )}
                         </div>
-                        {!isCorrect && (
+                        {!isCorrect && !isChecking && (
                           <div className="p-3 rounded bg-green-100 text-green-800">
                             <span className="font-medium">Correct answer:</span>{" "}
                             <MathpixRenderer mmdText={correctAnswer || ""} inline className="inline" />
