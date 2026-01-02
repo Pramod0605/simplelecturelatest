@@ -6,12 +6,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X, Link as LinkIcon, Clock, BookOpen, ExternalLink } from "lucide-react";
+import { Loader2, FileJson, Video, FileText, Image, ChevronDown, ChevronUp, Sparkles, Copy, Check, Filter, X, Link as LinkIcon, Clock, BookOpen, ExternalLink, Eye } from "lucide-react";
 import { useAIAssistantDocuments } from "@/hooks/useAIAssistantDocuments";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DocumentImageViewer } from "./DocumentImageViewer";
+
 interface SubjectVideoGeneratorTabProps {
   subjectId: string;
   subjectName: string;
@@ -25,6 +27,11 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
   const [generatedId, setGeneratedId] = useState<string | null>(null);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  // Viewer state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<{url: string, label?: string}[]>([]);
+  const [viewerDocName, setViewerDocName] = useState("");
   
   // Filter state
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
@@ -174,6 +181,25 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
     }
   };
 
+  const handleViewDocument = (doc: { full_content: unknown; display_name?: string | null; file_name?: string | null }) => {
+    const docContent = doc.full_content as Record<string, unknown> | null;
+    const uploadedImages = (docContent?.uploaded_images as { url: string; pageNumber?: number }[]) || [];
+    
+    if (uploadedImages.length === 0) {
+      toast.error("No preview available. This document doesn't have page images.");
+      return;
+    }
+    
+    const images = uploadedImages.map((img, idx) => ({
+      url: img.url,
+      label: `Page ${img.pageNumber || idx + 1}`,
+    }));
+    
+    setViewerImages(images);
+    setViewerDocName(doc.display_name || doc.file_name || "Document");
+    setViewerOpen(true);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -312,16 +338,29 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            size="sm" 
-                            variant={selectedDocumentId === doc.id ? "default" : "outline"}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedDocumentId(doc.id);
-                            }}
-                          >
-                            {selectedDocumentId === doc.id ? "Selected" : "Select"}
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDocument(doc);
+                              }}
+                              title="View document pages"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant={selectedDocumentId === doc.id ? "default" : "outline"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDocumentId(doc.id);
+                              }}
+                            >
+                              {selectedDocumentId === doc.id ? "Selected" : "Select"}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -501,6 +540,13 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
           </div>
         )}
       </CardContent>
+
+      <DocumentImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+        fileName={viewerDocName}
+      />
     </Card>
   );
 }
