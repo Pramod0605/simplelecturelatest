@@ -133,7 +133,9 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
             )}
             <div className="text-sm">
               <span className="font-medium">Correct Answer: </span>
-              <span className="text-green-600">{question.correct_answer}</span>
+              <span className="text-green-600">
+                <MathpixRenderer mmdText={question.correct_answer} inline={true} />
+              </span>
             </div>
             {!question.is_verified && (
               <Button
@@ -237,9 +239,9 @@ export function QuestionPreview({ question, onEdit, onDelete, onVerify }: Questi
             {/* Correct Answer */}
             <div>
               <h4 className="font-semibold mb-2">Correct Answer:</h4>
-              <Badge className="bg-green-100 text-green-800 text-base px-3 py-1">
-                {question.correct_answer}
-              </Badge>
+              <div className="bg-green-100 text-green-800 text-base px-3 py-1 rounded inline-block">
+                <MathpixRenderer mmdText={question.correct_answer} inline={true} />
+              </div>
             </div>
 
             {/* Explanation */}
