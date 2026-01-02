@@ -170,6 +170,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     notes_markdown: "",
     pdf_url: "",
     content_json: null as any,
+    extracted_images: [] as { url: string; pageNumber?: number }[],
   });
 
   const [topicForm, setTopicForm] = useState({
@@ -183,6 +184,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     pdf_url: "",
     sequence_order: 1,
     content_json: null as any,
+    extracted_images: [] as { url: string; pageNumber?: number }[],
   });
 
   const { data: chapters, isLoading } = useSubjectChapters(subjectId);
@@ -205,7 +207,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     const result = await parsePdfFromUrl(pdfUrl);
     if (result) {
       const parsedContent = result.content_json || result;
-      setChapterForm(prev => ({ ...prev, content_json: parsedContent }));
+      const uploadedImages = result.uploaded_images || [];
+      setChapterForm(prev => ({ 
+        ...prev, 
+        content_json: parsedContent,
+        extracted_images: uploadedImages.map(img => ({ url: img.url, pageNumber: img.pageNumber })),
+      }));
       
       if (subjectId) {
         try {
@@ -222,12 +229,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
           });
           toast({
             title: "PDF Parsed & Saved",
-            description: `Document parsed and added to AI Assistant`,
+            description: `Document parsed with ${uploadedImages.length} pages`,
           });
         } catch (error) {
           toast({
             title: "PDF Parsed",
-            description: `Parsed successfully but couldn't save to Documents`,
+            description: `Parsed ${uploadedImages.length} pages but couldn't save to Documents`,
           });
         }
       }
@@ -239,7 +246,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
     const result = await parsePdfFromUrl(pdfUrl);
     if (result) {
       const parsedContent = result.content_json || result;
-      setTopicForm(prev => ({ ...prev, content_json: parsedContent }));
+      const uploadedImages = result.uploaded_images || [];
+      setTopicForm(prev => ({ 
+        ...prev, 
+        content_json: parsedContent,
+        extracted_images: uploadedImages.map(img => ({ url: img.url, pageNumber: img.pageNumber })),
+      }));
       
       if (subjectId) {
         try {
@@ -258,12 +270,12 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
           });
           toast({
             title: "PDF Parsed & Saved",
-            description: `Document parsed and added to AI Assistant`,
+            description: `Document parsed with ${uploadedImages.length} pages`,
           });
         } catch (error) {
           toast({
             title: "PDF Parsed",
-            description: `Parsed successfully but couldn't save to Documents`,
+            description: `Parsed ${uploadedImages.length} pages but couldn't save to Documents`,
           });
         }
       }
@@ -348,6 +360,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             notes_markdown: "",
             pdf_url: "",
             content_json: null,
+            extracted_images: [],
           });
         },
         onError: (error: any) => {
@@ -402,6 +415,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             notes_markdown: "",
             pdf_url: "",
             content_json: null,
+            extracted_images: [],
           });
         },
       }
@@ -474,6 +488,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             pdf_url: "",
             sequence_order: 1,
             content_json: null,
+            extracted_images: [],
           });
         },
         onError: (error: any) => {
@@ -529,6 +544,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
             pdf_url: "",
             sequence_order: 1,
             content_json: null,
+            extracted_images: [],
           });
         },
       }
@@ -977,6 +993,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                       notes_markdown: "",
                       pdf_url: "",
                       content_json: null,
+                      extracted_images: [],
                     });
                   }
                 }}
@@ -1290,6 +1307,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                             notes_markdown: chapter.notes_markdown || "",
                             pdf_url: chapter.pdf_url || "",
                             content_json: (chapter as any).content_json || null,
+                            extracted_images: (chapter as any).extracted_images || [],
                           });
                         }}
                         onDelete={() => setDeleteChapterId(chapter.id)}
@@ -1311,6 +1329,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                             pdf_url: topic.pdf_url || "",
                             sequence_order: topic.sequence_order,
                             content_json: (topic as any).content_json || null,
+                            extracted_images: (topic as any).extracted_images || [],
                           });
                         }}
                         onDeleteTopic={(topicId) => {
@@ -1361,6 +1380,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
               pdf_url: "",
               sequence_order: 1,
               content_json: null,
+              extracted_images: [],
             });
           }
         }}

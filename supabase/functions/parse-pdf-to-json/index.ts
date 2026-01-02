@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,6 +68,64 @@ async function getB2DownloadUrl(filePath: string): Promise<string> {
   return signedUrl;
 }
 
+// Upload base64 image to Supabase Storage
+async function uploadImageToStorage(
+  supabase: any,
+  base64Data: string,
+  imageName: string,
+  requestId: string
+): Promise<string | null> {
+  try {
+    // Remove data URL prefix if present
+    const base64Clean = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Detect image type from base64 or default to png
+    let contentType = 'image/png';
+    let extension = 'png';
+    
+    if (base64Data.includes('data:image/jpeg') || base64Data.includes('data:image/jpg')) {
+      contentType = 'image/jpeg';
+      extension = 'jpg';
+    } else if (base64Data.includes('data:image/webp')) {
+      contentType = 'image/webp';
+      extension = 'webp';
+    }
+    
+    // Decode base64 to binary
+    const binaryStr = atob(base64Clean);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    
+    // Generate storage path
+    const storagePath = `${requestId}/${imageName}.${extension}`;
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('pdf-images')
+      .upload(storagePath, bytes, {
+        contentType,
+        upsert: true,
+      });
+    
+    if (error) {
+      console.error(`Failed to upload image ${imageName}:`, error);
+      return null;
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('pdf-images')
+      .getPublicUrl(storagePath);
+    
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error(`Error uploading image ${imageName}:`, error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -74,9 +133,19 @@ serve(async (req) => {
 
   try {
     const DATALAB_API_KEY = Deno.env.get("DATALAB_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
     if (!DATALAB_API_KEY) {
       throw new Error("DATALAB_API_KEY is not configured");
     }
+    
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase credentials not configured");
+    }
+    
+    // Create Supabase client for storage uploads
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -110,11 +179,10 @@ serve(async (req) => {
     }
 
     // Configure output options - USE MARKDOWN for cleaner text extraction
-    // Remove deprecated use_llm param, use output_format correctly
     datalabFormData.append("output_format", "markdown");
-    datalabFormData.append("force_ocr", "true"); // Force OCR for better answer key extraction
+    datalabFormData.append("force_ocr", "true");
     datalabFormData.append("paginate_output", "false");
-    datalabFormData.append("skip_cache", "true"); // Ensure fresh result, not cached JSON
+    datalabFormData.append("skip_cache", "true");
 
     // Submit to Datalab Marker API
     console.log("Submitting to Datalab Marker API with markdown output...");
@@ -192,14 +260,50 @@ serve(async (req) => {
       console.log("Markdown sample (first 500 chars):", result.markdown.substring(0, 500));
     }
 
-    // Return parsed content - prioritize markdown for question extraction
+    // Upload images to Supabase Storage and get public URLs
+    const imageUrls: Record<string, string> = {};
+    const uploadedImages: { url: string; pageNumber: number; name: string }[] = [];
+    
+    if (result.images && Object.keys(result.images).length > 0) {
+      console.log("Uploading extracted images to Supabase Storage...");
+      
+      const imageEntries = Object.entries(result.images);
+      for (let i = 0; i < imageEntries.length; i++) {
+        const [imageName, base64Data] = imageEntries[i];
+        
+        console.log(`Uploading image ${i + 1}/${imageEntries.length}: ${imageName}`);
+        
+        const publicUrl = await uploadImageToStorage(
+          supabase,
+          base64Data,
+          imageName,
+          requestId
+        );
+        
+        if (publicUrl) {
+          imageUrls[imageName] = publicUrl;
+          uploadedImages.push({
+            url: publicUrl,
+            pageNumber: i + 1,
+            name: imageName,
+          });
+        }
+      }
+      
+      console.log(`Uploaded ${uploadedImages.length} images successfully`);
+    }
+
+    // Return parsed content with image URLs instead of base64
     return new Response(
       JSON.stringify({
         success: true,
         request_id: requestId,
         content_json: result.json || null,
         content_markdown: result.markdown || null,
-        images: result.images || {},
+        // Return URLs instead of base64 data
+        images: imageUrls,
+        // Also return as array for easier consumption
+        uploaded_images: uploadedImages,
         metadata: {
           pages: pageCount,
           ocr_stats: result.metadata?.ocr_stats || null,

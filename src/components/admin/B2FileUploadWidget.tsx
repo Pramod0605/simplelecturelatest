@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, FileText, ExternalLink, X } from "lucide-react";
+import { Upload, Loader2, FileText, Eye, X } from "lucide-react";
 import { useB2Upload } from "@/hooks/useB2Upload";
 import { generateB2Path, B2PathParams } from "@/lib/b2PathGenerator";
 import { Progress } from "@/components/ui/progress";
+import { DocumentImageViewer } from "./DocumentImageViewer";
 
 interface B2FileUploadWidgetProps {
   onFileUploaded: (url: string) => void;
@@ -23,6 +24,8 @@ interface B2FileUploadWidgetProps {
   // Auto-parse PDF after upload
   onParseAfterUpload?: (pdfUrl: string) => Promise<void>;
   isParsingPdf?: boolean;
+  // Extracted images from parsed PDF
+  extractedImages?: { url: string; pageNumber?: number }[];
 }
 
 export function B2FileUploadWidget({
@@ -35,6 +38,7 @@ export function B2FileUploadWidget({
   metadata,
   onParseAfterUpload,
   isParsingPdf = false,
+  extractedImages = [],
 }: B2FileUploadWidgetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localFileUrl, setLocalFileUrl] = useState(currentFileUrl || "");
@@ -128,7 +132,11 @@ export function B2FileUploadWidget({
         <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm flex-1 truncate">File uploaded successfully</span>
-          <B2UploadedFileActions filePath={localFileUrl} onRemove={handleRemove} />
+          <B2UploadedFileActions 
+            filePath={localFileUrl} 
+            onRemove={handleRemove} 
+            extractedImages={extractedImages}
+          />
         </div>
       )}
 
@@ -142,14 +150,24 @@ export function B2FileUploadWidget({
 interface B2UploadedFileActionsProps {
   filePath: string;
   onRemove: () => void;
+  extractedImages?: { url: string; pageNumber?: number }[];
 }
 
-function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProps) {
+function B2UploadedFileActions({ filePath, onRemove, extractedImages = [] }: B2UploadedFileActionsProps) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  
+  // Derive filename from path
+  const fileName = filePath 
+    ? decodeURIComponent(filePath.split("/").pop() || "Document.pdf")
+    : "Document.pdf";
+
   const handleView = () => {
-    // Navigate to dedicated PDF viewer page (avoids Chrome blocking)
-    const encodedPath = encodeURIComponent(filePath);
-    window.open(`/admin/pdf-viewer?path=${encodedPath}`, "_blank");
+    setViewerOpen(true);
   };
+
+  // If we have extracted images, show them in the viewer
+  // Otherwise, we'll need to show a message or load via proxy
+  const hasImages = extractedImages.length > 0;
 
   return (
     <>
@@ -160,7 +178,7 @@ function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProp
         onClick={handleView}
         className="gap-1"
       >
-        <ExternalLink className="h-3 w-3" />
+        <Eye className="h-3 w-3" />
         View
       </Button>
       <Button
@@ -171,6 +189,13 @@ function B2UploadedFileActions({ filePath, onRemove }: B2UploadedFileActionsProp
       >
         <X className="h-4 w-4" />
       </Button>
+
+      <DocumentImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={hasImages ? extractedImages : []}
+        fileName={fileName}
+      />
     </>
   );
 }

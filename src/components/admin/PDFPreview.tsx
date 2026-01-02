@@ -1,201 +1,135 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileText, ExternalLink, X, Loader2 } from "lucide-react";
+import { FileText, Eye, Images } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useB2DownloadUrl } from "@/hooks/useB2DownloadUrl";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+import { DocumentImageViewer } from "./DocumentImageViewer";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface PDFPreviewProps {
   pdfUrl: string;
   /** Optional override for the display name. If omitted, we derive it from the URL/path. */
   fileName?: string;
+  /** Extracted images from PDF parsing */
+  extractedImages?: { url: string; pageNumber?: number }[];
 }
 
-export function PDFPreview({ pdfUrl, fileName }: PDFPreviewProps) {
+export function PDFPreview({ pdfUrl, fileName, extractedImages = [] }: PDFPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  const [isFetchingPdf, setIsFetchingPdf] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerStartPage, setViewerStartPage] = useState(0);
 
   // Derive a human-friendly file name from the URL/path if not explicitly provided
   const derivedFileName = fileName || decodeURIComponent(pdfUrl.split("/").pop() || "Document");
 
-  // Get proxy URL for B2 files
-  const { proxyUrl, isLoading: isUrlLoading, error: urlError } = useB2DownloadUrl(pdfUrl);
+  const hasImages = extractedImages.length > 0;
 
-  // Cleanup blob URL on unmount or when closing
-  useEffect(() => {
-    return () => {
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }
-    };
-  }, [pdfBlobUrl]);
-
-  const loadPdf = useCallback(async () => {
-    if (!proxyUrl) return;
-    
-    setIsFetchingPdf(true);
-    setFetchError(null);
-
-    try {
-      // Get current session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("Not authenticated");
-      }
-
-      // Fetch PDF through proxy with Authorization header
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to load PDF: ${response.status} - ${errorText}`);
-      }
-
-      // Create blob URL from response
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Cleanup old blob URL if exists
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }
-      
-      setPdfBlobUrl(blobUrl);
-    } catch (error) {
-      console.error("PDF fetch error:", error);
-      
-      // Check if it's a blocker issue
-      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
-        setFetchError("Your browser may be blocking this request. Please disable ad blockers or allowlist this site.");
-      } else {
-        setFetchError(error instanceof Error ? error.message : "Failed to load PDF");
-      }
-    } finally {
-      setIsFetchingPdf(false);
-    }
-  }, [proxyUrl, pdfBlobUrl]);
-
-  // Load PDF when opening the preview
-  useEffect(() => {
-    if (isOpen && proxyUrl && !pdfBlobUrl && !isFetchingPdf && !fetchError) {
-      loadPdf();
-    }
-  }, [isOpen, proxyUrl, pdfBlobUrl, isFetchingPdf, fetchError, loadPdf]);
-
-  // Cleanup when closing
-  const handleClose = () => {
-    setIsOpen(false);
-    if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl);
-      setPdfBlobUrl(null);
-    }
-    setFetchError(null);
+  const handleImageClick = (index: number) => {
+    setViewerStartPage(index);
+    setViewerOpen(true);
   };
 
-  const handleOpenInNewTab = () => {
-    // Navigate to dedicated PDF viewer page (avoids Chrome blocking)
-    const encodedPath = encodeURIComponent(pdfUrl);
-    window.open(`/admin/pdf-viewer?path=${encodedPath}`, "_blank");
+  const handleOpenFullViewer = () => {
+    setViewerStartPage(0);
+    setViewerOpen(true);
   };
 
-  const isLoading = isUrlLoading || isFetchingPdf;
-  const error = urlError || fetchError;
-
-  if (error) {
+  // If no images available, show a simple message
+  if (!hasImages) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex items-center justify-between">
-          <span>{error}</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setFetchError(null);
-              loadPdf();
-            }}
-            className="ml-4"
-          >
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
+        <FileText className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground flex-1">
+          {derivedFileName}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          No preview available - please re-parse the PDF
+        </span>
+      </div>
     );
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="flex items-center gap-2">
-        <CollapsibleTrigger asChild>
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Images className="h-4 w-4" />
+              {isOpen ? "Hide Preview" : "Preview Document"}
+              <span className="text-xs text-muted-foreground">
+                ({extractedImages.length} pages)
+              </span>
+            </Button>
+          </CollapsibleTrigger>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
+            onClick={handleOpenFullViewer}
             className="gap-2"
-            disabled={isLoading}
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
-            {isLoading ? "Loading..." : isOpen ? "Hide Preview" : "Preview PDF"}
+            <Eye className="h-4 w-4" />
+            Full View
           </Button>
-        </CollapsibleTrigger>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleOpenInNewTab}
-          disabled={isLoading}
-          className="gap-2"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open in New Tab
-        </Button>
-      </div>
+        </div>
 
-      <CollapsibleContent className="mt-4">
-        {isLoading ? (
-          <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : pdfBlobUrl ? (
-          <div className="relative border rounded-lg overflow-hidden bg-muted/10">
+        <CollapsibleContent className="mt-4">
+          <div className="border rounded-lg overflow-hidden bg-muted/10">
             <div className="flex items-center justify-between p-2 bg-muted/50 border-b">
               <span className="text-sm font-medium">{derivedFileName}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <span className="text-xs text-muted-foreground">
+                {extractedImages.length} pages - Click any page to view full screen
+              </span>
             </div>
-            <iframe
-              src={pdfBlobUrl}
-              className="w-full h-[600px]"
-              title={`PDF Preview: ${derivedFileName}`}
-            />
+            
+            {/* Thumbnail gallery */}
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 p-4">
+                {extractedImages.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleImageClick(index)}
+                    className={cn(
+                      "flex-shrink-0 group relative rounded-lg overflow-hidden",
+                      "border-2 border-transparent hover:border-primary",
+                      "transition-all duration-200 hover:shadow-lg"
+                    )}
+                  >
+                    <img
+                      src={img.url}
+                      alt={`Page ${index + 1}`}
+                      className="h-40 w-auto object-contain bg-white"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
+                      Page {index + 1}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
-        ) : (
-          <div className="border rounded-lg p-8 bg-muted flex items-center justify-center">
-            <span className="text-muted-foreground">Unable to load preview</span>
-          </div>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <DocumentImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={extractedImages}
+        fileName={derivedFileName}
+        initialPage={viewerStartPage}
+      />
+    </>
   );
 }

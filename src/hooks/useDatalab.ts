@@ -2,12 +2,19 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface UploadedImage {
+  url: string;
+  pageNumber: number;
+  name: string;
+}
+
 interface DatalabResult {
   success: boolean;
   request_id: string;
   content_json: any | null;
   content_markdown: string | null;
   images: Record<string, string>;
+  uploaded_images: UploadedImage[];
   metadata: {
     pages: number;
     ocr_stats: any | null;
@@ -44,7 +51,7 @@ export function useDatalab() {
       setProgress("Complete!");
       toast({
         title: "PDF Parsed Successfully",
-        description: `Extracted ${data.metadata?.pages || 0} pages`,
+        description: `Extracted ${data.metadata?.pages || 0} pages with ${data.uploaded_images?.length || 0} images`,
       });
 
       return data as DatalabResult;
@@ -87,7 +94,7 @@ export function useDatalab() {
       setProgress("Complete!");
       toast({
         title: "PDF Parsed Successfully",
-        description: `Extracted ${data.metadata?.pages || 0} pages`,
+        description: `Extracted ${data.metadata?.pages || 0} pages with ${data.uploaded_images?.length || 0} images`,
       });
 
       return data as DatalabResult;
