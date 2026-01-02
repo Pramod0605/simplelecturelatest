@@ -18,6 +18,7 @@ interface RenderProgress {
 
 interface UsePdfPageRendererResult {
   renderPdfPages: (pdfUrl: string, requestId: string) => Promise<RenderedPage[]>;
+  renderPdfFromBlob: (blob: Blob, requestId: string) => Promise<RenderedPage[]>;
   isRendering: boolean;
   progress: RenderProgress | null;
   error: string | null;
@@ -28,34 +29,20 @@ export function usePdfPageRenderer(): UsePdfPageRendererResult {
   const [progress, setProgress] = useState<RenderProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const renderPdfPages = useCallback(async (pdfUrl: string, requestId: string): Promise<RenderedPage[]> => {
-    setIsRendering(true);
-    setError(null);
+  const renderPdfFromData = useCallback(async (
+    pdfData: string | ArrayBuffer | Uint8Array,
+    requestId: string
+  ): Promise<RenderedPage[]> => {
     setProgress({ currentPage: 0, totalPages: 0, phase: "loading" });
 
-    try {
-      // Get signed URL for the PDF if it's a B2 path
-      let fetchUrl = pdfUrl;
-      if (!pdfUrl.startsWith("http")) {
-        // It's a B2 path, get a signed URL
-        const { data, error: signedUrlError } = await supabase.functions.invoke("b2-get-download-url", {
-          body: { filePath: pdfUrl },
-        });
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({
+      data: pdfData,
+      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/cmaps/",
+      cMapPacked: true,
+    });
 
-        if (signedUrlError || !data?.downloadUrl) {
-          throw new Error("Failed to get signed URL for PDF");
-        }
-        fetchUrl = data.downloadUrl;
-      }
-
-      // Load the PDF document
-      const loadingTask = pdfjsLib.getDocument({
-        url: fetchUrl,
-        cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/cmaps/",
-        cMapPacked: true,
-      });
-
-      const pdf = await loadingTask.promise;
+    const pdf = await loadingTask.promise;
       const totalPages = pdf.numPages;
       
       console.log(`PDF loaded: ${totalPages} pages`);
@@ -142,11 +129,70 @@ export function usePdfPageRenderer(): UsePdfPageRendererResult {
         }
       }
 
-      setProgress({ currentPage: totalPages, totalPages, phase: "complete" });
-      console.log(`Successfully rendered ${renderedPages.length} pages`);
-      
-      return renderedPages;
+    setProgress({ currentPage: totalPages, totalPages, phase: "complete" });
+    console.log(`Successfully rendered ${renderedPages.length} pages`);
+    
+    return renderedPages;
+  }, []);
 
+  // Render from a Blob (for direct file uploads)
+  const renderPdfFromBlob = useCallback(async (blob: Blob, requestId: string): Promise<RenderedPage[]> => {
+    setIsRendering(true);
+    setError(null);
+
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      return await renderPdfFromData(arrayBuffer, requestId);
+    } catch (err: any) {
+      console.error("Error rendering PDF from blob:", err);
+      setError(err.message || "Failed to render PDF pages");
+      return [];
+    } finally {
+      setIsRendering(false);
+    }
+  }, [renderPdfFromData]);
+
+  // Render from a URL (for B2 paths - uses proxy)
+  const renderPdfPages = useCallback(async (pdfUrl: string, requestId: string): Promise<RenderedPage[]> => {
+    setIsRendering(true);
+    setError(null);
+
+    try {
+      let pdfData: ArrayBuffer;
+
+      if (pdfUrl.startsWith("blob:") || pdfUrl.startsWith("data:")) {
+        // Local blob URL - fetch directly
+        const response = await fetch(pdfUrl);
+        pdfData = await response.arrayBuffer();
+      } else if (pdfUrl.startsWith("http")) {
+        // Full URL - try to fetch directly
+        const response = await fetch(pdfUrl);
+        pdfData = await response.arrayBuffer();
+      } else {
+        // B2 path - use proxy endpoint
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        const proxyUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/b2-proxy-file?filePath=${encodeURIComponent(pdfUrl)}`;
+        
+        const response = await fetch(proxyUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+        }
+
+        pdfData = await response.arrayBuffer();
+      }
+
+      return await renderPdfFromData(pdfData, requestId);
     } catch (err: any) {
       console.error("Error rendering PDF:", err);
       setError(err.message || "Failed to render PDF pages");
@@ -154,10 +200,11 @@ export function usePdfPageRenderer(): UsePdfPageRendererResult {
     } finally {
       setIsRendering(false);
     }
-  }, []);
+  }, [renderPdfFromData]);
 
   return {
     renderPdfPages,
+    renderPdfFromBlob,
     isRendering,
     progress,
     error,
