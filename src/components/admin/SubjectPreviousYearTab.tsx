@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle, Brain, Star } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, CheckCircle, AlertCircle, Brain, Star, Eye } from "lucide-react";
+import { DocumentImageViewer } from "./DocumentImageViewer";
+import { usePdfPageRenderer } from "@/hooks/usePdfPageRenderer";
 import { PDFPreview } from "./PDFPreview";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -92,6 +94,12 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const [importantQuestions, setImportantQuestions] = useState<Set<number>>(new Set());
   const [parsedJson, setParsedJson] = useState<any>(null);
   const [extractionProgress, setExtractionProgress] = useState({ current: 0, total: 90 });
+  
+  // PDF Viewer states
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<{url: string, label?: string, pageNumber?: number}[]>([]);
+  const [viewerPaperName, setViewerPaperName] = useState("");
+  const [renderingPaperId, setRenderingPaperId] = useState<string | null>(null);
   const [extractionMeta, setExtractionMeta] = useState<
     | {
         partial?: boolean;
@@ -152,6 +160,7 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
   const bulkInsertQuestions = useBulkInsertPreviousYearQuestions();
   const { parsePdfFile, isLoading: isParsing, progress: parseProgress } = useDatalab();
   const extractQuestionsAI = useExtractQuestionsAI();
+  const { renderPdfPages, isRendering: isPdfRendering } = usePdfPageRenderer();
 
   const resetForm = () => {
     setFormData({
@@ -337,6 +346,51 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
       resetForm();
     }
     setIsAddOpen(open);
+  };
+
+  const handleViewPaper = async (paper: { id: string; pdf_url?: string | null; exam_name: string; year: number; paper_type?: string | null }) => {
+    if (!paper.pdf_url) {
+      toast({
+        title: "No PDF Available",
+        description: "This paper doesn't have a PDF attached.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRenderingPaperId(paper.id);
+    
+    try {
+      const requestId = `paper-view-${paper.id}-${Date.now()}`;
+      const renderedPages = await renderPdfPages(paper.pdf_url, requestId);
+      
+      if (renderedPages && renderedPages.length > 0) {
+        const images = renderedPages.map((page) => ({
+          url: page.url,
+          label: `Page ${page.pageNumber}`,
+          pageNumber: page.pageNumber,
+        }));
+        
+        setViewerImages(images);
+        setViewerPaperName(`${paper.exam_name} ${paper.year}${paper.paper_type ? ` - ${paper.paper_type}` : ''}`);
+        setViewerOpen(true);
+      } else {
+        toast({
+          title: "Rendering Failed",
+          description: "Could not render PDF pages. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error rendering PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load PDF preview.",
+        variant: "destructive",
+      });
+    } finally {
+      setRenderingPaperId(null);
+    }
   };
 
   const getSelectedChapterName = () => {
@@ -885,15 +939,25 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
                       <TableCell>{paper.total_questions || 0}</TableCell>
                       <TableCell>
                         {paper.pdf_url ? (
-                          <a
-                            href={paper.pdf_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-primary hover:underline"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewPaper(paper)}
+                            disabled={isPdfRendering && renderingPaperId === paper.id}
+                            className="flex items-center gap-1 text-primary"
                           >
-                            <FileText className="h-4 w-4" />
-                            View
-                          </a>
+                            {isPdfRendering && renderingPaperId === paper.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4" />
+                                View
+                              </>
+                            )}
+                          </Button>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -937,6 +1001,14 @@ export function SubjectPreviousYearTab({ subjectId, subjectName }: SubjectPrevio
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Viewer */}
+      <DocumentImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+        fileName={viewerPaperName}
+      />
     </div>
   );
 }
