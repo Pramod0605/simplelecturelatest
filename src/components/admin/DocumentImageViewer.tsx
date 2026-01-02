@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,8 @@ import {
   Loader2,
   X,
   Maximize2,
-  Minimize2
+  Minimize2,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,21 @@ export function DocumentImageViewer({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [loadingImages, setLoadingImages] = useState<Set<number>>(new Set());
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top-left of the image viewer
+  const scrollToTop = useCallback(() => {
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) {
+      viewport.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, []);
+
+  // Reset view: zoom to 1 and scroll to top
+  const handleResetView = useCallback(() => {
+    setZoom(1);
+    setTimeout(scrollToTop, 50);
+  }, [scrollToTop]);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -53,8 +69,16 @@ export function DocumentImageViewer({
       setZoom(1);
       setLoadedImages(new Set());
       setLoadingImages(new Set());
+      setTimeout(scrollToTop, 100);
     }
-  }, [isOpen, initialPage]);
+  }, [isOpen, initialPage, scrollToTop]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    if (isOpen) {
+      scrollToTop();
+    }
+  }, [currentPage, isOpen, scrollToTop]);
 
   const handlePrevious = useCallback(() => {
     setCurrentPage((prev) => Math.max(0, prev - 1));
@@ -165,6 +189,7 @@ export function DocumentImageViewer({
               onClick={handleZoomOut}
               disabled={zoom <= 0.5}
               className="h-8 w-8"
+              title="Zoom out (-)"
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -177,8 +202,20 @@ export function DocumentImageViewer({
               onClick={handleZoomIn}
               disabled={zoom >= 3}
               className="h-8 w-8"
+              title="Zoom in (+)"
             >
               <ZoomIn className="h-4 w-4" />
+            </Button>
+            
+            {/* Reset view */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleResetView}
+              className="h-8 w-8"
+              title="Reset view"
+            >
+              <RotateCcw className="h-4 w-4" />
             </Button>
             
             {/* Fullscreen toggle */}
@@ -209,9 +246,9 @@ export function DocumentImageViewer({
 
         {/* Image viewer */}
         <div className="flex-1 relative overflow-hidden bg-muted/30">
-          <ScrollArea className="h-full w-full">
+          <ScrollArea className="h-full w-full" ref={scrollAreaRef}>
             <div 
-              className="flex items-center justify-center min-h-full p-4"
+              className="flex items-start justify-center min-h-full p-4"
               style={{ minHeight: isFullScreen ? "calc(100vh - 120px)" : "500px" }}
             >
               {loadingImages.has(currentPage) && (
@@ -222,10 +259,13 @@ export function DocumentImageViewer({
               <img
                 src={currentImage.url}
                 alt={currentImage.label || `Page ${currentPage + 1}`}
-                className="max-w-full transition-transform duration-200"
+                className={cn(
+                  "block max-w-full w-auto h-auto object-contain transition-transform duration-200",
+                  isFullScreen ? "max-h-[calc(100vh-140px)]" : "max-h-[calc(90vh-180px)]"
+                )}
                 style={{ 
                   transform: `scale(${zoom})`,
-                  transformOrigin: "center center"
+                  transformOrigin: "top center"
                 }}
                 onLoadStart={() => handleImageLoadStart(currentPage)}
                 onLoad={() => handleImageLoad(currentPage)}
