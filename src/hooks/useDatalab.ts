@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePdfPageRenderer } from "./usePdfPageRenderer";
 
 interface UploadedImage {
   url: string;
   pageNumber: number;
-  name: string;
+  name?: string;
 }
 
 interface DatalabResult {
@@ -25,6 +26,7 @@ export function useDatalab() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const { toast } = useToast();
+  const { renderPdfPages, progress: renderProgress } = usePdfPageRenderer();
 
   const parsePdfFile = async (file: File): Promise<DatalabResult | null> => {
     setIsLoading(true);
@@ -34,7 +36,7 @@ export function useDatalab() {
       const formData = new FormData();
       formData.append("file", file);
 
-      setProgress("Parsing PDF with AI... This may take a few minutes.");
+      setProgress("Extracting text with AI... This may take a few minutes.");
 
       const { data, error } = await supabase.functions.invoke("parse-pdf-to-json", {
         body: formData,
@@ -48,13 +50,30 @@ export function useDatalab() {
         throw new Error(data.error || "Failed to parse PDF");
       }
 
+      // Now render pages with PDF.js
+      setProgress("Rendering PDF pages...");
+      
+      // Create object URL for the file
+      const fileUrl = URL.createObjectURL(file);
+      const renderedPages = await renderPdfPagesFromUrl(fileUrl, data.request_id);
+      URL.revokeObjectURL(fileUrl);
+
+      const result: DatalabResult = {
+        ...data,
+        uploaded_images: renderedPages,
+        metadata: {
+          ...data.metadata,
+          pages: renderedPages.length || data.metadata?.pages || 0,
+        },
+      };
+
       setProgress("Complete!");
       toast({
         title: "PDF Parsed Successfully",
-        description: `Extracted ${data.metadata?.pages || 0} pages with ${data.uploaded_images?.length || 0} images`,
+        description: `Extracted ${result.metadata?.pages || 0} pages`,
       });
 
-      return data as DatalabResult;
+      return result;
     } catch (error: any) {
       console.error("Error parsing PDF:", error);
       toast({
@@ -66,6 +85,20 @@ export function useDatalab() {
     } finally {
       setIsLoading(false);
       setProgress("");
+    }
+  };
+
+  const renderPdfPagesFromUrl = async (url: string, requestId: string): Promise<UploadedImage[]> => {
+    try {
+      const pages = await renderPdfPages(url, requestId);
+      return pages.map(p => ({
+        url: p.url,
+        pageNumber: p.pageNumber,
+        name: `page_${p.pageNumber}.png`,
+      }));
+    } catch (err) {
+      console.error("Error rendering PDF pages:", err);
+      return [];
     }
   };
 
@@ -77,7 +110,7 @@ export function useDatalab() {
       const formData = new FormData();
       formData.append("pdf_url", pdfUrl);
 
-      setProgress("Parsing PDF with AI... This may take a few minutes.");
+      setProgress("Extracting text with AI... This may take a few minutes.");
 
       const { data, error } = await supabase.functions.invoke("parse-pdf-to-json", {
         body: formData,
@@ -91,13 +124,26 @@ export function useDatalab() {
         throw new Error(data.error || "Failed to parse PDF");
       }
 
+      // Now render pages with PDF.js
+      setProgress("Rendering PDF pages...");
+      const renderedPages = await renderPdfPagesFromUrl(pdfUrl, data.request_id);
+
+      const result: DatalabResult = {
+        ...data,
+        uploaded_images: renderedPages,
+        metadata: {
+          ...data.metadata,
+          pages: renderedPages.length || data.metadata?.pages || 0,
+        },
+      };
+
       setProgress("Complete!");
       toast({
         title: "PDF Parsed Successfully",
-        description: `Extracted ${data.metadata?.pages || 0} pages with ${data.uploaded_images?.length || 0} images`,
+        description: `Extracted ${result.metadata?.pages || 0} pages`,
       });
 
-      return data as DatalabResult;
+      return result;
     } catch (error: any) {
       console.error("Error parsing PDF:", error);
       toast({
@@ -112,10 +158,21 @@ export function useDatalab() {
     }
   };
 
+  // Get detailed progress message
+  const getDetailedProgress = (): string => {
+    if (renderProgress && renderProgress.phase !== "complete") {
+      const { currentPage, totalPages, phase } = renderProgress;
+      if (phase === "loading") return "Loading PDF...";
+      if (phase === "rendering") return `Rendering page ${currentPage} of ${totalPages}...`;
+      if (phase === "uploading") return `Uploading page ${currentPage} of ${totalPages}...`;
+    }
+    return progress;
+  };
+
   return {
     parsePdfFile,
     parsePdfFromUrl,
     isLoading,
-    progress,
+    progress: getDetailedProgress(),
   };
 }
