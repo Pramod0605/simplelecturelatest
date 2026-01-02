@@ -17,9 +17,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAIAssistantDocuments, useAddAIAssistantDocument, useDeleteAIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
+import { useAIAssistantDocuments, useAddAIAssistantDocument, useDeleteAIAssistantDocument, AIAssistantDocument } from "@/hooks/useAIAssistantDocuments";
 import { useSubjectChapters, useChapterTopics } from "@/hooks/useSubjectChaptersTopics";
 import { format } from "date-fns";
+import { DocumentImageViewer } from "./DocumentImageViewer";
 
 interface SubjectDocumentsTabProps {
   subjectId: string;
@@ -45,6 +46,11 @@ export function SubjectDocumentsTab({
   // Filter states
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  
+  // Document viewer states
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImages, setViewerImages] = useState<{url: string, label?: string, pageNumber?: number}[]>([]);
+  const [viewerDocName, setViewerDocName] = useState("");
   
   // Upload assignment states
   const [uploadChapterId, setUploadChapterId] = useState<string | null>(null);
@@ -228,6 +234,30 @@ export function SubjectDocumentsTab({
     deleteDocument.mutate({ documentId: docId, subjectId });
   };
 
+  const handleViewDocument = (doc: AIAssistantDocument) => {
+    const fullContent = doc.full_content as any;
+    const uploadedImages = fullContent?.uploaded_images || [];
+    
+    if (uploadedImages.length === 0) {
+      toast({
+        title: "No Preview Available",
+        description: "This document doesn't have page images. Try re-uploading the PDF.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const images = uploadedImages.map((img: any, idx: number) => ({
+      url: img.url,
+      label: `Page ${img.pageNumber || idx + 1}`,
+      pageNumber: img.pageNumber || idx + 1,
+    }));
+    
+    setViewerImages(images);
+    setViewerDocName(doc.display_name || doc.file_name || "Document");
+    setViewerOpen(true);
+  };
+
   const getSourceIcon = (sourceType: string) => {
     switch (sourceType) {
       case "url":
@@ -389,14 +419,25 @@ export function SubjectDocumentsTab({
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteDocument(doc.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDocument(doc)}
+                              title="View document pages"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              className="text-destructive hover:text-destructive"
+                              title="Delete document"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -625,6 +666,14 @@ export function SubjectDocumentsTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Document Image Viewer */}
+      <DocumentImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+        fileName={viewerDocName}
+      />
     </div>
   );
 }
