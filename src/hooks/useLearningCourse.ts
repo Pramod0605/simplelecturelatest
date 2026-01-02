@@ -107,7 +107,8 @@ export const useSubjectChapters = (subjectId?: string) => {
           id,
           title,
           chapter_number,
-          description
+          description,
+          ai_generated_video_url
         `)
         .eq("subject_id", subjectId)
         .order("chapter_number");
