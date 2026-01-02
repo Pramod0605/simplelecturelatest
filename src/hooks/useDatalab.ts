@@ -26,7 +26,7 @@ export function useDatalab() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const { toast } = useToast();
-  const { renderPdfPages, progress: renderProgress } = usePdfPageRenderer();
+  const { renderPdfPages, renderPdfFromBlob, progress: renderProgress } = usePdfPageRenderer();
 
   const parsePdfFile = async (file: File): Promise<DatalabResult | null> => {
     setIsLoading(true);
@@ -50,13 +50,14 @@ export function useDatalab() {
         throw new Error(data.error || "Failed to parse PDF");
       }
 
-      // Now render pages with PDF.js
+      // Now render pages with PDF.js using the original file blob
       setProgress("Rendering PDF pages...");
-      
-      // Create object URL for the file
-      const fileUrl = URL.createObjectURL(file);
-      const renderedPages = await renderPdfPagesFromUrl(fileUrl, data.request_id);
-      URL.revokeObjectURL(fileUrl);
+      const pages = await renderPdfFromBlob(file, data.request_id);
+      const renderedPages = pages.map(p => ({
+        url: p.url,
+        pageNumber: p.pageNumber,
+        name: `page_${p.pageNumber}.png`,
+      }));
 
       const result: DatalabResult = {
         ...data,
@@ -88,20 +89,6 @@ export function useDatalab() {
     }
   };
 
-  const renderPdfPagesFromUrl = async (url: string, requestId: string): Promise<UploadedImage[]> => {
-    try {
-      const pages = await renderPdfPages(url, requestId);
-      return pages.map(p => ({
-        url: p.url,
-        pageNumber: p.pageNumber,
-        name: `page_${p.pageNumber}.png`,
-      }));
-    } catch (err) {
-      console.error("Error rendering PDF pages:", err);
-      return [];
-    }
-  };
-
   const parsePdfFromUrl = async (pdfUrl: string): Promise<DatalabResult | null> => {
     setIsLoading(true);
     setProgress("Starting PDF parsing...");
@@ -124,9 +111,14 @@ export function useDatalab() {
         throw new Error(data.error || "Failed to parse PDF");
       }
 
-      // Now render pages with PDF.js
+      // Now render pages with PDF.js using the B2 proxy
       setProgress("Rendering PDF pages...");
-      const renderedPages = await renderPdfPagesFromUrl(pdfUrl, data.request_id);
+      const pages = await renderPdfPages(pdfUrl, data.request_id);
+      const renderedPages = pages.map(p => ({
+        url: p.url,
+        pageNumber: p.pageNumber,
+        name: `page_${p.pageNumber}.png`,
+      }));
 
       const result: DatalabResult = {
         ...data,
