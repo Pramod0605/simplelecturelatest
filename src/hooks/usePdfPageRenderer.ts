@@ -177,7 +177,8 @@ export function usePdfPageRenderer(): UsePdfPageRendererResult {
           throw new Error("Not authenticated");
         }
 
-        const proxyUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/b2-proxy-file?filePath=${encodeURIComponent(pdfUrl)}`;
+        console.log(`Fetching PDF from B2 proxy: ${pdfUrl}`);
+        const proxyUrl = `https://oxwhqvsoelqqsblmqkxx.supabase.co/functions/v1/b2-proxy-file?path=${encodeURIComponent(pdfUrl)}`;
         
         const response = await fetch(proxyUrl, {
           headers: {
