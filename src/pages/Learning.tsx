@@ -6,11 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen } from "lucide-react";
 import { SubjectNavigationBar } from "@/components/learning/SubjectNavigationBar";
-import { PodcastPlayer } from "@/components/learning/PodcastPlayer";
 import { MCQTest } from "@/components/learning/MCQTest";
-import { NotesViewer } from "@/components/learning/NotesViewer";
 import { AssignmentViewer } from "@/components/learning/AssignmentViewer";
-import { DPTTest } from "@/components/learning/DPTTest";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
 import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
 import { PreviousYearPapers } from "@/components/learning/PreviousYearPapers";
@@ -297,13 +294,10 @@ export default function Learning() {
           <main className="flex-1 overflow-y-auto p-6">
             {selectedTopic ? (
               <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-8">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="videos">Classes</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
-                  <TabsTrigger value="podcast">Podcast</TabsTrigger>
                   <TabsTrigger value="mcqs">MCQs</TabsTrigger>
-                  <TabsTrigger value="dpt">DPT</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
                   <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
                 </TabsList>
@@ -327,20 +321,8 @@ export default function Learning() {
                   />
                 </TabsContent>
 
-                <TabsContent value="podcast">
-                  <PodcastPlayer topicId={selectedTopic.id} />
-                </TabsContent>
-
                 <TabsContent value="mcqs">
                   <MCQTest topicId={selectedTopic.id} />
-                </TabsContent>
-
-                <TabsContent value="dpt">
-                  <DPTTest />
-                </TabsContent>
-
-                <TabsContent value="notes">
-                  <NotesViewer content={selectedTopic.content_markdown} title={selectedTopic.title} />
                 </TabsContent>
 
                 <TabsContent value="assignments">
@@ -362,13 +344,10 @@ export default function Learning() {
                   </span>
                 </div>
                 
-                <TabsList className="grid w-full grid-cols-8">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="videos">Classes</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
-                  <TabsTrigger value="podcast">Podcast</TabsTrigger>
                   <TabsTrigger value="mcqs">MCQs</TabsTrigger>
-                  <TabsTrigger value="dpt">DPT</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
                   <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
                 </TabsList>
@@ -389,23 +368,8 @@ export default function Learning() {
                   />
                 </TabsContent>
 
-                <TabsContent value="podcast">
-                  <PodcastPlayer chapterId={selectedChapter.id} />
-                </TabsContent>
-
                 <TabsContent value="mcqs">
                   <MCQTest chapterId={selectedChapter.id} chapterOnly />
-                </TabsContent>
-
-                <TabsContent value="dpt">
-                  <DPTTest />
-                </TabsContent>
-
-                <TabsContent value="notes">
-                  <NotesViewer 
-                    chapterId={selectedChapter.id}
-                    title={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`} 
-                  />
                 </TabsContent>
 
                 <TabsContent value="assignments">
