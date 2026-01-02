@@ -1174,6 +1174,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                           }
                           onParseAfterUpload={handleChapterPdfUploadAndParse}
                           isParsingPdf={isParsingPdf}
+                          extractedImages={chapterForm.extracted_images}
                           label="Upload Chapter PDF"
                           acceptedTypes="application/pdf"
                           maxSizeMB={50}
@@ -1195,6 +1196,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                         {chapterForm.pdf_url && (
                           <PDFPreview 
                             pdfUrl={chapterForm.pdf_url}
+                            extractedImages={chapterForm.extracted_images}
                           />
                         )}
                       </div>
@@ -1539,6 +1541,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                 }
                 onParseAfterUpload={handleTopicPdfUploadAndParse}
                 isParsingPdf={isParsingPdf}
+                extractedImages={topicForm.extracted_images}
                 label="Upload Topic PDF"
                 acceptedTypes="application/pdf"
                 maxSizeMB={50}
@@ -1561,6 +1564,7 @@ export function SubjectChaptersTab({ subjectId, subjectName, categoryName }: Sub
                {topicForm.pdf_url && (
                  <PDFPreview 
                    pdfUrl={topicForm.pdf_url}
+                   extractedImages={topicForm.extracted_images}
                  />
                )}
             </div>
