@@ -377,6 +377,7 @@ export default function Learning() {
                   <RecordedVideos 
                     chapterId={selectedChapter.id}
                     topicTitle={`Ch ${selectedChapter.chapter_number}: ${selectedChapter.title}`}
+                    aiGeneratedVideoUrl={selectedChapter.ai_generated_video_url}
                   />
                 </TabsContent>
 

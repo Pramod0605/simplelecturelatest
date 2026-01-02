@@ -126,25 +126,31 @@ export function SubjectVideoGeneratorTab({ subjectId, subjectName }: SubjectVide
         return;
       }
       
-      // Save video URL to chapter if document has chapter_id
-      if (selectedDocument?.chapter_id) {
-        await supabase
-          .from('subject_chapters')
-          .update({ ai_generated_video_url: videoUrl } as any)
-          .eq('id', selectedDocument.chapter_id);
-      }
+      // Save video URL to chapter or topic
+      let savedTo: string | null = null;
       
-      // Save video URL to topic if document has topic_id
       if (selectedDocument?.topic_id) {
         await supabase
           .from('subject_topics')
           .update({ ai_generated_video_url: videoUrl } as any)
           .eq('id', selectedDocument.topic_id);
+        savedTo = 'topic';
+      } else if (selectedDocument?.chapter_id) {
+        await supabase
+          .from('subject_chapters')
+          .update({ ai_generated_video_url: videoUrl } as any)
+          .eq('id', selectedDocument.chapter_id);
+        savedTo = 'chapter';
       }
       
       setGeneratedId(uniqueId);
       setGeneratedVideoUrl(videoUrl);
-      toast.success('Video generated and saved!');
+      
+      if (savedTo) {
+        toast.success(`Video generated and saved to ${savedTo}!`);
+      } else {
+        toast.warning('Video generated but document has no linked chapter/topic. Video won\'t appear in Classes tab.');
+      }
     } catch (err) {
       console.error('Error:', err);
       toast.error('An error occurred');
