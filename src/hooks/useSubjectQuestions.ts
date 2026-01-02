@@ -38,23 +38,24 @@ export const useSubjectQuestions = (filters?: {
   return useQuery({
     queryKey: ["subject-questions", filters],
     queryFn: async () => {
+      // Use LEFT JOIN (no !inner) to include questions without topics
       let query = supabase
         .from("questions")
         .select(`
           *,
-          subject_topics!inner(
+          subject_topics(
             id,
             title,
             chapter_id,
-            subject_chapters!inner(
+            subject_chapters(
               id,
               title,
               subject_id,
-              popular_subjects!inner(
+              popular_subjects(
                 id,
                 name,
                 category_id,
-                categories!inner(
+                categories(
                   id,
                   name
                 )
@@ -63,14 +64,16 @@ export const useSubjectQuestions = (filters?: {
           )
         `);
 
-      // Filter by subject
+      // Filter by subject - only apply if filter is set
       if (filters?.subjectId) {
-        query = query.eq('subject_topics.subject_chapters.subject_id', filters.subjectId);
+        query = query.not('subject_topics', 'is', null)
+          .eq('subject_topics.subject_chapters.subject_id', filters.subjectId);
       }
 
-      // Filter by category
+      // Filter by category - only apply if filter is set
       if (filters?.categoryId) {
-        query = query.eq('subject_topics.subject_chapters.popular_subjects.category_id', filters.categoryId);
+        query = query.not('subject_topics', 'is', null)
+          .eq('subject_topics.subject_chapters.popular_subjects.category_id', filters.categoryId);
       }
 
       // Filter by topic
@@ -80,7 +83,8 @@ export const useSubjectQuestions = (filters?: {
 
       // Filter by chapter
       if (filters?.chapterId) {
-        query = query.eq("subject_topics.chapter_id", filters.chapterId);
+        query = query.not('subject_topics', 'is', null)
+          .eq("subject_topics.chapter_id", filters.chapterId);
       }
 
       if (filters?.difficulty) {
