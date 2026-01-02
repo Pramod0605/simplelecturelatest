@@ -24,6 +24,7 @@ export interface PaginatedQuestion {
   formula_type?: string;
   previous_year_paper_id?: string;
   created_at: string;
+  chapter_id?: string;
   subject_topics?: {
     id: string;
     title: string;
@@ -33,7 +34,7 @@ export interface PaginatedQuestion {
       title: string;
       subject_id: string;
     };
-  };
+  } | null;
 }
 
 export interface PaginatedQuestionsFilters {
@@ -44,14 +45,75 @@ export interface PaginatedQuestionsFilters {
   chapterId?: string;
   isVerified?: boolean;
   searchQuery?: string;
-  chapterOnly?: boolean; // When true, only show questions with topic_id = NULL for the chapter
+  chapterOnly?: boolean;
+}
+
+// Helper to fetch chapter IDs for a subject
+async function getChapterIdsForSubject(subjectId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("subject_chapters")
+    .select("id")
+    .eq("subject_id", subjectId);
+  
+  if (error) throw error;
+  return data?.map(c => c.id) || [];
+}
+
+// Helper to fetch topic IDs for chapters
+async function getTopicIdsForChapters(chapterIds: string[]): Promise<string[]> {
+  if (chapterIds.length === 0) return [];
+  
+  const { data, error } = await supabase
+    .from("subject_topics")
+    .select("id")
+    .in("chapter_id", chapterIds);
+  
+  if (error) throw error;
+  return data?.map(t => t.id) || [];
+}
+
+// Helper to fetch topic IDs for a single chapter
+async function getTopicIdsForChapter(chapterId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("subject_topics")
+    .select("id")
+    .eq("chapter_id", chapterId);
+  
+  if (error) throw error;
+  return data?.map(t => t.id) || [];
 }
 
 export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
   return useInfiniteQuery({
     queryKey: ["paginated-questions", filters],
     queryFn: async ({ pageParam = 0 }) => {
-      // Use LEFT JOIN to include questions with topic_id = NULL (chapter-level questions)
+      // Pre-fetch IDs for subject/chapter filtering
+      let topicIdsForFilter: string[] | null = null;
+      let chapterIdsForFilter: string[] | null = null;
+
+      // If filtering by subject, get all chapter IDs and topic IDs for that subject
+      if (filters.subjectId) {
+        chapterIdsForFilter = await getChapterIdsForSubject(filters.subjectId);
+        if (chapterIdsForFilter.length > 0) {
+          topicIdsForFilter = await getTopicIdsForChapters(chapterIdsForFilter);
+        } else {
+          // No chapters found for this subject - return empty
+          return {
+            questions: [] as PaginatedQuestion[],
+            nextCursor: undefined,
+            totalCount: 0,
+          };
+        }
+      }
+
+      // If filtering by chapter (and not chapterOnly), get topic IDs for that chapter
+      if (filters.chapterId && !filters.chapterOnly) {
+        const topicsForChapter = await getTopicIdsForChapter(filters.chapterId);
+        topicIdsForFilter = topicsForChapter;
+        chapterIdsForFilter = [filters.chapterId];
+      }
+
+      // Build the main query with LEFT JOIN for subject_topics
       let query = supabase
         .from("questions")
         .select(`
@@ -68,13 +130,19 @@ export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
           )
         `, { count: "exact" });
 
-      // Filter by subject - handle both topic-based and chapter-based questions
-      if (filters.subjectId) {
-        // For questions with topics, filter via topic->chapter->subject chain
-        // For chapter-level questions (topic_id = NULL), we need to use chapter_id directly
-        query = query.or(
-          `subject_topics.subject_chapters.subject_id.eq.${filters.subjectId},and(topic_id.is.null,chapter_id.in.(select id from subject_chapters where subject_id = '${filters.subjectId}'))`
-        );
+      // Apply subject filter using pre-fetched IDs
+      if (filters.subjectId && topicIdsForFilter !== null && chapterIdsForFilter !== null) {
+        if (topicIdsForFilter.length > 0 && chapterIdsForFilter.length > 0) {
+          // Questions with topic_id in our topics OR chapter-level questions (topic_id is null, chapter_id in our chapters)
+          query = query.or(
+            `topic_id.in.(${topicIdsForFilter.join(',')}),and(topic_id.is.null,chapter_id.in.(${chapterIdsForFilter.join(',')}))`
+          );
+        } else if (topicIdsForFilter.length > 0) {
+          query = query.in('topic_id', topicIdsForFilter);
+        } else if (chapterIdsForFilter.length > 0) {
+          // Only chapter-level questions
+          query = query.is('topic_id', null).in('chapter_id', chapterIdsForFilter);
+        }
       }
 
       // Filter by AI-generated status
@@ -82,21 +150,28 @@ export const usePaginatedQuestions = (filters: PaginatedQuestionsFilters) => {
         query = query.eq('is_ai_generated', filters.isAiGenerated);
       }
 
-      // Filter by topic
+      // Filter by topic (direct filter, simple)
       if (filters.topicId) {
         query = query.eq("topic_id", filters.topicId);
       }
 
-      // Filter by chapter - include both topic-based and chapter-level questions
+      // Filter by chapter using pre-fetched IDs
       if (filters.chapterId) {
         if (filters.chapterOnly) {
           // Only show chapter-level questions (topic_id is NULL)
           query = query.eq("chapter_id", filters.chapterId).is("topic_id", null);
-        } else {
-          // Show all questions for the chapter (both topic-based and chapter-level)
-          query = query.or(
-            `subject_topics.chapter_id.eq.${filters.chapterId},and(chapter_id.eq.${filters.chapterId},topic_id.is.null)`
-          );
+        } else if (topicIdsForFilter !== null) {
+          // Already handled above with subject filter logic, but if only chapterId is set:
+          if (!filters.subjectId) {
+            if (topicIdsForFilter.length > 0) {
+              query = query.or(
+                `topic_id.in.(${topicIdsForFilter.join(',')}),and(topic_id.is.null,chapter_id.eq.${filters.chapterId})`
+              );
+            } else {
+              // No topics in this chapter, only chapter-level questions
+              query = query.is('topic_id', null).eq('chapter_id', filters.chapterId);
+            }
+          }
         }
       }
 
