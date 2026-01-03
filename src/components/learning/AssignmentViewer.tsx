@@ -64,38 +64,90 @@ export const AssignmentViewer = ({ topicId, chapterId }: AssignmentViewerProps) 
     }
   };
 
+  const getStatusGradient = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'from-orange-50 to-amber-50/50 dark:from-orange-950/40 dark:to-amber-950/30 before:from-orange-500 before:to-amber-500';
+      case 'submitted':
+        return 'from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/30 before:from-blue-500 before:to-indigo-500';
+      case 'graded':
+        return 'from-green-50 to-emerald-50/50 dark:from-green-950/40 dark:to-emerald-950/30 before:from-green-500 before:to-emerald-500';
+      default:
+        return 'from-slate-50 to-gray-50/50 dark:from-slate-950/40 dark:to-gray-950/30 before:from-slate-500 before:to-gray-500';
+    }
+  };
+
+  const getStatusIconBg = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-orange-100 dark:bg-orange-900/50';
+      case 'submitted':
+        return 'bg-blue-100 dark:bg-blue-900/50';
+      case 'graded':
+        return 'bg-green-100 dark:bg-green-900/50';
+      default:
+        return 'bg-slate-100 dark:bg-slate-900/50';
+    }
+  };
+
+  const getStatusIconColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'text-orange-600 dark:text-orange-400';
+      case 'submitted':
+        return 'text-blue-600 dark:text-blue-400';
+      case 'graded':
+        return 'text-green-600 dark:text-green-400';
+      default:
+        return 'text-slate-600 dark:text-slate-400';
+    }
+  };
+
   if (!selectedAssignment) {
     return (
       <div className="space-y-4">
         {assignments.map((assignment) => (
-          <Card key={assignment.id} className="cursor-pointer hover:border-primary transition-colors">
-            <CardHeader onClick={() => setSelectedAssignment(assignment.id)}>
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{assignment.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{assignment.description}</p>
+          <Card 
+            key={assignment.id} 
+            className={`group relative overflow-hidden transition-all duration-300 border-0 shadow-md hover:shadow-xl cursor-pointer bg-gradient-to-br before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r ${getStatusGradient(assignment.status)}`}
+            onClick={() => setSelectedAssignment(assignment.id)}
+          >
+            <CardContent className="p-5">
+              <div className="flex items-start gap-4">
+                {/* Icon Container */}
+                <div className={`p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 ${getStatusIconBg(assignment.status)}`}>
+                  <FileText className={`h-6 w-6 ${getStatusIconColor(assignment.status)}`} />
                 </div>
-                <Badge variant={getStatusVariant(assignment.status)} className="flex items-center gap-1">
-                  {getStatusIcon(assignment.status)}
-                  {assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex gap-4">
-                  <span className="text-muted-foreground">
-                    Due: {new Date(assignment.due_date).toLocaleDateString()}
-                  </span>
-                  <span className="text-muted-foreground">
-                    Total Marks: {assignment.total_marks}
-                  </span>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <h3 className="font-semibold text-base">{assignment.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{assignment.description}</p>
+                    </div>
+                    <Badge variant={getStatusVariant(assignment.status)} className="flex items-center gap-1 shrink-0">
+                      {getStatusIcon(assignment.status)}
+                      {assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Metadata Pills */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
+                      <Clock className="h-3 w-3" />
+                      Due: {new Date(assignment.due_date).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
+                      Total: {assignment.total_marks} marks
+                    </div>
+                    {assignment.score !== undefined && (
+                      <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-100/70 dark:bg-green-900/40 text-green-700 dark:text-green-300">
+                        <CheckCircle className="h-3 w-3" />
+                        Score: {assignment.score}/{assignment.total_marks}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {assignment.score !== undefined && (
-                  <span className="font-semibold text-primary">
-                    Score: {assignment.score}/{assignment.total_marks}
-                  </span>
-                )}
               </div>
             </CardContent>
           </Card>
