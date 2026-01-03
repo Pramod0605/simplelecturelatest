@@ -10,6 +10,7 @@ interface ChapterProgress {
   videos: { completed: number; total: number };
   mcqs: { completed: number; total: number };
   exams: { completed: number; total: number };
+  proficiencyTests: { completed: number; total: number };
   assignments: { completed: number; total: number };
 }
 
@@ -18,6 +19,7 @@ interface ProgressBreakdown {
   videos: number;
   mcqs: number;
   exams: number;
+  proficiencyTests: number;
   assignments: number;
 }
 
@@ -94,11 +96,18 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         .from("assignments")
         .select("id, chapter_id, topic_id");
 
+      // Fetch available proficiency tests
+      const { data: allProficiencyPapers } = await supabase
+        .from("subject_previous_year_papers")
+        .select("id, subject_id, paper_category")
+        .eq("paper_category", "proficiency");
+
       // Fetch student progress data in parallel
       const [
         videoProgressResult,
         assignmentSubmissionsResult,
-        paperTestResultsResult,
+        examTestResultsResult,
+        proficiencyTestResultsResult,
       ] = await Promise.all([
         // Video watch progress from ai_video_watch_logs
         supabase
@@ -113,16 +122,26 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           .select("id, assignment_id, percentage, submitted_at")
           .eq("student_id", user.id),
 
-        // Paper test results for MCQ/exam tracking
+        // Exam test results (paper_category = 'exam' or 'previous_year')
         supabase
           .from("paper_test_results")
-          .select("id, subject_id, questions, answers, score, total_questions, submitted_at")
-          .eq("student_id", user.id),
+          .select("id, subject_id, paper_category, questions, answers, score, total_questions, submitted_at")
+          .eq("student_id", user.id)
+          .in("paper_category", ["exam", "previous_year"]),
+
+        // Proficiency test results
+        supabase
+          .from("paper_test_results")
+          .select("id, subject_id, paper_category, paper_id, submitted_at")
+          .eq("student_id", user.id)
+          .eq("paper_category", "proficiency"),
       ]);
 
       const watchedVideoLogs = videoProgressResult.data || [];
       const assignmentSubmissions = assignmentSubmissionsResult.data || [];
-      const paperTestResults = paperTestResultsResult.data || [];
+      const examTestResults = examTestResultsResult.data || [];
+      const proficiencyTestResults = proficiencyTestResultsResult.data || [];
+      const proficiencyPapers = allProficiencyPapers || [];
 
       // Calculate per-chapter progress
       const chapterProgressList: ChapterProgress[] = filteredChapters.map((chapter: any) => {
@@ -149,15 +168,20 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         );
         const totalMcqs = chapterQuestions.length;
 
-        // MCQs completed - check paper_test_results for this subject
+        // MCQs completed - check exam test results for this subject
         const subjectId = chapter.subject_id;
-        const subjectPaperTests = paperTestResults.filter((p: any) => p.subject_id === subjectId);
-        const mcqsAttempted = subjectPaperTests.reduce((sum: number, p: any) => sum + (p.total_questions || 0), 0);
+        const subjectExamTests = examTestResults.filter((p: any) => p.subject_id === subjectId);
+        const mcqsAttempted = subjectExamTests.reduce((sum: number, p: any) => sum + (p.total_questions || 0), 0);
         const completedMcqs = Math.min(mcqsAttempted, totalMcqs);
 
-        // Exams - using paper_test_results as exams (each test is like an exam)
-        const totalExams = subjectPaperTests.length > 0 ? 1 : 0; // Consider as 1 exam per subject with tests
-        const completedExams = subjectPaperTests.length > 0 ? 1 : 0;
+        // Exams - using exam test results (each test is like an exam)
+        const totalExams = subjectExamTests.length > 0 ? 1 : 0;
+        const completedExams = subjectExamTests.length > 0 ? 1 : 0;
+
+        // Proficiency tests for this subject
+        const subjectProficiencyPapers = proficiencyPapers.filter((p: any) => p.subject_id === subjectId);
+        const totalProficiencyTests = subjectProficiencyPapers.length;
+        const completedProficiencyTests = proficiencyTestResults.filter((p: any) => p.subject_id === subjectId).length;
 
         // Assignments for this chapter
         const chapterAssignments = (allAssignments || []).filter((a: any) => 
@@ -181,11 +205,14 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         if (totalExams > 0) {
           components.push((completedExams / totalExams) * 100);
         }
+        if (totalProficiencyTests > 0) {
+          components.push((completedProficiencyTests / totalProficiencyTests) * 100);
+        }
         if (totalAssignments > 0) {
           components.push((completedAssignments / totalAssignments) * 100);
         }
 
-        const chapterProgress = components.length > 0 
+        const chapterProgress = components.length > 0
           ? components.reduce((a, b) => a + b, 0) / components.length 
           : 0;
 
@@ -197,6 +224,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           videos: { completed: completedVideos, total: totalVideos },
           mcqs: { completed: completedMcqs, total: totalMcqs },
           exams: { completed: completedExams, total: totalExams },
+          proficiencyTests: { completed: completedProficiencyTests, total: totalProficiencyTests },
           assignments: { completed: completedAssignments, total: totalAssignments },
         };
       });
@@ -226,6 +254,9 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       const totalAssignments = chapterProgressList.reduce((sum, c) => sum + c.assignments.total, 0);
       const completedAssignments = chapterProgressList.reduce((sum, c) => sum + c.assignments.completed, 0);
 
+      const totalProficiencyTests = chapterProgressList.reduce((sum, c) => sum + c.proficiencyTests.total, 0);
+      const completedProficiencyTests = chapterProgressList.reduce((sum, c) => sum + c.proficiencyTests.completed, 0);
+
       // Generate trend data (simplified - based on overall progress over time)
       const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
       
@@ -248,7 +279,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         const videoProgress = totalVideos > 0 ? (uniqueVideosWatched / totalVideos) * 100 : 0;
 
         // Count MCQs attempted up to this date
-        const mcqsByDate = paperTestResults.filter((p: any) => {
+        const mcqsByDate = examTestResults.filter((p: any) => {
           if (!p.submitted_at) return false;
           return format(parseISO(p.submitted_at), "yyyy-MM-dd") <= dateStr && 
             subjectIds.includes(p.subject_id);
@@ -256,12 +287,20 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         const mcqProgress = totalMcqs > 0 ? Math.min((mcqsByDate / totalMcqs) * 100, 100) : 0;
 
         // Count exams (paper tests) completed up to this date
-        const examsByDate = paperTestResults.filter((p: any) => {
+        const examsByDate = examTestResults.filter((p: any) => {
           if (!p.submitted_at) return false;
           return format(parseISO(p.submitted_at), "yyyy-MM-dd") <= dateStr &&
             subjectIds.includes(p.subject_id);
         }).length;
         const examProgress = totalExams > 0 ? (Math.min(examsByDate, totalExams) / totalExams) * 100 : 0;
+
+        // Count proficiency tests completed up to this date
+        const proficiencyByDate = proficiencyTestResults.filter((p: any) => {
+          if (!p.submitted_at) return false;
+          return format(parseISO(p.submitted_at), "yyyy-MM-dd") <= dateStr &&
+            subjectIds.includes(p.subject_id);
+        }).length;
+        const proficiencyProgress = totalProficiencyTests > 0 ? (Math.min(proficiencyByDate, totalProficiencyTests) / totalProficiencyTests) * 100 : 0;
 
         // Count assignments completed up to this date
         const assignmentsByDate = assignmentSubmissions.filter((a: any) => {
@@ -275,6 +314,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         if (totalVideos > 0) progressComponents.push(videoProgress);
         if (totalMcqs > 0) progressComponents.push(mcqProgress);
         if (totalExams > 0) progressComponents.push(examProgress);
+        if (totalProficiencyTests > 0) progressComponents.push(proficiencyProgress);
         if (totalAssignments > 0) progressComponents.push(assignmentProgress);
         
         const dayProgress = progressComponents.length > 0
@@ -290,6 +330,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
             videos: Math.round(Math.min(videoProgress, 100) * 10) / 10,
             mcqs: Math.round(Math.min(mcqProgress, 100) * 10) / 10,
             exams: Math.round(Math.min(examProgress, 100) * 10) / 10,
+            proficiencyTests: Math.round(Math.min(proficiencyProgress, 100) * 10) / 10,
             assignments: Math.round(Math.min(assignmentProgress, 100) * 10) / 10,
           },
         };
@@ -310,6 +351,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           videos: 0,
           mcqs: 0,
           exams: 0,
+          proficiencyTests: 0,
           assignments: 0,
         },
         totals: {
@@ -323,7 +365,9 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           totalExams,
           assignmentsCompleted: completedAssignments,
           totalAssignments,
-          testsAttempted: paperTestResults.length,
+          proficiencyCompleted: completedProficiencyTests,
+          totalProficiencyTests,
+          testsAttempted: examTestResults.length + proficiencyTestResults.length,
         },
         chapterDetails: chapterProgressList,
       };
