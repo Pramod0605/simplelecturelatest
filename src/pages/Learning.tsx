@@ -4,14 +4,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen } from "lucide-react";
+import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen, Trophy } from "lucide-react";
 import { SubjectNavigationBar } from "@/components/learning/SubjectNavigationBar";
 import { MCQTest } from "@/components/learning/MCQTest";
 import { AssignmentViewer } from "@/components/learning/AssignmentViewer";
 import { RecordedVideos } from "@/components/learning/RecordedVideos";
 import { AITeachingAssistant } from "@/components/learning/AITeachingAssistant";
 import { PreviousYearPapers } from "@/components/learning/PreviousYearPapers";
-import { CourseWelcomeCards } from "@/components/learning/CourseWelcomeCards"; 
+import { PaperTestResults } from "@/components/learning/PaperTestResults";
+import { CourseWelcomeCards } from "@/components/learning/CourseWelcomeCards";
 import { SEOHead } from "@/components/SEO";
 import { useLearningCourse, useSubjectChapters } from "@/hooks/useLearningCourse";
 import { Card, CardContent } from "@/components/ui/card";
@@ -294,12 +295,16 @@ export default function Learning() {
           <main className="flex-1 overflow-y-auto p-6">
             {selectedTopic ? (
               <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="videos">Classes</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                   <TabsTrigger value="mcqs">MCQs</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
                   <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
+                  <TabsTrigger value="my-results" className="gap-1">
+                    <Trophy className="h-4 w-4" />
+                    My Results
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="videos">
@@ -330,7 +335,15 @@ export default function Learning() {
                 </TabsContent>
 
                 <TabsContent value="previous-year">
-                  <PreviousYearPapers subjectId={selectedSubjectId} topicId={selectedTopic?.id} />
+                  <PreviousYearPapers 
+                    subjectId={selectedSubjectId} 
+                    topicId={selectedTopic?.id}
+                    onViewResults={() => setActiveTab("my-results")}
+                  />
+                </TabsContent>
+
+                <TabsContent value="my-results">
+                  <PaperTestResults subjectId={selectedSubjectId} />
                 </TabsContent>
               </Tabs>
             ) : selectedChapter ? (
@@ -344,12 +357,16 @@ export default function Learning() {
                   </span>
                 </div>
                 
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="videos">Classes</TabsTrigger>
                   <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                   <TabsTrigger value="mcqs">MCQs</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
                   <TabsTrigger value="previous-year">Mock & PYQs</TabsTrigger>
+                  <TabsTrigger value="my-results" className="gap-1">
+                    <Trophy className="h-4 w-4" />
+                    My Results
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="videos">
@@ -381,7 +398,12 @@ export default function Learning() {
                     subjectId={selectedSubjectId} 
                     chapterId={selectedChapter.id}
                     chapterOnly
+                    onViewResults={() => setActiveTab("my-results")}
                   />
+                </TabsContent>
+
+                <TabsContent value="my-results">
+                  <PaperTestResults subjectId={selectedSubjectId} />
                 </TabsContent>
               </Tabs>
             ) : (
