@@ -55,10 +55,11 @@ interface PreviousYearPapersProps {
   topicId?: string | null;
   chapterId?: string | null;
   chapterOnly?: boolean;
+  onViewResults?: () => void;
 }
 
 type TestState = "papers" | "setup" | "testing" | "results";
-type PaperCategory = "previous_year" | "proficiency" | "exam" | "results";
+type PaperCategory = "previous_year" | "proficiency" | "exam";
 
 const QUESTION_OPTIONS = [5, 10, 15, 20, 25] as const;
 const TIME_OPTIONS = [
@@ -71,7 +72,7 @@ const TIME_OPTIONS = [
   { label: "Unlimited", value: 0 },
 ] as const;
 
-export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly }: PreviousYearPapersProps) {
+export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly, onViewResults }: PreviousYearPapersProps) {
   const [testState, setTestState] = useState<TestState>("papers");
   const [selectedPaper, setSelectedPaper] = useState<any>(null);
   const [selectedQuestionCount, setSelectedQuestionCount] = useState<number>(10);
@@ -629,7 +630,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         </div>
         
         <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as PaperCategory)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="previous_year" className="gap-2">
               Previous Year
               {paperCounts.previous_year > 0 && (
@@ -648,21 +649,11 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                 <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.exam}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="results" className="gap-2">
-              <Trophy className="h-3 w-3 mr-1" />
-              My Results
-            </TabsTrigger>
           </TabsList>
-
-          {/* Results Tab Content */}
-          <TabsContent value="results" className="mt-4">
-            <PaperTestResults subjectId={subjectId} />
-          </TabsContent>
 
           {/* Paper Categories Content */}
           <TabsContent value={activeCategory} className="mt-4">
-            {activeCategory !== "results" && (
-              filteredPapers.length > 0 ? (
+            {filteredPapers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredPapers.map((paper) => {
                     const submission = submittedPaperMap.get(paper.id);
@@ -736,7 +727,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                                   variant="outline"
                                   size="sm"
                                   className="flex-1"
-                                  onClick={() => setActiveCategory("results")}
+                                  onClick={() => onViewResults?.()}
                                 >
                                   <Eye className="h-4 w-4 mr-1" />
                                   View Result
@@ -784,8 +775,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
                   <p>No {activeCategory === "previous_year" ? "previous year papers" : activeCategory === "proficiency" ? "proficiency tests" : "exam papers"} available</p>
                 </div>
-              )
-            )}
+              )}
           </TabsContent>
         </Tabs>
       </div>
