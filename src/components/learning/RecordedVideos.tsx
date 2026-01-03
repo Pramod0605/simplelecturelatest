@@ -285,7 +285,7 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
           </DialogHeader>
           {aiGeneratedVideoUrl && (
             <div className="flex flex-col gap-4 p-4 pt-2 overflow-y-auto">
-              <div className="h-[50vh] max-h-[500px] rounded-lg overflow-hidden bg-black flex-shrink-0">
+              <div className="h-[60vh] max-h-[600px] rounded-lg overflow-hidden bg-black flex-shrink-0">
                 <iframe
                   src={aiGeneratedVideoUrl}
                   className="w-full h-full"
