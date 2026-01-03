@@ -714,70 +714,34 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
                     // Get category-specific styles
                     const getCategoryStyles = () => {
                       if (isSubmitted && isProficiencyOrExam) {
-                        return "border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50/50 dark:from-green-950/40 dark:to-emerald-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-green-500 before:to-emerald-500";
+                        return "border-0 shadow-md bg-gradient-to-br from-green-100/50 to-green-50/30 dark:from-green-950/40 dark:to-green-900/20";
                       }
-                      switch (category) {
-                        case 'previous_year':
-                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-blue-500 before:to-indigo-500";
-                        case 'proficiency':
-                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-950/40 dark:to-pink-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-purple-500 before:to-pink-500";
-                        case 'exam':
-                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/40 dark:to-orange-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-amber-500 before:to-orange-500";
-                        default:
-                          return "border-0 shadow-md hover:shadow-lg";
-                      }
+                      return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10";
                     };
 
                     const getCategoryIcon = () => {
                       switch (category) {
                         case 'previous_year':
-                          return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
+                          return <Clock className="h-5 w-5 text-primary" />;
                         case 'proficiency':
-                          return <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
+                          return <Target className="h-5 w-5 text-primary" />;
                         case 'exam':
-                          return <GraduationCap className="h-5 w-5 text-amber-600 dark:text-amber-400" />;
+                          return <GraduationCap className="h-5 w-5 text-primary" />;
                         default:
-                          return <FileText className="h-5 w-5 text-muted-foreground" />;
+                          return <FileText className="h-5 w-5 text-primary" />;
                       }
                     };
 
                     const getIconBgClass = () => {
-                      switch (category) {
-                        case 'previous_year':
-                          return "bg-blue-100 dark:bg-blue-900/50";
-                        case 'proficiency':
-                          return "bg-purple-100 dark:bg-purple-900/50";
-                        case 'exam':
-                          return "bg-amber-100 dark:bg-amber-900/50";
-                        default:
-                          return "bg-muted";
-                      }
+                      return "bg-primary/10 dark:bg-primary/20";
                     };
 
                     const getBadgeClass = () => {
-                      switch (category) {
-                        case 'previous_year':
-                          return "border-blue-300 text-blue-700 bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:bg-blue-900/30";
-                        case 'proficiency':
-                          return "border-purple-300 text-purple-700 bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:bg-purple-900/30";
-                        case 'exam':
-                          return "border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-900/30";
-                        default:
-                          return "";
-                      }
+                      return "border-primary/30 text-primary bg-primary/10 dark:border-primary/50 dark:text-primary dark:bg-primary/20";
                     };
 
                     const getButtonClass = () => {
-                      switch (category) {
-                        case 'previous_year':
-                          return "bg-blue-600 hover:bg-blue-700 text-white";
-                        case 'proficiency':
-                          return "bg-purple-600 hover:bg-purple-700 text-white";
-                        case 'exam':
-                          return "bg-amber-600 hover:bg-amber-700 text-white";
-                        default:
-                          return "";
-                      }
+                      return "bg-primary hover:bg-primary/90 text-primary-foreground";
                     };
 
                     return (
