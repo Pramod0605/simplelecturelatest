@@ -19,7 +19,7 @@ export const SubjectNavigationBar = ({
   const navigate = useNavigate();
 
   return (
-    <div className="border-b bg-gradient-to-r from-card via-primary/5 to-card backdrop-blur-sm sticky top-0 z-40 shadow-sm">
+    <div className="border-b sticky top-0 z-40">
       <div className="flex items-center gap-3 px-6 py-3 overflow-x-auto">
         <Button
           variant="ghost"
