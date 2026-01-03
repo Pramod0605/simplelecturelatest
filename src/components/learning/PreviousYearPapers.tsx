@@ -183,6 +183,13 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
 
   const handleStartSetup = (paper: any) => {
     setSelectedPaper(paper);
+    
+    // For proficiency tests and exams, set defaults for auto-start
+    if (paper.paper_category === 'proficiency' || paper.paper_category === 'exam') {
+      setSelectedQuestionCount(-1); // All questions
+      setSelectedTime(0); // Unlimited time
+    }
+    
     setTestState("setup");
   };
 
@@ -785,6 +792,34 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
   // Render Setup Dialog
   if (testState === "setup") {
     const availableQuestions = paperQuestions?.length || 0;
+    const isProficiencyOrExam = selectedPaper?.paper_category === 'proficiency' || 
+                                 selectedPaper?.paper_category === 'exam';
+
+    // Auto-start for proficiency tests and exams when questions are loaded
+    if (isProficiencyOrExam && !questionsLoading && availableQuestions > 0) {
+      // Use setTimeout to avoid state update during render
+      setTimeout(() => {
+        handleStartTest();
+      }, 0);
+      
+      return (
+        <Dialog open={true} onOpenChange={() => handleBackToPapers()}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedPaper?.exam_name} {selectedPaper?.year}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-8 text-center">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
+              <p className="text-muted-foreground">
+                Starting test with {availableQuestions} questions...
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    }
 
     return (
       <Dialog open={true} onOpenChange={() => handleBackToPapers()}>
