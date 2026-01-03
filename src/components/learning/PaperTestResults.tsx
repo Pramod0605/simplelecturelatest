@@ -363,13 +363,15 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                           )}
                           
                           <div className="flex gap-4 text-sm flex-wrap">
-                            <div>
+                            <div className="flex items-baseline gap-1">
                               <span className="text-muted-foreground">Your answer: </span>
                               <span className={cn(
                                 "font-medium",
                                 isCorrect ? "text-green-600" : "text-red-600"
                               )}>
-                                {displayAnswer || (imageAnswer ? "(see image above)" : "—")}
+                                {displayAnswer ? (
+                                  <MathpixRenderer mmdText={displayAnswer} inline className="inline" />
+                                ) : (imageAnswer ? "(see image above)" : "—")}
                               </span>
                             </div>
                             {!isCorrect && q.correct_answer && (
