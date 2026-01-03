@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +20,12 @@ import {
   Calendar,
   Trophy,
   AlertCircle,
+  Image,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePaperTestResults, PaperTestResult } from "@/hooks/usePaperTestResults";
 import { usePreviousYearPaperQuestions, PaperQuestion } from "@/hooks/usePreviousYearPaperQuestions";
+import { useStudentAnswers } from "@/hooks/useStudentAnswers";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 import { format } from "date-fns";
 
@@ -39,6 +41,16 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
   
   const { data: results, isLoading } = usePaperTestResults(subjectId);
   const { data: paperQuestions } = usePreviousYearPaperQuestions(selectedResult?.paper_id || null);
+  const { data: studentAnswers } = useStudentAnswers(selectedResult?.paper_id || null);
+
+  // Build a lookup for student answers by question ID
+  const studentAnswersByQuestionId = useMemo(() => {
+    if (!studentAnswers) return {};
+    return studentAnswers.reduce((acc, sa) => {
+      acc[sa.question_id] = sa;
+      return acc;
+    }, {} as Record<string, typeof studentAnswers[0]>);
+  }, [studentAnswers]);
 
   const filteredResults = results?.filter(r => 
     activeCategory === "all" || r.paper_category === activeCategory
@@ -280,13 +292,19 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                 <div className="space-y-3">
                   <h4 className="font-medium">Question Review</h4>
                   {paperQuestions.map((q, idx) => {
-                    const userAnswer = selectedResult.answers[q.id];
-                    const isCorrect = userAnswer?.toUpperCase() === q.correct_answer?.toUpperCase();
+                    const textAnswer = selectedResult.answers[q.id];
+                    const studentAnswer = studentAnswersByQuestionId[q.id];
+                    const imageAnswer = studentAnswer?.answer_image_url;
+                    
+                    // Has any answer if text answer OR image answer exists
+                    const hasAnyAnswer = !!textAnswer || !!imageAnswer;
+                    const displayAnswer = textAnswer || studentAnswer?.answer_text;
+                    const isCorrect = displayAnswer?.toUpperCase() === q.correct_answer?.toUpperCase();
                     
                     return (
                       <Card key={q.id} className={cn(
                         "border-l-4",
-                        !userAnswer ? "border-l-gray-300" :
+                        !hasAnyAnswer ? "border-l-gray-300" :
                         isCorrect ? "border-l-green-500" : "border-l-red-500"
                       )}>
                         <CardContent className="pt-4 space-y-2">
@@ -299,9 +317,14 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                                 {q.difficulty}
                               </Badge>
                             </div>
-                            {!userAnswer ? (
+                            {!hasAnyAnswer ? (
                               <Badge variant="outline" className="text-gray-500">
                                 Not Answered
+                              </Badge>
+                            ) : imageAnswer && !displayAnswer ? (
+                              <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                <Image className="h-3 w-3 mr-1" />
+                                Image Submitted
                               </Badge>
                             ) : isCorrect ? (
                               <Badge variant="outline" className="text-green-600 border-green-600">
@@ -318,17 +341,30 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                           <div className="text-sm">
                             <MathpixRenderer mmdText={q.question_text} inline />
                           </div>
-                          <div className="flex gap-4 text-sm">
+                          
+                          {/* Show image answer if exists */}
+                          {imageAnswer && (
+                            <div className="mt-2">
+                              <span className="text-sm text-muted-foreground">Your uploaded answer:</span>
+                              <img 
+                                src={imageAnswer} 
+                                alt="Your answer" 
+                                className="mt-1 max-h-48 rounded-lg border shadow-sm"
+                              />
+                            </div>
+                          )}
+                          
+                          <div className="flex gap-4 text-sm flex-wrap">
                             <div>
                               <span className="text-muted-foreground">Your answer: </span>
                               <span className={cn(
                                 "font-medium",
                                 isCorrect ? "text-green-600" : "text-red-600"
                               )}>
-                                {userAnswer || "—"}
+                                {displayAnswer || (imageAnswer ? "(see image above)" : "—")}
                               </span>
                             </div>
-                            {!isCorrect && (
+                            {!isCorrect && q.correct_answer && (
                               <div>
                                 <span className="text-muted-foreground">Correct: </span>
                                 <span className="font-medium text-green-600">

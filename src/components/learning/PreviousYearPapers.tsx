@@ -1048,25 +1048,30 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {displayedQuestions.map((q, idx) => (
-                  <Button
-                    key={q.id}
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-8 w-8 p-0 relative",
-                      idx === currentQuestionIndex && "ring-2 ring-primary",
-                      answers[q.id] && "bg-primary text-primary-foreground",
-                      flaggedQuestions.has(q.id) && "border-orange-500 border-2"
-                    )}
-                    onClick={() => setCurrentQuestionIndex(idx)}
-                  >
-                    {idx + 1}
-                    {q.is_important && (
-                      <Star className="absolute -top-1 -right-1 h-3 w-3 fill-yellow-500 text-yellow-500" />
-                    )}
-                  </Button>
-                ))}
+                {displayedQuestions.map((q, idx) => {
+                  // Question is answered if it has text answer OR image answer OR extracted image answer
+                  const isAnswered = !!answers[q.id] || !!answerImages[q.id] || !!extractedImageAnswers[q.id];
+                  
+                  return (
+                    <Button
+                      key={q.id}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-8 w-8 p-0 relative",
+                        idx === currentQuestionIndex && "ring-2 ring-primary",
+                        isAnswered && "bg-primary text-primary-foreground",
+                        flaggedQuestions.has(q.id) && "border-orange-500 border-2"
+                      )}
+                      onClick={() => setCurrentQuestionIndex(idx)}
+                    >
+                      {idx + 1}
+                      {q.is_important && (
+                        <Star className="absolute -top-1 -right-1 h-3 w-3 fill-yellow-500 text-yellow-500" />
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
               <div className="mt-4 space-y-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">

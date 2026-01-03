@@ -5,6 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Convert ArrayBuffer to base64 in chunks to avoid stack overflow
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, [...chunk]);
+  }
+  return btoa(binary);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -30,6 +42,38 @@ serve(async (req) => {
       );
     }
 
+    // Fetch the image and convert to base64 data URL
+    console.log('Fetching image from URL:', image_url.substring(0, 100) + '...');
+    
+    let imageDataUrl: string;
+    
+    // If already a data URL, use it directly
+    if (image_url.startsWith('data:')) {
+      imageDataUrl = image_url;
+      console.log('Image is already a data URL');
+    } else {
+      // Fetch the image from the URL
+      const imageResponse = await fetch(image_url);
+      
+      if (!imageResponse.ok) {
+        console.error('Failed to fetch image:', imageResponse.status, imageResponse.statusText);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch image: ${imageResponse.status}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const imageBase64 = arrayBufferToBase64(imageBuffer);
+      
+      console.log(`Image fetched successfully: ${imageBuffer.byteLength} bytes, type: ${contentType}`);
+      
+      // Normalize content type for the data URL
+      const mimeType = contentType.split(';')[0].trim();
+      imageDataUrl = `data:${mimeType};base64,${imageBase64}`;
+    }
+
     const systemPrompt = `You are an expert at reading handwritten and typed mathematical answers from images.
 Your job is to extract the EXACT answer written in the image.
 
@@ -48,7 +92,7 @@ Important: Return ONLY the extracted answer as plain text or LaTeX. Do not inclu
       ? `Extract the answer from this image. The question context is: "${question_context}"\n\nProvide only the answer, nothing else.`
       : `Extract the answer from this image. Provide only the answer, nothing else.`;
 
-    console.log('Calling Gemini Vision API for image:', image_url.substring(0, 100) + '...');
+    console.log('Calling Gemini Vision API with base64 image...');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -64,7 +108,7 @@ Important: Return ONLY the extracted answer as plain text or LaTeX. Do not inclu
             role: 'user',
             content: [
               { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: image_url } }
+              { type: 'image_url', image_url: { url: imageDataUrl } }
             ]
           }
         ],
