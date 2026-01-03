@@ -71,7 +71,8 @@ export const useMCQQuestions = (topicId?: string, chapterId?: string, chapterOnl
       let query = supabase
         .from("questions")
         .select("*")
-        .in("question_format", ["single_choice", "multiple_choice"])
+        .or("question_format.eq.single_choice,question_format.eq.multiple_choice,question_format.is.null")
+        .not("options", "is", null)
         .order("created_at");
 
       if (topicId) {
@@ -102,7 +103,8 @@ export const useMCQQuestionCounts = (topicId?: string, chapterId?: string, chapt
       let query = supabase
         .from("questions")
         .select("difficulty")
-        .in("question_format", ["single_choice", "multiple_choice"]);
+        .or("question_format.eq.single_choice,question_format.eq.multiple_choice,question_format.is.null")
+        .not("options", "is", null);
 
       if (topicId) {
         query = query.eq("topic_id", topicId);
