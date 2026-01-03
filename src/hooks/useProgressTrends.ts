@@ -62,10 +62,10 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         }
       }
 
-      // Get all chapters from subject_chapters
+      // Get all chapters from subject_chapters (including ai_generated_video_url for Classes tab videos)
       const { data: allSubjectChapters } = await supabase
         .from("subject_chapters")
-        .select("id, subject_id, title, video_id, popular_subjects!inner(id, name)");
+        .select("id, subject_id, title, video_id, ai_generated_video_url, popular_subjects!inner(id, name)");
 
       // Filter chapters by subject IDs from the course
       let filteredChapters = allSubjectChapters || [];
@@ -78,13 +78,19 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
 
       const chapterIds = filteredChapters.map((c: any) => c.id);
 
-      // Get all topics for filtered chapters
+      // Get all topics for filtered chapters (including ai_generated_video_url for Classes tab videos)
       const { data: allTopics } = await supabase
         .from("subject_topics")
-        .select("id, chapter_id, video_id");
+        .select("id, chapter_id, video_id, ai_generated_video_url");
 
       const filteredTopics = (allTopics || []).filter((t: any) => chapterIds.includes(t.chapter_id));
       const topicIds = filteredTopics.map((t: any) => t.id);
+
+      // Get topic_videos (additional multi-language videos shown in Classes tab)
+      const { data: allTopicVideos } = await supabase
+        .from("topic_videos")
+        .select("id, topic_id, video_name, is_active")
+        .eq("is_active", true);
 
       // Fetch all real data in parallel
       const [
@@ -93,7 +99,6 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         proficiencyPapersResult,
         examPapersResult,
         videoLogsResult,
-        allVideoLogsResult,
         assignmentSubmissionsResult,
         examTestResultsResult,
         proficiencyTestResultsResult,
@@ -123,12 +128,6 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           .eq("student_id", user.id)
           .gte("completion_percentage", 80),
         
-        // ALL video watch logs (to determine total available videos)
-        supabase
-          .from("ai_video_watch_logs")
-          .select("chapter_id, topic_id, video_title")
-          .in("chapter_id", chapterIds.length > 0 ? chapterIds : [""]),
-        
         // Assignment submissions
         supabase
           .from("assignment_submissions")
@@ -155,21 +154,12 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       const proficiencyPapers = proficiencyPapersResult.data || [];
       const examPapers = examPapersResult.data || [];
       const watchedVideoLogs = videoLogsResult.data || [];
-      const allVideoLogs = allVideoLogsResult.data || [];
       const assignmentSubmissions = assignmentSubmissionsResult.data || [];
       const examTestResults = examTestResultsResult.data || [];
       const proficiencyTestResults = proficiencyTestResultsResult.data || [];
-
-      // Build unique videos map from all watch logs (to determine total available videos per chapter)
-      const uniqueVideosPerChapter = new Map<string, Set<string>>();
-      allVideoLogs.forEach((v: any) => {
-        if (v.chapter_id && v.video_title) {
-          if (!uniqueVideosPerChapter.has(v.chapter_id)) {
-            uniqueVideosPerChapter.set(v.chapter_id, new Set());
-          }
-          uniqueVideosPerChapter.get(v.chapter_id)!.add(v.video_title);
-        }
-      });
+      
+      // Filter topic_videos to only those in our filtered topics
+      const topicVideos = (allTopicVideos || []).filter((tv: any) => topicIds.includes(tv.topic_id));
 
       // Calculate per-chapter progress using REAL data
       const chapterProgressList: ChapterProgress[] = filteredChapters.map((chapter: any) => {
@@ -178,10 +168,18 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         const chapterTopics = filteredTopics.filter((t: any) => t.chapter_id === chapterId);
         const chapterTopicIds = chapterTopics.map((t: any) => t.id);
 
-        // VIDEOS: Use real data from watch logs
-        // Total = unique videos that exist for this chapter (from all watch logs)
-        const chapterVideos = uniqueVideosPerChapter.get(chapterId) || new Set();
-        const totalVideos = chapterVideos.size;
+        // VIDEOS: Count from same sources as Classes tab (RecordedVideos.tsx)
+        // 1. Chapter-level AI video
+        const chapterHasAIVideo = chapter.ai_generated_video_url ? 1 : 0;
+        // 2. Topic-level direct videos (video_id)
+        const topicDirectVideos = chapterTopics.filter((t: any) => t.video_id).length;
+        // 3. Topic-level AI videos (ai_generated_video_url)
+        const topicAIVideos = chapterTopics.filter((t: any) => t.ai_generated_video_url).length;
+        // 4. Additional videos from topic_videos table
+        const additionalVideos = topicVideos.filter((tv: any) => chapterTopicIds.includes(tv.topic_id)).length;
+        
+        // Total = all video sources combined (matching Classes tab)
+        const totalVideos = chapterHasAIVideo + topicDirectVideos + topicAIVideos + additionalVideos;
         
         // Completed = student's watch logs for this chapter (allow duplicates as requested)
         const watchedVideosForChapter = watchedVideoLogs.filter((v: any) => 
