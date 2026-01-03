@@ -183,26 +183,26 @@ export default function Learning() {
             <Button
               variant="outline"
               size="icon"
-              className="absolute left-2 top-2 z-10 bg-card shadow-md hover:bg-accent"
+              className="absolute left-2 top-2 z-10 bg-gradient-to-br from-primary/20 to-primary/5 shadow-md hover:shadow-lg border-primary/20 hover:bg-primary/15 transition-all duration-300"
               onClick={() => setSidebarCollapsed(false)}
               title="Expand sidebar"
             >
-              <PanelLeft className="h-4 w-4" />
+              <PanelLeft className="h-4 w-4 text-primary" />
             </Button>
           )}
 
           <aside className={cn(
-            "border-r bg-card overflow-y-auto transition-all duration-300 flex flex-col",
+            "border-r bg-gradient-to-b from-card to-primary/5 overflow-y-auto transition-all duration-300 flex flex-col shadow-sm",
             sidebarCollapsed ? "w-0 overflow-hidden" : "w-80"
           )}>
             <div className="p-4 flex-1">
               {/* Header with title and collapse button */}
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">{selectedSubject?.name || "Select Subject"}</h2>
+              <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl">
+                <h2 className="text-lg font-bold text-foreground">{selectedSubject?.name || "Select Subject"}</h2>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hover:bg-accent h-8 w-8"
+                  className="hover:bg-primary/10 h-8 w-8 text-primary"
                   onClick={() => setSidebarCollapsed(true)}
                   title="Collapse sidebar"
                 >
@@ -213,26 +213,31 @@ export default function Learning() {
               {chaptersLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
-                    <Skeleton key={i} className="h-16 w-full" />
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
                   ))}
                 </div>
               ) : chapters && chapters.length > 0 ? (
-                <Accordion type="single" collapsible className="space-y-2">
+                <Accordion type="single" collapsible className="space-y-3">
                   {chapters.map((chapter: any) => (
-                    <AccordionItem key={chapter.id} value={chapter.id} className="border-b-0">
-                      <AccordionTrigger className="hover:bg-accent/50 px-3 py-2 rounded-lg bg-primary/10">
+                    <AccordionItem key={chapter.id} value={chapter.id} className="border-0 rounded-xl overflow-hidden shadow-sm">
+                      <AccordionTrigger className="hover:bg-primary/15 px-4 py-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 transition-all duration-300 hover:shadow-md">
                         <div className="flex-1 text-left">
                           <div className="font-semibold text-sm text-foreground">
                             Ch {chapter.chapter_number}: {chapter.title}
                           </div>
-                          <Progress value={chapter.progress || 0} className="mt-2 h-1" />
+                          <Progress value={chapter.progress || 0} className="mt-2 h-1.5 bg-primary/20" />
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent>
+                      <AccordionContent className="pt-2 pb-3 px-2">
                         {/* Chapter Content button */}
                         <Button
-                          variant={selectedChapter?.id === chapter.id && !selectedTopic ? "secondary" : "ghost"}
-                          className="w-full justify-start text-sm mb-3 border border-dashed"
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start text-sm mb-3 rounded-lg transition-all duration-300",
+                            selectedChapter?.id === chapter.id && !selectedTopic 
+                              ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-md" 
+                              : "bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10"
+                          )}
                           onClick={() => {
                             setSelectedChapter(chapter);
                             setSelectedTopic(null);
@@ -240,19 +245,31 @@ export default function Learning() {
                             setActiveTab("videos");
                           }}
                         >
-                          <FolderOpen className="h-4 w-4 mr-2" />
+                          <div className={cn(
+                            "p-1.5 rounded-lg mr-2",
+                            selectedChapter?.id === chapter.id && !selectedTopic 
+                              ? "bg-primary-foreground/20" 
+                              : "bg-primary/10"
+                          )}>
+                            <FolderOpen className="h-4 w-4" />
+                          </div>
                           Chapter Content
                         </Button>
 
                         {/* Topics section */}
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Topics</p>
+                        <div className="space-y-1 pl-2 ml-2 border-l-2 border-primary/20">
+                          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Topics</p>
                           {chapter.topics?.length > 0 ? (
                             chapter.topics.map((topic: any) => (
                               <Button
                                 key={topic.id}
-                                variant={selectedTopic?.id === topic.id ? "secondary" : "ghost"}
-                                className="w-full justify-start text-sm"
+                                variant="ghost"
+                                className={cn(
+                                  "w-full justify-start text-sm rounded-lg transition-all duration-300",
+                                  selectedTopic?.id === topic.id 
+                                    ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-md" 
+                                    : "hover:bg-primary/10"
+                                )}
                                 onClick={() => {
                                   setSelectedTopic(topic);
                                   setSelectedChapter(null);
@@ -260,13 +277,27 @@ export default function Learning() {
                                 }}
                               >
                                 {topic.completed ? (
-                                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                                  <div className="p-1 rounded-full bg-green-100 dark:bg-green-900/30 mr-2">
+                                    <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+                                  </div>
                                 ) : (
-                                  <Circle className="h-4 w-4 mr-2" />
+                                  <div className={cn(
+                                    "p-1 rounded-full mr-2",
+                                    selectedTopic?.id === topic.id 
+                                      ? "bg-primary-foreground/20" 
+                                      : "bg-primary/10"
+                                  )}>
+                                    <Circle className="h-3 w-3" />
+                                  </div>
                                 )}
                                 <span className="flex-1 text-left truncate">{topic.title}</span>
                                 {topic.estimated_duration_minutes && (
-                                  <span className="text-xs text-muted-foreground ml-2">
+                                  <span className={cn(
+                                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                                    selectedTopic?.id === topic.id 
+                                      ? "bg-primary-foreground/20 text-primary-foreground" 
+                                      : "bg-primary/10 text-primary"
+                                  )}>
                                     {topic.estimated_duration_minutes}m
                                   </span>
                                 )}
