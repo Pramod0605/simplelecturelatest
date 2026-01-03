@@ -40,6 +40,7 @@ import {
 } from "@/hooks/usePreviousYearPaperQuestions";
 import { useUploadAnswerImage, useSubmitWrittenAnswer } from "@/hooks/useStudentAnswers";
 import { useSubmitPaperTestResult } from "@/hooks/usePaperTestResults";
+import { useExtractImageAnswer } from "@/hooks/useExtractImageAnswer";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 import { PaperTestResults } from "./PaperTestResults";
 import { toast } from "@/hooks/use-toast";
@@ -88,6 +89,11 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const uploadAnswerImage = useUploadAnswerImage();
   const submitWrittenAnswer = useSubmitWrittenAnswer();
   const submitPaperTestResult = useSubmitPaperTestResult();
+  const extractImageAnswer = useExtractImageAnswer();
+  
+  // Track extracted text from images
+  const [extractedImageAnswers, setExtractedImageAnswers] = useState<Record<string, string>>({});
+  const [isExtractingImages, setIsExtractingImages] = useState(false);
 
   // Track test start time for duration calculation
   const [testStartTime, setTestStartTime] = useState<number | null>(null);
@@ -143,6 +149,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     setTestQuestions(shuffled.slice(0, count));
     setAnswers({});
     setAnswerImages({});
+    setExtractedImageAnswers({});
     setFlaggedQuestions(new Set());
     setCurrentQuestionIndex(0);
     setTimeRemaining(selectedTime === 0 ? null : selectedTime * 60);
@@ -206,10 +213,56 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     // Calculate time taken
     const timeTakenSeconds = testStartTime ? Math.floor((Date.now() - testStartTime) / 1000) : null;
     
-    // Calculate score (preliminary, may be updated by AI grading)
+    // First, extract text from any image answers that don't have text
+    setIsExtractingImages(true);
+    const imageAnswersToExtract = testQuestions.filter(q => {
+      const hasImageAnswer = !!answerImages[q.id];
+      const hasTextAnswer = !!answers[q.id]?.trim();
+      const alreadyExtracted = !!extractedImageAnswers[q.id];
+      return hasImageAnswer && !hasTextAnswer && !alreadyExtracted;
+    });
+
+    const newExtractedAnswers: Record<string, string> = { ...extractedImageAnswers };
+    
+    if (imageAnswersToExtract.length > 0) {
+      toast({
+        title: "Processing images...",
+        description: `Extracting answers from ${imageAnswersToExtract.length} image(s)`,
+      });
+
+      // Process image answers sequentially to avoid rate limits
+      for (const question of imageAnswersToExtract) {
+        try {
+          const result = await extractImageAnswer.mutateAsync({
+            imageUrl: answerImages[question.id],
+            questionContext: question.question_text?.substring(0, 200),
+          });
+          
+          if (result.extracted_text && result.extracted_text !== 'UNREADABLE') {
+            newExtractedAnswers[question.id] = result.extracted_text;
+            
+            // Also save the extracted text to database
+            await submitWrittenAnswer.mutateAsync({
+              questionId: question.id,
+              paperId: selectedPaper.id,
+              answerText: result.extracted_text,
+              answerImageUrl: answerImages[question.id],
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to extract answer for question ${question.id}:`, error);
+        }
+      }
+      
+      setExtractedImageAnswers(newExtractedAnswers);
+    }
+    setIsExtractingImages(false);
+
+    // Now calculate score using both text answers and extracted image answers
     let correct = 0;
     testQuestions.forEach((q) => {
-      const userAnswer = answers[q.id]?.trim();
+      // Prefer typed answer, then extracted image answer
+      const userAnswer = answers[q.id]?.trim() || newExtractedAnswers[q.id]?.trim();
       const correctAnswer = q.correct_answer?.trim();
       if (fastIsCorrect(userAnswer, correctAnswer)) {
         correct++;
@@ -219,12 +272,20 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     const percentage = Math.round((correct / testQuestions.length) * 100);
     const paperCategory = (selectedPaper?.paper_category || "previous_year") as "previous_year" | "proficiency" | "exam";
     
-    // Check if any answers need AI grading
+    // Check if any answers need AI grading (including extracted image answers)
     const needsAiGrading = testQuestions.some((q) => {
-      const userAnswer = answers[q.id]?.trim();
+      const userAnswer = answers[q.id]?.trim() || newExtractedAnswers[q.id]?.trim();
       const correctAnswer = q.correct_answer?.trim();
       const isInteger = isIntegerQuestion(q);
       return isInteger && userAnswer && correctAnswer && !fastIsCorrect(userAnswer, correctAnswer);
+    });
+
+    // Merge text answers with extracted image answers for storage
+    const allAnswers = { ...answers };
+    Object.entries(newExtractedAnswers).forEach(([qId, extractedText]) => {
+      if (!allAnswers[qId]?.trim() && extractedText) {
+        allAnswers[qId] = extractedText;
+      }
     });
 
     // Save to database
@@ -237,13 +298,13 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         total_questions: testQuestions.length,
         percentage,
         time_taken_seconds: timeTakenSeconds,
-        answers,
+        answers: allAnswers,
         grading_status: needsAiGrading ? "pending" : "graded",
       });
 
       // If needs AI grading, run it in background and update later
       if (needsAiGrading) {
-        runAiGradingAndUpdate(correct);
+        runAiGradingAndUpdate(correct, newExtractedAnswers);
       }
 
       // Reset and go back to papers list with results tab selected
@@ -253,6 +314,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
       setTestQuestions([]);
       setAnswers({});
       setAnswerImages({});
+      setExtractedImageAnswers({});
       setFlaggedQuestions(new Set());
       setTestStartTime(null);
       
@@ -267,11 +329,11 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   };
 
   // Run AI grading in background and update the result
-  const runAiGradingAndUpdate = async (initialScore: number) => {
+  const runAiGradingAndUpdate = async (initialScore: number, extractedAnswers: Record<string, string> = {}) => {
     const needsAiCheck: { id: string; user_answer: string; correct_answer: string }[] = [];
     
     testQuestions.forEach((q) => {
-      const userAnswer = answers[q.id]?.trim();
+      const userAnswer = answers[q.id]?.trim() || extractedAnswers[q.id]?.trim();
       const correctAnswer = q.correct_answer?.trim();
       const isInteger = isIntegerQuestion(q);
       
@@ -322,6 +384,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     setTestQuestions([]);
     setAnswers({});
     setAnswerImages({});
+    setExtractedImageAnswers({});
     setFlaggedQuestions(new Set());
   };
 
@@ -925,7 +988,16 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
                   Previous
                 </Button>
                 {currentQuestionIndex === displayedQuestions.length - 1 ? (
-                  <Button onClick={handleSubmit}>Submit Test</Button>
+                  <Button onClick={handleSubmit} disabled={isExtractingImages}>
+                    {isExtractingImages ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing Images...
+                      </>
+                    ) : (
+                      "Submit Test"
+                    )}
+                  </Button>
                 ) : (
                   <Button onClick={() => setCurrentQuestionIndex((i) => i + 1)}>
                     Next
