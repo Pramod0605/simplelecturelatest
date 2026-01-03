@@ -31,8 +31,12 @@ import {
   Pencil,
   Loader2,
   Trophy,
+  CheckCircle,
+  Eye,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import {
   usePreviousYearPapersForSubject,
   usePreviousYearPaperQuestions,
@@ -114,6 +118,46 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
       return acc;
     }, { previous_year: 0, proficiency: 0, exam: 0 } as Record<PaperCategory, number>);
   }, [papers]);
+
+  // Fetch user's submitted papers for status display
+  const { data: submittedPapers } = useQuery({
+    queryKey: ["submitted-papers", subjectId],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      
+      const { data } = await supabase
+        .from("paper_test_results")
+        .select("paper_id, submitted_at, score, percentage, grading_status")
+        .eq("student_id", user.id)
+        .order("submitted_at", { ascending: false });
+      
+      return data || [];
+    },
+  });
+
+  // Create a lookup map: paper_id -> latest submission info
+  const submittedPaperMap = useMemo(() => {
+    if (!submittedPapers) return new Map();
+    const map = new Map();
+    submittedPapers.forEach((s: any) => {
+      // Only keep the latest submission per paper
+      if (!map.has(s.paper_id)) {
+        map.set(s.paper_id, s);
+      }
+    });
+    return map;
+  }, [submittedPapers]);
+
+  // Format date helper
+  const formatSubmissionDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   // Timer effect
   useEffect(() => {
@@ -620,61 +664,120 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
             {activeCategory !== "results" && (
               filteredPapers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredPapers.map((paper) => (
-                    <Card key={paper.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">
-                              {paper.exam_name} {paper.year}
-                            </CardTitle>
-                            {paper.paper_type && (
-                              <CardDescription>{paper.paper_type}</CardDescription>
+                  {filteredPapers.map((paper) => {
+                    const submission = submittedPaperMap.get(paper.id);
+                    const isSubmitted = !!submission;
+                    const isProficiencyOrExam = paper.paper_category === 'proficiency' || paper.paper_category === 'exam';
+
+                    return (
+                      <Card 
+                        key={paper.id} 
+                        className={cn(
+                          "hover:shadow-md transition-shadow",
+                          isSubmitted && isProficiencyOrExam && "border-green-500/30 bg-green-50/30 dark:bg-green-950/20"
+                        )}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-lg">
+                                {paper.exam_name} {paper.year}
+                              </CardTitle>
+                              {paper.paper_type && (
+                                <CardDescription>{paper.paper_type}</CardDescription>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              {isSubmitted && isProficiencyOrExam && (
+                                <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Submitted
+                                </Badge>
+                              )}
+                              <Badge variant="outline">{paper.year}</Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Show submission info if submitted */}
+                          {isSubmitted && isProficiencyOrExam && (
+                            <div className="flex items-center gap-3 text-sm bg-green-50 dark:bg-green-900/30 p-2 rounded-md border border-green-200 dark:border-green-800">
+                              <div className="flex items-center gap-1">
+                                <Trophy className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <span className="font-medium">{submission.percentage}%</span>
+                              </div>
+                              <div className="text-muted-foreground text-xs">
+                                Submitted {formatSubmissionDate(submission.submitted_at)}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <FileText className="h-4 w-4" />
+                              <span>{paper.total_questions || "N/A"} Questions</span>
+                            </div>
+                            {paper.document_type && paper.document_type !== "mcq" && (
+                              <Badge variant="secondary" className="text-xs">
+                                {paper.document_type === "practice" ? (
+                                  <><Pencil className="h-3 w-3 mr-1" /> Written</>
+                                ) : (
+                                  <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
+                                )}
+                              </Badge>
                             )}
                           </div>
-                          <Badge variant="outline">{paper.year}</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <FileText className="h-4 w-4" />
-                            <span>{paper.total_questions || "N/A"} Questions</span>
+
+                          {/* Different buttons based on submission status */}
+                          <div className="flex gap-2">
+                            {isSubmitted && isProficiencyOrExam ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => setActiveCategory("results")}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View Result
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleStartSetup(paper)}
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  Retry
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                {paper.pdf_url && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => window.open(paper.pdf_url, "_blank")}
+                                  >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    PDF
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => handleStartSetup(paper)}
+                                >
+                                  <Play className="h-4 w-4 mr-1" />
+                                  Start to Solve
+                                </Button>
+                              </>
+                            )}
                           </div>
-                          {paper.document_type && paper.document_type !== "mcq" && (
-                            <Badge variant="secondary" className="text-xs">
-                              {paper.document_type === "practice" ? (
-                                <><Pencil className="h-3 w-3 mr-1" /> Written</>
-                              ) : (
-                                <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
-                              )}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          {paper.pdf_url && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => window.open(paper.pdf_url, "_blank")}
-                            >
-                              <Download className="h-4 w-4 mr-1" />
-                              PDF
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleStartSetup(paper)}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Start to Solve
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
