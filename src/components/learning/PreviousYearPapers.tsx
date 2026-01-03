@@ -633,29 +633,88 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Mock & PYQs</h2>
-          <Badge variant="secondary">{papers.length} Papers</Badge>
+        {/* Enhanced Header Section */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-900/50 dark:via-blue-950/20 dark:to-indigo-950/30 border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25">
+              <FileText className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent">
+                Mock & PYQs
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Practice with previous papers</p>
+            </div>
+          </div>
+          <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 px-3 py-1.5 text-sm font-semibold shadow-md hover:shadow-lg transition-shadow">
+            {papers.length} Papers
+          </Badge>
         </div>
         
+        {/* Enhanced Tabs */}
         <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as PaperCategory)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="previous_year" className="gap-2">
+          <TabsList className="grid w-full grid-cols-3 p-1.5 h-auto bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
+            <TabsTrigger 
+              value="previous_year" 
+              className={cn(
+                "gap-2 py-2.5 rounded-lg font-medium transition-all duration-300",
+                "data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800",
+                "data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400",
+                "hover:text-blue-600 dark:hover:text-blue-400"
+              )}
+            >
               Previous Year
               {paperCounts.previous_year > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.previous_year}</Badge>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-xs font-bold transition-colors",
+                  activeCategory === "previous_year" 
+                    ? "bg-blue-500 text-white" 
+                    : "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400"
+                )}>
+                  {paperCounts.previous_year}
+                </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="proficiency" className="gap-2">
+            <TabsTrigger 
+              value="proficiency" 
+              className={cn(
+                "gap-2 py-2.5 rounded-lg font-medium transition-all duration-300",
+                "data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800",
+                "data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400",
+                "hover:text-purple-600 dark:hover:text-purple-400"
+              )}
+            >
               Proficiency
               {paperCounts.proficiency > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.proficiency}</Badge>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-xs font-bold transition-colors",
+                  activeCategory === "proficiency" 
+                    ? "bg-purple-500 text-white" 
+                    : "bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400"
+                )}>
+                  {paperCounts.proficiency}
+                </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="exam" className="gap-2">
+            <TabsTrigger 
+              value="exam" 
+              className={cn(
+                "gap-2 py-2.5 rounded-lg font-medium transition-all duration-300",
+                "data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800",
+                "data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400",
+                "hover:text-amber-600 dark:hover:text-amber-400"
+              )}
+            >
               Exam
               {paperCounts.exam > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{paperCounts.exam}</Badge>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-xs font-bold transition-colors",
+                  activeCategory === "exam" 
+                    ? "bg-amber-500 text-white" 
+                    : "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
+                )}>
+                  {paperCounts.exam}
+                </span>
               )}
             </TabsTrigger>
           </TabsList>
