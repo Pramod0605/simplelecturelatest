@@ -39,7 +39,7 @@ import {
   PaperQuestion,
 } from "@/hooks/usePreviousYearPaperQuestions";
 import { useUploadAnswerImage, useSubmitWrittenAnswer } from "@/hooks/useStudentAnswers";
-import { useSubmitPaperTestResult } from "@/hooks/usePaperTestResults";
+import { useSubmitPaperTestResult, useUpdatePaperTestResult } from "@/hooks/usePaperTestResults";
 import { useExtractImageAnswer } from "@/hooks/useExtractImageAnswer";
 import { MathpixRenderer } from "@/components/admin/MathpixRenderer";
 import { PaperTestResults } from "./PaperTestResults";
@@ -89,6 +89,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
   const uploadAnswerImage = useUploadAnswerImage();
   const submitWrittenAnswer = useSubmitWrittenAnswer();
   const submitPaperTestResult = useSubmitPaperTestResult();
+  const updatePaperTestResult = useUpdatePaperTestResult();
   const extractImageAnswer = useExtractImageAnswer();
   
   // Track extracted text from images
@@ -290,7 +291,7 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
 
     // Save to database
     try {
-      await submitPaperTestResult.mutateAsync({
+      const result = await submitPaperTestResult.mutateAsync({
         paper_id: selectedPaper.id,
         subject_id: subjectId,
         paper_category: paperCategory,
@@ -302,9 +303,9 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         grading_status: needsAiGrading ? "pending" : "graded",
       });
 
-      // If needs AI grading, run it in background and update later
-      if (needsAiGrading) {
-        runAiGradingAndUpdate(correct, newExtractedAnswers);
+      // If needs AI grading, run it in background and update the result
+      if (needsAiGrading && result?.id) {
+        runAiGradingAndUpdate(result.id, correct, testQuestions.length, newExtractedAnswers);
       }
 
       // Reset and go back to papers list with results tab selected
@@ -328,8 +329,13 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
     }
   };
 
-  // Run AI grading in background and update the result
-  const runAiGradingAndUpdate = async (initialScore: number, extractedAnswers: Record<string, string> = {}) => {
+  // Run AI grading in background and update the result in DB
+  const runAiGradingAndUpdate = async (
+    resultId: string,
+    initialScore: number,
+    totalQuestions: number,
+    extractedAnswers: Record<string, string> = {}
+  ) => {
     const needsAiCheck: { id: string; user_answer: string; correct_answer: string }[] = [];
     
     testQuestions.forEach((q) => {
@@ -346,7 +352,21 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
       }
     });
 
-    if (needsAiCheck.length === 0) return;
+    if (needsAiCheck.length === 0) {
+      // No AI check needed, mark as graded
+      try {
+        await updatePaperTestResult.mutateAsync({
+          id: resultId,
+          updates: {
+            grading_status: "ai_graded",
+            graded_at: new Date().toISOString(),
+          },
+        });
+      } catch (err) {
+        console.error('Failed to update grading status:', err);
+      }
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-compare-math-answers', {
@@ -366,9 +386,22 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly 
         });
       }
 
-      // Note: We would need to update the result in DB here
-      // For now, the result stays as initially calculated
-      console.log(`AI grading complete: ${additionalCorrect} additional correct answers found`);
+      // Calculate final score and percentage
+      const finalScore = initialScore + additionalCorrect;
+      const finalPercentage = Math.round((finalScore / totalQuestions) * 100);
+
+      // Update the result in database
+      await updatePaperTestResult.mutateAsync({
+        id: resultId,
+        updates: {
+          score: finalScore,
+          percentage: finalPercentage,
+          grading_status: "ai_graded",
+          graded_at: new Date().toISOString(),
+        },
+      });
+
+      console.log(`AI grading complete: ${additionalCorrect} additional correct, final score: ${finalScore}/${totalQuestions}`);
     } catch (err) {
       console.error('AI grading failed:', err);
     }
