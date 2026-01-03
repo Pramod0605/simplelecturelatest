@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfDay, parseISO, eachDayOfInterval } from "date-fns";
+import { format, subDays, eachDayOfInterval, parseISO } from "date-fns";
 
 interface ProgressBreakdown {
   chapters: number;
@@ -44,43 +44,73 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       const endDate = new Date();
       const startDate = subDays(endDate, days);
 
-      // Fetch all data in parallel
+      // Get subject IDs linked to the course via course_subjects
+      let subjectIds: string[] = [];
+      
+      if (courseId && courseId !== "all") {
+        const { data: courseSubjects } = await supabase
+          .from("course_subjects")
+          .select("subject_id, popular_subjects!inner(id, name)")
+          .eq("course_id", courseId);
+        
+        if (courseSubjects) {
+          subjectIds = courseSubjects.map((cs: any) => cs.subject_id);
+        }
+      }
+
+      // Get total chapters from subject_chapters (the CORRECT table)
+      const { data: allSubjectChapters } = await supabase
+        .from("subject_chapters")
+        .select("id, subject_id, title, popular_subjects!inner(id, name)");
+
+      // Filter chapters by subject IDs from the course
+      let filteredChapters = allSubjectChapters || [];
+      if (subjectIds.length > 0) {
+        filteredChapters = filteredChapters.filter((c: any) => subjectIds.includes(c.subject_id));
+      }
+      if (subjectName && subjectName !== "all") {
+        filteredChapters = filteredChapters.filter((c: any) => c.popular_subjects?.name === subjectName);
+      }
+
+      const chapterIds = filteredChapters.map((c: any) => c.id);
+      const totalChapters = filteredChapters.length || 1;
+
+      // Get total videos from topic_videos via subject_topics -> subject_chapters
+      const { data: allVideos } = await supabase
+        .from("topic_videos")
+        .select("id, subject_topics!inner(id, chapter_id, subject_chapters!inner(id, subject_id, popular_subjects!inner(id, name)))");
+
+      // Filter videos by chapter IDs
+      let filteredVideos = allVideos || [];
+      if (chapterIds.length > 0) {
+        filteredVideos = filteredVideos.filter((v: any) => 
+          chapterIds.includes(v.subject_topics?.chapter_id)
+        );
+      }
+      if (subjectName && subjectName !== "all") {
+        filteredVideos = filteredVideos.filter((v: any) => 
+          v.subject_topics?.subject_chapters?.popular_subjects?.name === subjectName
+        );
+      }
+      const totalVideos = filteredVideos.length || 1;
+      const videoIds = filteredVideos.map((v: any) => v.id);
+
+      // Fetch student progress data in parallel
       const [
-        chaptersResult,
-        videosResult,
-        mcqsResult,
+        videoProgressResult,
         examsResult,
         assignmentsResult,
-        totalChaptersResult,
-        totalVideosResult,
       ] = await Promise.all([
-        // Chapter completions with dates
-        supabase
-          .from("student_progress")
-          .select("completed_at, chapter_id, is_completed, chapters!inner(course_id, subject)")
-          .eq("student_id", user.id)
-          .eq("is_completed", true)
-          .gte("completed_at", startDate.toISOString())
-          .lte("completed_at", endDate.toISOString()),
-
         // Video watch progress
         supabase
           .from("video_watch_progress")
-          .select("last_watched_at, completed, topic_videos!inner(topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject)))")
+          .select("last_watched_at, completed, video_id")
           .eq("user_id", user.id)
           .eq("completed", true)
           .gte("last_watched_at", startDate.toISOString())
           .lte("last_watched_at", endDate.toISOString()),
 
-        // MCQ test submissions
-        supabase
-          .from("test_submissions")
-          .select("submitted_at, score, total_questions, topics!inner(chapter_id, chapters!inner(course_id, subject))")
-          .eq("student_id", user.id)
-          .gte("submitted_at", startDate.toISOString())
-          .lte("submitted_at", endDate.toISOString()),
-
-        // Paper test results (PYQ, proficiency, exams) - uses popular_subjects table
+        // Paper test results (PYQ, proficiency, exams)
         supabase
           .from("paper_test_results")
           .select("submitted_at, percentage, subject_id, popular_subjects!inner(id, name)")
@@ -91,71 +121,37 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // Assignment submissions
         supabase
           .from("assignment_submissions")
-          .select("submitted_at, percentage, assignments!inner(course_id, chapter_id, chapters!inner(subject))")
+          .select("submitted_at, percentage, assignments!inner(course_id)")
           .eq("student_id", user.id)
           .gte("submitted_at", startDate.toISOString())
           .lte("submitted_at", endDate.toISOString()),
-
-        // Total chapters for calculating percentage
-        supabase
-          .from("chapters")
-          .select("id, course_id, subject"),
-
-        // Total videos for calculating percentage
-        supabase
-          .from("topic_videos")
-          .select("id, topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject))"),
       ]);
 
-      // Apply filters - using subject (text) instead of subject_id
-      const filterByCourseAndSubject = (courseIdValue: string | undefined, subjectValue: string | undefined) => {
-        if (courseId && courseId !== "all" && courseIdValue !== courseId) return false;
-        if (subjectName && subjectName !== "all" && subjectValue !== subjectName) return false;
-        return true;
-      };
-
-      // Filter chapters
-      const chapters = (chaptersResult.data || []).filter((c: any) => 
-        filterByCourseAndSubject(c.chapters?.course_id, c.chapters?.subject)
+      // Filter videos by our chapter IDs
+      const videos = (videoProgressResult.data || []).filter((v: any) => 
+        videoIds.includes(v.video_id)
       );
 
-      // Filter videos
-      const videos = (videosResult.data || []).filter((v: any) => 
-        filterByCourseAndSubject(v.topic_videos?.topics?.chapters?.course_id, v.topic_videos?.topics?.chapters?.subject)
-      );
-
-      // Filter MCQs
-      const mcqs = (mcqsResult.data || []).filter((m: any) => 
-        filterByCourseAndSubject(m.topics?.chapters?.course_id, m.topics?.chapters?.subject)
-      );
-
-      // Filter exams - popular_subjects has name field
+      // Filter exams by subject IDs
       const exams = (examsResult.data || []).filter((e: any) => {
-        // For exams, we can't filter by courseId easily, but we can filter by subject name
-        if (subjectName && subjectName !== "all" && e.popular_subjects?.name !== subjectName) return false;
+        if (subjectIds.length > 0 && !subjectIds.includes(e.subject_id)) return false;
+        if (subjectName && subjectName !== "all") {
+          return e.popular_subjects?.name === subjectName;
+        }
         return true;
       });
 
-      // Filter assignments
+      // Filter assignments by course
       const assignments = (assignmentsResult.data || []).filter((a: any) => {
         if (courseId && courseId !== "all" && a.assignments?.course_id !== courseId) return false;
-        if (subjectName && subjectName !== "all" && a.assignments?.chapters?.subject !== subjectName) return false;
         return true;
       });
-
-      // Get totals for percentage calculation
-      const totalChapters = (totalChaptersResult.data || []).filter((c: any) => 
-        filterByCourseAndSubject(c.course_id, c.subject)
-      ).length || 1;
-
-      const totalVideos = (totalVideosResult.data || []).filter((v: any) => 
-        filterByCourseAndSubject(v.topics?.chapters?.course_id, v.topics?.chapters?.subject)
-      ).length || 1;
 
       // Generate date range
       const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
 
       // Calculate cumulative progress for each day
+      // Note: Chapter completion tracking not yet implemented for subject_chapters
       let cumulativeChapters = 0;
       let cumulativeVideos = 0;
       let allMcqScores: number[] = [];
@@ -165,31 +161,15 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       const trendData: ProgressTrendPoint[] = dateRange.map((date) => {
         const dateStr = format(date, "yyyy-MM-dd");
 
-        // Count chapters completed on or before this date
-        const chaptersOnDate = chapters.filter((c: any) => 
-          format(parseISO(c.completed_at), "yyyy-MM-dd") === dateStr
-        ).length;
-        cumulativeChapters += chaptersOnDate;
-
-        // Count videos completed on or before this date
+        // Videos completed on this date
         const videosOnDate = videos.filter((v: any) => 
-          format(parseISO(v.last_watched_at), "yyyy-MM-dd") === dateStr
+          v.last_watched_at && format(parseISO(v.last_watched_at), "yyyy-MM-dd") === dateStr
         ).length;
         cumulativeVideos += videosOnDate;
 
-        // MCQ scores on this date
-        const mcqsOnDate = mcqs.filter((m: any) => 
-          format(parseISO(m.submitted_at), "yyyy-MM-dd") === dateStr
-        );
-        mcqsOnDate.forEach((m: any) => {
-          if (m.total_questions > 0) {
-            allMcqScores.push((m.score / m.total_questions) * 100);
-          }
-        });
-
         // Exam scores on this date
         const examsOnDate = exams.filter((e: any) => 
-          format(parseISO(e.submitted_at), "yyyy-MM-dd") === dateStr
+          e.submitted_at && format(parseISO(e.submitted_at), "yyyy-MM-dd") === dateStr
         );
         examsOnDate.forEach((e: any) => {
           if (e.percentage !== null) {
@@ -199,7 +179,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
 
         // Assignment scores on this date
         const assignmentsOnDate = assignments.filter((a: any) => 
-          format(parseISO(a.submitted_at), "yyyy-MM-dd") === dateStr
+          a.submitted_at && format(parseISO(a.submitted_at), "yyyy-MM-dd") === dateStr
         );
         assignmentsOnDate.forEach((a: any) => {
           if (a.percentage !== null) {
@@ -242,12 +222,11 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         };
       });
 
-      // Sample data points to avoid overcrowding (show ~10 points for 30 days)
+      // Sample data points to avoid overcrowding
       const sampledData = trendData.filter((_, index) => 
         index % Math.ceil(days / 10) === 0 || index === trendData.length - 1
       );
 
-      // Get current overall progress
       const latestProgress = trendData[trendData.length - 1];
 
       return {
