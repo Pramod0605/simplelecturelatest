@@ -3617,6 +3617,8 @@ export type Database = {
           answer_image_url: string | null
           answer_text: string | null
           created_at: string | null
+          extracted_answer_text: string | null
+          extraction_confidence: string | null
           id: string
           paper_id: string
           question_id: string
@@ -3627,6 +3629,8 @@ export type Database = {
           answer_image_url?: string | null
           answer_text?: string | null
           created_at?: string | null
+          extracted_answer_text?: string | null
+          extraction_confidence?: string | null
           id?: string
           paper_id: string
           question_id: string
@@ -3637,6 +3641,8 @@ export type Database = {
           answer_image_url?: string | null
           answer_text?: string | null
           created_at?: string | null
+          extracted_answer_text?: string | null
+          extraction_confidence?: string | null
           id?: string
           paper_id?: string
           question_id?: string
