@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ProgressFilters } from "@/components/admin/students/tabs/ProgressFilters";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, BookOpen, Video, FileCheck, GraduationCap, ClipboardList, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, BookOpen, Video, FileCheck, GraduationCap, ClipboardList, Loader2, ChevronDown, ChevronUp, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useProgressTrends } from "@/hooks/useProgressTrends";
@@ -34,6 +34,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           </p>
           <p className="flex items-center gap-2">
             <GraduationCap className="h-3 w-3" /> Exams: {data.breakdown.exams}%
+          </p>
+          <p className="flex items-center gap-2">
+            <Award className="h-3 w-3" /> Proficiency: {data.breakdown.proficiencyTests}%
           </p>
           <p className="flex items-center gap-2">
             <ClipboardList className="h-3 w-3" /> Assignments: {data.breakdown.assignments}%
@@ -123,7 +126,7 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
 
       {/* Current Progress Summary */}
       {progressData && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-2 text-primary mb-1">
@@ -158,6 +161,15 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
                 <span className="text-xs font-medium">MCQs</span>
               </div>
               <p className="text-xl font-semibold">{progressData.totals.mcqsCompleted}/{progressData.totals.totalMcqs}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Award className="h-4 w-4" />
+                <span className="text-xs font-medium">Proficiency</span>
+              </div>
+              <p className="text-xl font-semibold">{progressData.totals.proficiencyCompleted}/{progressData.totals.totalProficiencyTests}</p>
             </CardContent>
           </Card>
           <Card>
@@ -257,7 +269,7 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
                         <span className="text-sm font-semibold text-primary">{chapter.progress}%</span>
                       </div>
                       <Progress value={chapter.progress} className="h-2 mb-3" />
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Video className="h-3 w-3" />
                           <span>Videos: {chapter.videos.completed}/{chapter.videos.total}</span>
@@ -269,6 +281,10 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <GraduationCap className="h-3 w-3" />
                           <span>Exams: {chapter.exams.completed}/{chapter.exams.total}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Award className="h-3 w-3" />
+                          <span>Proficiency: {chapter.proficiencyTests.completed}/{chapter.proficiencyTests.total}</span>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <ClipboardList className="h-3 w-3" />
@@ -317,6 +333,15 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
                 <span className="text-sm text-muted-foreground">{progressData.breakdown.exams}%</span>
               </div>
               <Progress value={progressData.breakdown.exams} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 font-medium">
+                  <Award className="h-4 w-4" /> Proficiency Test Completion
+                </span>
+                <span className="text-sm text-muted-foreground">{progressData.breakdown.proficiencyTests}%</span>
+              </div>
+              <Progress value={progressData.breakdown.proficiencyTests} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
