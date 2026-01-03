@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Video, Sparkles, ExternalLink } from "lucide-react";
+import { Play, Video, Sparkles } from "lucide-react";
 import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,7 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
   const { data: additionalVideos, isLoading } = useTopicVideos(topicId);
   const [selectedVideo, setSelectedVideo] = useState<TopicVideo | null>(null);
   const [filterLanguage, setFilterLanguage] = useState<string>("all");
+  const [showAIVideo, setShowAIVideo] = useState(false);
 
   // Combine the direct topic video with additional videos from topic_videos table
   const allVideos = useMemo(() => {
@@ -133,7 +134,7 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
         {aiGeneratedVideoUrl && (
           <Card
             className="cursor-pointer hover:border-violet-500 transition-colors overflow-hidden border-violet-200 dark:border-violet-800"
-            onClick={() => window.open(aiGeneratedVideoUrl, '_blank')}
+            onClick={() => setShowAIVideo(true)}
           >
             <CardHeader className="p-0">
               <div className="relative aspect-video bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
@@ -151,14 +152,10 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
                   </div>
                 </div>
 
-                {/* Badges */}
+                {/* Badge */}
                 <Badge className="absolute top-2 left-2 bg-violet-500 hover:bg-violet-600">
                   <Sparkles className="h-3 w-3 mr-1" />
                   AI Lecture
-                </Badge>
-                <Badge variant="outline" className="absolute top-2 right-2 bg-background/80">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Opens in new tab
                 </Badge>
               </div>
             </CardHeader>
@@ -267,6 +264,36 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
                   {selectedVideo.description}
                 </p>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Generated Video Dialog */}
+      <Dialog open={showAIVideo} onOpenChange={setShowAIVideo}>
+        <DialogContent className="max-w-5xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>{topicTitle} - AI Generated Lecture</DialogTitle>
+          </DialogHeader>
+          {aiGeneratedVideoUrl && (
+            <div className="space-y-4 p-4 pt-2">
+              <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                <iframe
+                  src={aiGeneratedVideoUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Badge className="bg-violet-500">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI Generated
+                </Badge>
+                <Button variant="outline" onClick={() => setShowAIVideo(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
