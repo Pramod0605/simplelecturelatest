@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen, Trophy, Play, Bot, ListChecks, FileEdit, FileText } from "lucide-react";
+import { CheckCircle, Circle, Lock, AlertCircle, PanelLeftClose, PanelLeft, FolderOpen } from "lucide-react";
 import { SubjectNavigationBar } from "@/components/learning/SubjectNavigationBar";
 import { MCQTest } from "@/components/learning/MCQTest";
 import { AssignmentViewer } from "@/components/learning/AssignmentViewer";
@@ -295,83 +295,41 @@ export default function Learning() {
           <main className="flex-1 overflow-y-auto p-6">
             {selectedTopic ? (
               <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <TabsList className="flex flex-wrap gap-1.5 p-2 h-auto bg-gradient-to-r from-slate-50 via-slate-100/80 to-slate-50 dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+                <TabsList className="grid w-full grid-cols-6 p-1.5 h-auto bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
                   <TabsTrigger 
                     value="videos"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/10",
-                      "hover:text-blue-600 dark:hover:text-blue-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
                   >
-                    <Play className="h-4 w-4" />
                     Classes
                   </TabsTrigger>
                   <TabsTrigger 
                     value="ai-assistant"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/10",
-                      "hover:text-purple-600 dark:hover:text-purple-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 hover:text-purple-600 dark:hover:text-purple-400"
                   >
-                    <Bot className="h-4 w-4" />
                     AI Assistant
                   </TabsTrigger>
                   <TabsTrigger 
                     value="mcqs"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-green-500/10",
-                      "hover:text-green-600 dark:hover:text-green-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 hover:text-green-600 dark:hover:text-green-400"
                   >
-                    <ListChecks className="h-4 w-4" />
                     MCQs
                   </TabsTrigger>
                   <TabsTrigger 
                     value="assignments"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-orange-500/10",
-                      "hover:text-orange-600 dark:hover:text-orange-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 hover:text-orange-600 dark:hover:text-orange-400"
                   >
-                    <FileEdit className="h-4 w-4" />
                     Assignments
                   </TabsTrigger>
                   <TabsTrigger 
                     value="previous-year"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/10",
-                      "hover:text-indigo-600 dark:hover:text-indigo-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                   >
-                    <FileText className="h-4 w-4" />
                     Mock & PYQs
                   </TabsTrigger>
                   <TabsTrigger 
                     value="my-results"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10",
-                      "hover:text-amber-600 dark:hover:text-amber-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400 hover:text-amber-600 dark:hover:text-amber-400"
                   >
-                    <Trophy className="h-4 w-4" />
                     My Results
                   </TabsTrigger>
                 </TabsList>
@@ -426,83 +384,41 @@ export default function Learning() {
                   </span>
                 </div>
                 
-                <TabsList className="flex flex-wrap gap-1.5 p-2 h-auto bg-gradient-to-r from-slate-50 via-slate-100/80 to-slate-50 dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+                <TabsList className="grid w-full grid-cols-6 p-1.5 h-auto bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
                   <TabsTrigger 
                     value="videos"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-blue-500/10",
-                      "hover:text-blue-600 dark:hover:text-blue-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
                   >
-                    <Play className="h-4 w-4" />
                     Classes
                   </TabsTrigger>
                   <TabsTrigger 
                     value="ai-assistant"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/10",
-                      "hover:text-purple-600 dark:hover:text-purple-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 hover:text-purple-600 dark:hover:text-purple-400"
                   >
-                    <Bot className="h-4 w-4" />
                     AI Assistant
                   </TabsTrigger>
                   <TabsTrigger 
                     value="mcqs"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-green-500/10",
-                      "hover:text-green-600 dark:hover:text-green-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 hover:text-green-600 dark:hover:text-green-400"
                   >
-                    <ListChecks className="h-4 w-4" />
                     MCQs
                   </TabsTrigger>
                   <TabsTrigger 
                     value="assignments"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-orange-500/10",
-                      "hover:text-orange-600 dark:hover:text-orange-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 hover:text-orange-600 dark:hover:text-orange-400"
                   >
-                    <FileEdit className="h-4 w-4" />
                     Assignments
                   </TabsTrigger>
                   <TabsTrigger 
                     value="previous-year"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/10",
-                      "hover:text-indigo-600 dark:hover:text-indigo-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                   >
-                    <FileText className="h-4 w-4" />
                     Mock & PYQs
                   </TabsTrigger>
                   <TabsTrigger 
                     value="my-results"
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all duration-300",
-                      "data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800",
-                      "data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400",
-                      "data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/10",
-                      "hover:text-amber-600 dark:hover:text-amber-400"
-                    )}
+                    className="py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400 hover:text-amber-600 dark:hover:text-amber-400"
                   >
-                    <Trophy className="h-4 w-4" />
                     My Results
                   </TabsTrigger>
                 </TabsList>
