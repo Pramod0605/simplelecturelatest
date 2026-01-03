@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Video, Sparkles, X } from "lucide-react";
+import { Play, Video, Sparkles } from "lucide-react";
 import { useTopicVideos, INDIAN_LANGUAGES, TopicVideo } from "@/hooks/useTopicVideos";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -271,20 +271,12 @@ export const RecordedVideos = ({ topicId, chapterId, topicVideoId, topicVideoPla
 
       {/* AI Generated Video Dialog */}
       <Dialog open={showAIVideo} onOpenChange={setShowAIVideo}>
-        <DialogContent className="max-w-5xl p-0 overflow-hidden max-h-[90vh]">
-          <DialogHeader className="p-4 pb-0 flex flex-row items-center justify-between">
+        <DialogContent className="max-w-5xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
             <DialogTitle>{topicTitle} - AI Generated Lecture</DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowAIVideo(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           {aiGeneratedVideoUrl && (
-            <div className="space-y-4 p-4 pt-2 overflow-y-auto">
+            <div className="space-y-4 p-4 pt-2">
               <div className="aspect-video rounded-lg overflow-hidden bg-black">
                 <iframe
                   src={aiGeneratedVideoUrl}
