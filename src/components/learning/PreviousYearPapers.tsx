@@ -633,24 +633,6 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
 
     return (
       <div className="space-y-4">
-        {/* Enhanced Header Section */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-900/50 dark:via-blue-950/20 dark:to-indigo-950/30 border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25">
-              <FileText className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-white dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent">
-                Mock & PYQs
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Practice with previous papers</p>
-            </div>
-          </div>
-          <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 px-3 py-1.5 text-sm font-semibold shadow-md hover:shadow-lg transition-shadow">
-            {papers.length} Papers
-          </Badge>
-        </div>
-        
         {/* Enhanced Tabs */}
         <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as PaperCategory)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 p-1.5 h-auto bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
