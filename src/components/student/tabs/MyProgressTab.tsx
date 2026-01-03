@@ -61,10 +61,21 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
 
   const courseId = selectedCourse !== "all" ? courseIdMap[selectedCourse] : undefined;
 
-  // Fetch real progress trends
+  // Get subjects filtered by selected course
+  const subjects = useMemo(() => {
+    const allSubjects = new Set<string>();
+    student.courses?.forEach((course: any) => {
+      // If a specific course is selected, only show subjects from that course
+      if (selectedCourse !== "all" && course.name !== selectedCourse) return;
+      course.subjects?.forEach((subject: string) => allSubjects.add(subject));
+    });
+    return Array.from(allSubjects);
+  }, [student.courses, selectedCourse]);
+
+  // Fetch real progress trends with subject name
   const { data: progressData, isLoading: isLoadingProgress } = useProgressTrends({
     courseId,
-    subjectId: selectedSubject !== "all" ? selectedSubject : undefined,
+    subjectName: selectedSubject !== "all" ? selectedSubject : undefined,
     days: 30,
   });
 
@@ -72,14 +83,6 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
     student.courses?.map((c: any) => c.name) || [],
     [student.courses]
   );
-
-  const subjects = useMemo(() => {
-    const allSubjects = new Set<string>();
-    student.courses?.forEach((course: any) => {
-      course.subjects?.forEach((subject: string) => allSubjects.add(subject));
-    });
-    return Array.from(allSubjects);
-  }, [student.courses]);
 
   // Empty state
   if (!hasCourses) {
@@ -114,6 +117,7 @@ export const MyProgressTab = ({ student }: MyProgressTabProps) => {
           setSelectedCourse("all");
           setSelectedSubject("all");
         }}
+        onCourseChangeCallback={() => setSelectedSubject("all")}
       />
 
       {/* Current Progress Summary */}
