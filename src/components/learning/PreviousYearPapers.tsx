@@ -34,6 +34,8 @@ import {
   CheckCircle,
   Eye,
   RotateCcw,
+  Target,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -666,82 +668,171 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
                     const submission = submittedPaperMap.get(paper.id);
                     const isSubmitted = !!submission;
                     const isProficiencyOrExam = paper.paper_category === 'proficiency' || paper.paper_category === 'exam';
+                    const category = paper.paper_category || 'previous_year';
+
+                    // Get category-specific styles
+                    const getCategoryStyles = () => {
+                      if (isSubmitted && isProficiencyOrExam) {
+                        return "border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50/50 dark:from-green-950/40 dark:to-emerald-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-green-500 before:to-emerald-500";
+                      }
+                      switch (category) {
+                        case 'previous_year':
+                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-blue-500 before:to-indigo-500";
+                        case 'proficiency':
+                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-950/40 dark:to-pink-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-purple-500 before:to-pink-500";
+                        case 'exam':
+                          return "border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/40 dark:to-orange-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-amber-500 before:to-orange-500";
+                        default:
+                          return "border-0 shadow-md hover:shadow-lg";
+                      }
+                    };
+
+                    const getCategoryIcon = () => {
+                      switch (category) {
+                        case 'previous_year':
+                          return <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
+                        case 'proficiency':
+                          return <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
+                        case 'exam':
+                          return <GraduationCap className="h-5 w-5 text-amber-600 dark:text-amber-400" />;
+                        default:
+                          return <FileText className="h-5 w-5 text-muted-foreground" />;
+                      }
+                    };
+
+                    const getIconBgClass = () => {
+                      switch (category) {
+                        case 'previous_year':
+                          return "bg-blue-100 dark:bg-blue-900/50";
+                        case 'proficiency':
+                          return "bg-purple-100 dark:bg-purple-900/50";
+                        case 'exam':
+                          return "bg-amber-100 dark:bg-amber-900/50";
+                        default:
+                          return "bg-muted";
+                      }
+                    };
+
+                    const getBadgeClass = () => {
+                      switch (category) {
+                        case 'previous_year':
+                          return "border-blue-300 text-blue-700 bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:bg-blue-900/30";
+                        case 'proficiency':
+                          return "border-purple-300 text-purple-700 bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:bg-purple-900/30";
+                        case 'exam':
+                          return "border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-900/30";
+                        default:
+                          return "";
+                      }
+                    };
+
+                    const getButtonClass = () => {
+                      switch (category) {
+                        case 'previous_year':
+                          return "bg-blue-600 hover:bg-blue-700 text-white";
+                        case 'proficiency':
+                          return "bg-purple-600 hover:bg-purple-700 text-white";
+                        case 'exam':
+                          return "bg-amber-600 hover:bg-amber-700 text-white";
+                        default:
+                          return "";
+                      }
+                    };
 
                     return (
                       <Card 
                         key={paper.id} 
                         className={cn(
-                          "hover:shadow-md transition-shadow",
-                          isSubmitted && isProficiencyOrExam && "border-green-500/30 bg-green-50/30 dark:bg-green-950/20"
+                          "group relative overflow-hidden transition-all duration-300",
+                          getCategoryStyles()
                         )}
                       >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-lg">
-                                {paper.exam_name} {paper.year}
-                              </CardTitle>
-                              {paper.paper_type && (
-                                <CardDescription>{paper.paper_type}</CardDescription>
-                              )}
+                        <CardHeader className="pb-3 pt-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              {/* Category Icon */}
+                              <div className={cn(
+                                "p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110",
+                                getIconBgClass()
+                              )}>
+                                {getCategoryIcon()}
+                              </div>
+                              <div className="min-w-0">
+                                <CardTitle className="text-lg font-semibold leading-tight">
+                                  {paper.exam_name}
+                                </CardTitle>
+                                {paper.paper_type && (
+                                  <CardDescription className="mt-1 text-sm">
+                                    {paper.paper_type}
+                                  </CardDescription>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              {isSubmitted && isProficiencyOrExam && (
-                                <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Submitted
-                                </Badge>
-                              )}
-                              <Badge variant="outline">{paper.year}</Badge>
-                            </div>
+                            <Badge 
+                              variant="outline" 
+                              className={cn("shrink-0 font-semibold", getBadgeClass())}
+                            >
+                              {paper.year}
+                            </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 pb-5">
                           {/* Show submission info if submitted */}
                           {isSubmitted && isProficiencyOrExam && (
-                            <div className="flex items-center gap-3 text-sm bg-green-50 dark:bg-green-900/30 p-2 rounded-md border border-green-200 dark:border-green-800">
-                              <div className="flex items-center gap-1">
-                                <Trophy className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                <span className="font-medium">{submission.percentage}%</span>
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-green-100/80 dark:bg-green-900/40 border border-green-200 dark:border-green-800">
+                              <div className="p-2 rounded-full bg-green-200 dark:bg-green-800">
+                                <Trophy className="h-4 w-4 text-green-700 dark:text-green-300" />
                               </div>
-                              <div className="text-muted-foreground text-xs">
-                                Submitted {formatSubmissionDate(submission.submitted_at)}
+                              <div className="flex-1">
+                                <div className="font-bold text-green-800 dark:text-green-200 text-lg">
+                                  {submission.percentage}%
+                                </div>
+                                <div className="text-green-700 dark:text-green-400 text-xs">
+                                  Completed {formatSubmissionDate(submission.submitted_at)}
+                                </div>
                               </div>
+                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                             </div>
                           )}
 
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className={cn(
+                              "flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full",
+                              category === 'previous_year' && "bg-blue-100/70 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+                              category === 'proficiency' && "bg-purple-100/70 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+                              category === 'exam' && "bg-amber-100/70 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                            )}>
                               <FileText className="h-4 w-4" />
                               <span>{paper.total_questions || "N/A"} Questions</span>
                             </div>
                             {paper.document_type && paper.document_type !== "mcq" && (
-                              <Badge variant="secondary" className="text-xs">
-                                {paper.document_type === "practice" ? (
-                                  <><Pencil className="h-3 w-3 mr-1" /> Written</>
-                                ) : (
-                                  <><Pencil className="h-3 w-3 mr-1" /> Proficiency</>
-                                )}
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs font-medium rounded-full"
+                              >
+                                <Pencil className="h-3 w-3 mr-1" />
+                                Written
                               </Badge>
                             )}
                           </div>
 
                           {/* Different buttons based on submission status */}
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 pt-1">
                             {isSubmitted && isProficiencyOrExam ? (
                               <>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="flex-1"
+                                  className="flex-1 font-medium border-green-300 text-green-700 hover:bg-green-100 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-900/50"
                                   onClick={() => onViewResults?.()}
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
+                                  <Eye className="h-4 w-4 mr-1.5" />
                                   View Result
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  className="text-muted-foreground hover:text-foreground"
                                   onClick={() => handleStartSetup(paper)}
                                 >
                                   <RotateCcw className="h-4 w-4 mr-1" />
@@ -754,19 +845,19 @@ export function PreviousYearPapers({ subjectId, topicId, chapterId, chapterOnly,
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1"
+                                    className="flex-1 font-medium"
                                     onClick={() => window.open(paper.pdf_url, "_blank")}
                                   >
-                                    <Download className="h-4 w-4 mr-1" />
+                                    <Download className="h-4 w-4 mr-1.5" />
                                     PDF
                                   </Button>
                                 )}
                                 <Button
                                   size="sm"
-                                  className="flex-1"
+                                  className={cn("flex-1 font-medium", getButtonClass())}
                                   onClick={() => handleStartSetup(paper)}
                                 >
-                                  <Play className="h-4 w-4 mr-1" />
+                                  <Play className="h-4 w-4 mr-1.5" />
                                   Start to Solve
                                 </Button>
                               </>
