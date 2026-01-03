@@ -186,108 +186,67 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
         <TabsContent value={activeCategory} className="mt-4">
           {filteredResults.length > 0 ? (
             <div className="space-y-3">
-              {filteredResults.map((result) => {
-                const scoreGradient = result.percentage === null 
-                  ? 'from-slate-50 to-gray-50/50 dark:from-slate-950/40 dark:to-gray-950/30 before:from-slate-500 before:to-gray-500'
-                  : result.percentage >= 70 
-                    ? 'from-green-50 to-emerald-50/50 dark:from-green-950/40 dark:to-emerald-950/30 before:from-green-500 before:to-emerald-500'
-                    : result.percentage >= 40 
-                      ? 'from-yellow-50 to-amber-50/50 dark:from-yellow-950/40 dark:to-amber-950/30 before:from-yellow-500 before:to-amber-500'
-                      : 'from-red-50 to-rose-50/50 dark:from-red-950/40 dark:to-rose-950/30 before:from-red-500 before:to-rose-500';
-                
-                const iconBg = result.percentage === null 
-                  ? 'bg-slate-100 dark:bg-slate-900/50'
-                  : result.percentage >= 70 
-                    ? 'bg-green-100 dark:bg-green-900/50'
-                    : result.percentage >= 40 
-                      ? 'bg-yellow-100 dark:bg-yellow-900/50'
-                      : 'bg-red-100 dark:bg-red-900/50';
-                
-                const iconColor = result.percentage === null 
-                  ? 'text-slate-600 dark:text-slate-400'
-                  : result.percentage >= 70 
-                    ? 'text-green-600 dark:text-green-400'
-                    : result.percentage >= 40 
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-red-600 dark:text-red-400';
-
-                return (
-                  <Card 
-                    key={result.id} 
-                    className={`group relative overflow-hidden transition-all duration-300 border-0 shadow-md hover:shadow-xl bg-gradient-to-br before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r ${scoreGradient}`}
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex items-start gap-4">
-                        {/* Icon Container */}
-                        <div className={`p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 ${iconBg}`}>
-                          <Trophy className={`h-6 w-6 ${iconColor}`} />
+              {filteredResults.map((result) => (
+                <Card key={result.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-medium">
+                            {result.paper?.exam_name || "Unknown Paper"} {result.paper?.year || ""}
+                          </h3>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {result.paper_category.replace("_", " ")}
+                          </Badge>
                         </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
-                            <div>
-                              <h3 className="font-semibold text-base">
-                                {result.paper?.exam_name || "Unknown Paper"} {result.paper?.year || ""}
-                              </h3>
-                              <Badge variant="outline" className="text-xs capitalize mt-1">
-                                {result.paper_category.replace("_", " ")}
-                              </Badge>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              {result.grading_status === "pending" ? (
-                                <div className="flex items-center gap-2 text-yellow-600">
-                                  <AlertCircle className="h-4 w-4" />
-                                  <span className="text-sm">Grading...</span>
-                                </div>
-                              ) : (
-                                <div className="text-right">
-                                  <div className={cn("text-2xl font-bold", getScoreColor(result.percentage))}>
-                                    {result.percentage !== null ? `${Math.round(result.percentage)}%` : "N/A"}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {result.score}/{result.total_questions} correct
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(result.submitted_at), "MMM d, yyyy h:mm a")}
                           </div>
-                          
-                          {/* Metadata Pills */}
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(result.submitted_at), "MMM d, yyyy h:mm a")}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
-                              <Clock className="h-3 w-3" />
-                              {formatDuration(result.time_taken_seconds)}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
-                              <FileText className="h-3 w-3" />
-                              {result.total_questions} Questions
-                            </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDuration(result.time_taken_seconds)}
                           </div>
-                          
-                          {/* Actions */}
-                          <div className="flex items-center gap-2 mt-4">
-                            {getStatusBadge(result)}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedResult(result)}
-                              className="ml-auto"
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Review
-                            </Button>
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {result.total_questions} Questions
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          {result.grading_status === "pending" ? (
+                            <div className="flex items-center gap-2 text-yellow-600">
+                              <AlertCircle className="h-4 w-4" />
+                              <span className="text-sm">Grading...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className={cn("text-2xl font-bold", getScoreColor(result.percentage))}>
+                                {result.percentage !== null ? `${Math.round(result.percentage)}%` : "N/A"}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {result.score}/{result.total_questions} correct
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {getStatusBadge(result)}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedResult(result)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Review
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground">

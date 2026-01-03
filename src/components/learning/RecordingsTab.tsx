@@ -205,106 +205,112 @@ const RecordingCard = ({
   const isCompleted = progress?.completed || false;
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-blue-500 before:to-indigo-500">
-      <CardContent className="p-5 pt-6">
-        <div className="flex items-start gap-4">
-          {/* Icon Container */}
-          <div className="p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 bg-blue-100 dark:bg-blue-900/50">
-            <Video className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <h3 className="font-semibold text-base line-clamp-1">{subjectName}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-1">{courseName}</p>
-              </div>
-              
-              {/* Status Badge */}
-              {isReady && (
-                <Badge className="bg-green-500/90 text-white shrink-0">
-                  <Play className="h-3 w-3 mr-1" />
-                  Ready
-                </Badge>
-              )}
-              {isProcessing && (
-                <Badge className="bg-blue-500/90 text-white shrink-0">
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  Processing
-                </Badge>
-              )}
-              {!isReady && !isProcessing && (
-                <Badge variant="secondary" className="shrink-0">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Pending
-                </Badge>
-              )}
-            </div>
-            
-            {/* Metadata Pills */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {scheduledAt && (
-                <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100/70 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-                  <Calendar className="h-3 w-3" />
-                  {format(new Date(scheduledAt), "MMM d, yyyy")}
-                </div>
-              )}
-              {teacherName && (
-                <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-100/70 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
-                  <User className="h-3 w-3" />
-                  {teacherName}
-                </div>
-              )}
-              {recording.duration_seconds && (
-                <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100/70 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300">
-                  <Clock className="h-3 w-3" />
-                  {formatDuration(recording.duration_seconds)}
-                </div>
-              )}
-            </div>
-
-            {/* Watch Progress */}
-            {watchPercentage > 0 && !isCompleted && (
-              <div className="mb-3">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Progress</span>
-                  <span>{Math.round(watchPercentage)}%</span>
-                </div>
-                <Progress value={watchPercentage} className="h-1.5" />
-              </div>
-            )}
-
-            {/* Completed Badge */}
-            {isCompleted && (
-              <Badge className="bg-green-500 text-white mb-3">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Watched
-              </Badge>
-            )}
-
-            {/* Quality Badges */}
-            {recording.available_qualities && recording.available_qualities.length > 0 && (
-              <div className="flex gap-1 mb-3 flex-wrap">
-                {(recording.available_qualities as string[]).map(q => (
-                  <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Action Button */}
-            {isReady ? (
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={onWatch}>
-                <Play className="h-4 w-4 mr-2" />
-                {watchPercentage > 0 && !isCompleted ? 'Continue Watching' : 'Watch Recording'}
-              </Button>
-            ) : (
-              <Button className="w-full" variant="outline" disabled>
-                <Clock className="h-4 w-4 mr-2" />
-                {isProcessing ? 'Processing...' : 'Coming Soon'}
-              </Button>
-            )}
-          </div>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow group">
+      <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center relative">
+        <Video className="h-12 w-12 text-primary/50" />
+        
+        {/* Status Badge */}
+        <div className="absolute top-2 right-2">
+          {isReady && (
+            <Badge className="bg-green-500/90 text-white">
+              <Play className="h-3 w-3 mr-1" />
+              Ready
+            </Badge>
+          )}
+          {isProcessing && (
+            <Badge className="bg-blue-500/90 text-white">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Processing
+            </Badge>
+          )}
+          {!isReady && !isProcessing && (
+            <Badge variant="secondary">
+              <Clock className="h-3 w-3 mr-1" />
+              Pending
+            </Badge>
+          )}
         </div>
+
+        {/* Duration Badge */}
+        {recording.duration_seconds && (
+          <div className="absolute bottom-2 right-2">
+            <Badge variant="secondary" className="bg-black/60 text-white">
+              {formatDuration(recording.duration_seconds)}
+            </Badge>
+          </div>
+        )}
+
+        {/* Completed Indicator */}
+        {isCompleted && (
+          <div className="absolute top-2 left-2">
+            <Badge className="bg-green-500 text-white">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Watched
+            </Badge>
+          </div>
+        )}
+
+        {/* Play Overlay */}
+        {isReady && (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Button size="lg" className="rounded-full" onClick={onQuickWatch}>
+              <Play className="h-6 w-6" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <CardContent className="p-4">
+        <h3 className="font-semibold mb-1 line-clamp-1">{subjectName}</h3>
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-1">{courseName}</p>
+        
+        <div className="space-y-1 text-sm text-muted-foreground mb-3">
+          {scheduledAt && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5" />
+              {format(new Date(scheduledAt), "MMM d, yyyy")}
+            </div>
+          )}
+          {teacherName && (
+            <div className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5" />
+              {teacherName}
+            </div>
+          )}
+        </div>
+
+        {/* Watch Progress */}
+        {watchPercentage > 0 && !isCompleted && (
+          <div className="mb-3">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Progress</span>
+              <span>{Math.round(watchPercentage)}%</span>
+            </div>
+            <Progress value={watchPercentage} className="h-1.5" />
+          </div>
+        )}
+
+        {/* Quality Badges */}
+        {recording.available_qualities && recording.available_qualities.length > 0 && (
+          <div className="flex gap-1 mb-3 flex-wrap">
+            {(recording.available_qualities as string[]).map(q => (
+              <Badge key={q} variant="outline" className="text-xs">{q}</Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Action Button */}
+        {isReady ? (
+          <Button className="w-full" onClick={onWatch}>
+            <Play className="h-4 w-4 mr-2" />
+            {watchPercentage > 0 && !isCompleted ? 'Continue Watching' : 'Watch Recording'}
+          </Button>
+        ) : (
+          <Button className="w-full" variant="outline" disabled>
+            <Clock className="h-4 w-4 mr-2" />
+            {isProcessing ? 'Processing...' : 'Coming Soon'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

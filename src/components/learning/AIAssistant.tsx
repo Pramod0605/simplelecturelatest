@@ -122,14 +122,9 @@ export const AIAssistant = ({ topicId, courseContext }: AIAssistantProps) => {
   };
 
   return (
-    <Card className="h-[600px] flex flex-col group relative overflow-hidden transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-purple-50 to-indigo-50/50 dark:from-purple-950/40 dark:to-indigo-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-purple-500 before:to-indigo-500">
-      <CardHeader className="pb-3 pt-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl shrink-0 bg-purple-100 dark:bg-purple-900/50">
-            <Send className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <CardTitle>AI Assistant</CardTitle>
-        </div>
+    <Card className="h-[600px] flex flex-col">
+      <CardHeader>
+        <CardTitle>AI Assistant</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
         <ScrollArea className="flex-1 pr-4">
