@@ -373,10 +373,10 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                               </span>
                             </div>
                             {!isCorrect && q.correct_answer && (
-                              <div>
+                              <div className="flex items-baseline gap-1">
                                 <span className="text-muted-foreground">Correct: </span>
                                 <span className="font-medium text-green-600">
-                                  {q.correct_answer}
+                                  <MathpixRenderer mmdText={q.correct_answer} inline className="inline" />
                                 </span>
                               </div>
                             )}
