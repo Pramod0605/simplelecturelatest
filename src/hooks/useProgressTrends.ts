@@ -102,6 +102,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         assignmentSubmissionsResult,
         examTestResultsResult,
         proficiencyTestResultsResult,
+        attendanceResult,
       ] = await Promise.all([
         // MCQs (questions) for chapters and topics
         supabase.from("questions").select("id, chapter_id, topic_id"),
@@ -147,6 +148,12 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           .select("id, subject_id, paper_category, paper_id, submitted_at")
           .eq("student_id", user.id)
           .eq("paper_category", "proficiency"),
+        
+        // Class attendance
+        supabase
+          .from("class_attendance")
+          .select("id, status, scheduled_class_id")
+          .eq("student_id", user.id),
       ]);
 
       const allQuestions = questionsResult.data || [];
@@ -157,6 +164,14 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       const assignmentSubmissions = assignmentSubmissionsResult.data || [];
       const examTestResults = examTestResultsResult.data || [];
       const proficiencyTestResults = proficiencyTestResultsResult.data || [];
+      const attendanceData = attendanceResult.data || [];
+
+      // Calculate attendance stats
+      const totalClasses = attendanceData.length;
+      const presentClasses = attendanceData.filter((a: any) => a.status === 'present' || a.status === 'late').length;
+      const attendancePercentage = totalClasses > 0 
+        ? Math.round((presentClasses / totalClasses) * 100 * 10) / 10 
+        : 0;
       
       // Filter topic_videos to only those in our filtered topics
       const topicVideos = (allTopicVideos || []).filter((tv: any) => topicIds.includes(tv.topic_id));
@@ -427,6 +442,9 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           proficiencyCompleted: completedProficiencyTests,
           totalProficiencyTests,
           testsAttempted: examTestResults.length + proficiencyTestResults.length,
+          presentClasses,
+          totalClasses,
+          attendancePercentage,
         },
         chapterDetails: chapterProgressList,
       };
