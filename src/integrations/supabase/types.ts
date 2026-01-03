@@ -2559,6 +2559,72 @@ export type Database = {
           },
         ]
       }
+      paper_test_results: {
+        Row: {
+          answers: Json | null
+          created_at: string | null
+          graded_at: string | null
+          grading_status: string | null
+          id: string
+          paper_category: string
+          paper_id: string
+          percentage: number | null
+          score: number | null
+          student_id: string
+          subject_id: string | null
+          submitted_at: string | null
+          time_taken_seconds: number | null
+          total_questions: number
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string | null
+          graded_at?: string | null
+          grading_status?: string | null
+          id?: string
+          paper_category: string
+          paper_id: string
+          percentage?: number | null
+          score?: number | null
+          student_id: string
+          subject_id?: string | null
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+          total_questions: number
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string | null
+          graded_at?: string | null
+          grading_status?: string | null
+          id?: string
+          paper_category?: string
+          paper_id?: string
+          percentage?: number | null
+          score?: number | null
+          student_id?: string
+          subject_id?: string | null
+          submitted_at?: string | null
+          time_taken_seconds?: number | null
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_test_results_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "subject_previous_year_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paper_test_results_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "popular_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parsed_questions_pending: {
         Row: {
           approved_at: string | null
