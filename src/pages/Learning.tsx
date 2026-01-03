@@ -192,7 +192,7 @@ export default function Learning() {
           )}
 
           <aside className={cn(
-            "border-r bg-gradient-to-b from-card to-primary/5 overflow-y-auto transition-all duration-300 flex flex-col shadow-sm",
+            "border-r overflow-y-auto transition-all duration-300 flex flex-col",
             sidebarCollapsed ? "w-0 overflow-hidden" : "w-80"
           )}>
             <div className="p-4 flex-1">
