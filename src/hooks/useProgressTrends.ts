@@ -2,6 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, eachDayOfInterval, parseISO } from "date-fns";
 
+interface ChapterProgress {
+  id: string;
+  title: string;
+  subjectName: string;
+  progress: number;
+  videos: { completed: number; total: number };
+  mcqs: { completed: number; total: number };
+  exams: { completed: number; total: number };
+  assignments: { completed: number; total: number };
+}
+
 interface ProgressBreakdown {
   chapters: number;
   videos: number;
@@ -22,15 +33,6 @@ interface UseProgressTrendsOptions {
   subjectName?: string;
   days?: number;
 }
-
-// Weights for progress calculation
-const WEIGHTS = {
-  chapters: 0.35,
-  videos: 0.25,
-  mcqs: 0.15,
-  exams: 0.15,
-  assignments: 0.10,
-};
 
 export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
   const { courseId, subjectName, days = 30 } = options;
@@ -58,10 +60,10 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         }
       }
 
-      // Get total chapters from subject_chapters (the CORRECT table)
+      // Get all chapters from subject_chapters with video_id
       const { data: allSubjectChapters } = await supabase
         .from("subject_chapters")
-        .select("id, subject_id, title, popular_subjects!inner(id, name)");
+        .select("id, subject_id, title, video_id, popular_subjects!inner(id, name)");
 
       // Filter chapters by subject IDs from the course
       let filteredChapters = allSubjectChapters || [];
@@ -73,165 +75,222 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
       }
 
       const chapterIds = filteredChapters.map((c: any) => c.id);
-      const totalChapters = filteredChapters.length || 1;
 
-      // Get chapter-level videos (subject_chapters where video_id is not null)
-      const chapterVideos = filteredChapters.filter((c: any) => 
-        c.video_id && c.video_id.trim() !== ''
-      );
-      const chapterVideoIds = chapterVideos.map((c: any) => c.video_id);
-
-      // Get topic-level videos from subject_topics
+      // Get all topics for filtered chapters
       const { data: allTopics } = await supabase
         .from("subject_topics")
-        .select("id, chapter_id, video_id, subject_chapters!inner(id, subject_id, popular_subjects!inner(id, name))");
+        .select("id, chapter_id, video_id");
 
-      // Filter topics by chapter IDs
-      let filteredTopics = allTopics || [];
-      if (chapterIds.length > 0) {
-        filteredTopics = filteredTopics.filter((t: any) => chapterIds.includes(t.chapter_id));
-      }
-      if (subjectName && subjectName !== "all") {
-        filteredTopics = filteredTopics.filter((t: any) => 
-          t.subject_chapters?.popular_subjects?.name === subjectName
-        );
-      }
+      const filteredTopics = (allTopics || []).filter((t: any) => chapterIds.includes(t.chapter_id));
+      const topicIds = filteredTopics.map((t: any) => t.id);
 
-      // Topic videos (where video_id is not null)
-      const topicVideos = filteredTopics.filter((t: any) => 
-        t.video_id && t.video_id.trim() !== ''
-      );
-      const topicVideoIds = topicVideos.map((t: any) => t.video_id);
+      // Get MCQs (questions) for chapters and topics
+      const { data: allQuestions } = await supabase
+        .from("questions")
+        .select("id, chapter_id, topic_id");
 
-      // Combined total videos = chapter videos + topic videos
-      const allVideoIds = [...new Set([...chapterVideoIds, ...topicVideoIds])];
-      const totalVideos = allVideoIds.length || 1;
+      // Get assignments for chapters
+      const { data: allAssignments } = await supabase
+        .from("assignments")
+        .select("id, chapter_id, topic_id");
 
       // Fetch student progress data in parallel
       const [
         videoProgressResult,
-        examsResult,
-        assignmentsResult,
+        assignmentSubmissionsResult,
+        paperTestResultsResult,
       ] = await Promise.all([
-        // Video watch progress from ai_video_watch_logs (completion_percentage >= 80 = completed)
+        // Video watch progress from ai_video_watch_logs
         supabase
           .from("ai_video_watch_logs")
           .select("created_at, completion_percentage, subject_id, chapter_id, topic_id, video_title")
           .eq("student_id", user.id)
-          .gte("completion_percentage", 80)
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString()),
-
-        // Paper test results (PYQ, proficiency, exams)
-        supabase
-          .from("paper_test_results")
-          .select("submitted_at, percentage, subject_id, popular_subjects!inner(id, name)")
-          .eq("student_id", user.id)
-          .gte("submitted_at", startDate.toISOString())
-          .lte("submitted_at", endDate.toISOString()),
+          .gte("completion_percentage", 80),
 
         // Assignment submissions
         supabase
           .from("assignment_submissions")
-          .select("submitted_at, percentage, assignments!inner(course_id)")
-          .eq("student_id", user.id)
-          .gte("submitted_at", startDate.toISOString())
-          .lte("submitted_at", endDate.toISOString()),
+          .select("id, assignment_id, percentage, submitted_at")
+          .eq("student_id", user.id),
+
+        // Paper test results for MCQ/exam tracking
+        supabase
+          .from("paper_test_results")
+          .select("id, subject_id, questions, answers, score, total_questions, submitted_at")
+          .eq("student_id", user.id),
       ]);
 
-      // Filter watched videos by subject/chapter IDs for the selected course
-      const videos = (videoProgressResult.data || []).filter((v: any) => {
-        if (subjectIds.length > 0 && v.subject_id && !subjectIds.includes(v.subject_id)) return false;
-        if (chapterIds.length > 0 && v.chapter_id && !chapterIds.includes(v.chapter_id)) return false;
-        return true;
-      });
+      const watchedVideoLogs = videoProgressResult.data || [];
+      const assignmentSubmissions = assignmentSubmissionsResult.data || [];
+      const paperTestResults = paperTestResultsResult.data || [];
 
-      // Filter exams by subject IDs
-      const exams = (examsResult.data || []).filter((e: any) => {
-        if (subjectIds.length > 0 && !subjectIds.includes(e.subject_id)) return false;
-        if (subjectName && subjectName !== "all") {
-          return e.popular_subjects?.name === subjectName;
+      // Calculate per-chapter progress
+      const chapterProgressList: ChapterProgress[] = filteredChapters.map((chapter: any) => {
+        const chapterId = chapter.id;
+        const chapterTopics = filteredTopics.filter((t: any) => t.chapter_id === chapterId);
+        const chapterTopicIds = chapterTopics.map((t: any) => t.id);
+
+        // Videos for this chapter (chapter-level + topic-level)
+        const chapterHasVideo = chapter.video_id && chapter.video_id.trim() !== '';
+        const topicVideosCount = chapterTopics.filter((t: any) => t.video_id && t.video_id.trim() !== '').length;
+        const totalVideos = (chapterHasVideo ? 1 : 0) + topicVideosCount;
+
+        // Watched videos for this chapter
+        const watchedVideosForChapter = watchedVideoLogs.filter((v: any) => 
+          v.chapter_id === chapterId || chapterTopicIds.includes(v.topic_id)
+        );
+        // Count unique videos watched (by video_title to avoid duplicates)
+        const uniqueWatchedVideos = new Set(watchedVideosForChapter.map((v: any) => v.video_title));
+        const completedVideos = Math.min(uniqueWatchedVideos.size, totalVideos);
+
+        // MCQs for this chapter (from questions table)
+        const chapterQuestions = (allQuestions || []).filter((q: any) => 
+          q.chapter_id === chapterId || chapterTopicIds.includes(q.topic_id)
+        );
+        const totalMcqs = chapterQuestions.length;
+
+        // MCQs completed - check paper_test_results for this subject
+        const subjectId = chapter.subject_id;
+        const subjectPaperTests = paperTestResults.filter((p: any) => p.subject_id === subjectId);
+        const mcqsAttempted = subjectPaperTests.reduce((sum: number, p: any) => sum + (p.total_questions || 0), 0);
+        const completedMcqs = Math.min(mcqsAttempted, totalMcqs);
+
+        // Exams - using paper_test_results as exams (each test is like an exam)
+        const totalExams = subjectPaperTests.length > 0 ? 1 : 0; // Consider as 1 exam per subject with tests
+        const completedExams = subjectPaperTests.length > 0 ? 1 : 0;
+
+        // Assignments for this chapter
+        const chapterAssignments = (allAssignments || []).filter((a: any) => 
+          a.chapter_id === chapterId || chapterTopicIds.includes(a.topic_id)
+        );
+        const totalAssignments = chapterAssignments.length;
+        const chapterAssignmentIds = chapterAssignments.map((a: any) => a.id);
+        const completedAssignments = assignmentSubmissions.filter((s: any) => 
+          chapterAssignmentIds.includes(s.assignment_id)
+        ).length;
+
+        // Calculate chapter progress as average of component percentages
+        const components: number[] = [];
+        
+        if (totalVideos > 0) {
+          components.push((completedVideos / totalVideos) * 100);
         }
-        return true;
+        if (totalMcqs > 0) {
+          components.push((completedMcqs / totalMcqs) * 100);
+        }
+        if (totalExams > 0) {
+          components.push((completedExams / totalExams) * 100);
+        }
+        if (totalAssignments > 0) {
+          components.push((completedAssignments / totalAssignments) * 100);
+        }
+
+        const chapterProgress = components.length > 0 
+          ? components.reduce((a, b) => a + b, 0) / components.length 
+          : 0;
+
+        return {
+          id: chapterId,
+          title: chapter.title,
+          subjectName: chapter.popular_subjects?.name || "Unknown",
+          progress: Math.round(chapterProgress * 10) / 10,
+          videos: { completed: completedVideos, total: totalVideos },
+          mcqs: { completed: completedMcqs, total: totalMcqs },
+          exams: { completed: completedExams, total: totalExams },
+          assignments: { completed: completedAssignments, total: totalAssignments },
+        };
       });
 
-      // Filter assignments by course
-      const assignments = (assignmentsResult.data || []).filter((a: any) => {
-        if (courseId && courseId !== "all" && a.assignments?.course_id !== courseId) return false;
-        return true;
-      });
+      // Calculate overall progress as average of chapter progress
+      const chaptersWithContent = chapterProgressList.filter(c => 
+        c.videos.total > 0 || c.mcqs.total > 0 || c.exams.total > 0 || c.assignments.total > 0
+      );
+      
+      const overallProgress = chaptersWithContent.length > 0
+        ? chaptersWithContent.reduce((sum, c) => sum + c.progress, 0) / chaptersWithContent.length
+        : 0;
 
-      // Generate date range
+      // Calculate totals
+      const totalChapters = filteredChapters.length;
+      const completedChapters = chapterProgressList.filter(c => c.progress >= 100).length;
+      
+      const totalVideos = chapterProgressList.reduce((sum, c) => sum + c.videos.total, 0);
+      const completedVideos = chapterProgressList.reduce((sum, c) => sum + c.videos.completed, 0);
+      
+      const totalMcqs = chapterProgressList.reduce((sum, c) => sum + c.mcqs.total, 0);
+      const completedMcqs = chapterProgressList.reduce((sum, c) => sum + c.mcqs.completed, 0);
+      
+      const totalExams = chapterProgressList.reduce((sum, c) => sum + c.exams.total, 0);
+      const completedExams = chapterProgressList.reduce((sum, c) => sum + c.exams.completed, 0);
+      
+      const totalAssignments = chapterProgressList.reduce((sum, c) => sum + c.assignments.total, 0);
+      const completedAssignments = chapterProgressList.reduce((sum, c) => sum + c.assignments.completed, 0);
+
+      // Generate trend data (simplified - based on overall progress over time)
       const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-
-      // Calculate cumulative progress for each day
-      // Note: Chapter completion tracking not yet implemented for subject_chapters
-      let cumulativeChapters = 0;
-      let cumulativeVideos = 0;
-      let allMcqScores: number[] = [];
-      let allExamScores: number[] = [];
-      let allAssignmentScores: number[] = [];
-
+      
+      // For trend, we'll calculate cumulative progress based on when videos were watched
       const trendData: ProgressTrendPoint[] = dateRange.map((date) => {
         const dateStr = format(date, "yyyy-MM-dd");
-
-        // Videos completed on this date (from ai_video_watch_logs)
-        const videosOnDate = videos.filter((v: any) => 
-          v.created_at && format(parseISO(v.created_at), "yyyy-MM-dd") === dateStr
-        ).length;
-        cumulativeVideos += videosOnDate;
-
-        // Exam scores on this date
-        const examsOnDate = exams.filter((e: any) => 
-          e.submitted_at && format(parseISO(e.submitted_at), "yyyy-MM-dd") === dateStr
-        );
-        examsOnDate.forEach((e: any) => {
-          if (e.percentage !== null) {
-            allExamScores.push(e.percentage);
-          }
+        
+        // Count videos watched up to this date
+        const videosWatchedByDate = watchedVideoLogs.filter((v: any) => {
+          if (!v.created_at) return false;
+          const watchDate = format(parseISO(v.created_at), "yyyy-MM-dd");
+          return watchDate <= dateStr && (
+            chapterIds.includes(v.chapter_id) || 
+            topicIds.includes(v.topic_id) ||
+            subjectIds.includes(v.subject_id)
+          );
         });
+        
+        const uniqueVideosWatched = new Set(videosWatchedByDate.map((v: any) => v.video_title)).size;
+        const videoProgress = totalVideos > 0 ? (uniqueVideosWatched / totalVideos) * 100 : 0;
 
-        // Assignment scores on this date
-        const assignmentsOnDate = assignments.filter((a: any) => 
-          a.submitted_at && format(parseISO(a.submitted_at), "yyyy-MM-dd") === dateStr
-        );
-        assignmentsOnDate.forEach((a: any) => {
-          if (a.percentage !== null) {
-            allAssignmentScores.push(a.percentage);
-          }
-        });
+        // Count MCQs attempted up to this date
+        const mcqsByDate = paperTestResults.filter((p: any) => {
+          if (!p.submitted_at) return false;
+          return format(parseISO(p.submitted_at), "yyyy-MM-dd") <= dateStr && 
+            subjectIds.includes(p.subject_id);
+        }).reduce((sum: number, p: any) => sum + (p.total_questions || 0), 0);
+        const mcqProgress = totalMcqs > 0 ? Math.min((mcqsByDate / totalMcqs) * 100, 100) : 0;
 
-        // Calculate percentages
-        const chapterProgress = (cumulativeChapters / totalChapters) * 100;
-        const videoProgress = (cumulativeVideos / totalVideos) * 100;
-        const mcqProgress = allMcqScores.length > 0 
-          ? allMcqScores.reduce((a, b) => a + b, 0) / allMcqScores.length 
-          : 0;
-        const examProgress = allExamScores.length > 0 
-          ? allExamScores.reduce((a, b) => a + b, 0) / allExamScores.length 
-          : 0;
-        const assignmentProgress = allAssignmentScores.length > 0 
-          ? allAssignmentScores.reduce((a, b) => a + b, 0) / allAssignmentScores.length 
-          : 0;
+        // Count exams (paper tests) completed up to this date
+        const examsByDate = paperTestResults.filter((p: any) => {
+          if (!p.submitted_at) return false;
+          return format(parseISO(p.submitted_at), "yyyy-MM-dd") <= dateStr &&
+            subjectIds.includes(p.subject_id);
+        }).length;
+        const examProgress = totalExams > 0 ? (Math.min(examsByDate, totalExams) / totalExams) * 100 : 0;
 
-        // Calculate weighted progress
-        const weightedProgress = 
-          (Math.min(chapterProgress, 100) * WEIGHTS.chapters) +
-          (Math.min(videoProgress, 100) * WEIGHTS.videos) +
-          (mcqProgress * WEIGHTS.mcqs) +
-          (examProgress * WEIGHTS.exams) +
-          (assignmentProgress * WEIGHTS.assignments);
+        // Count assignments completed up to this date
+        const assignmentsByDate = assignmentSubmissions.filter((a: any) => {
+          if (!a.submitted_at) return false;
+          return format(parseISO(a.submitted_at), "yyyy-MM-dd") <= dateStr;
+        }).length;
+        const assignmentProgress = totalAssignments > 0 ? (assignmentsByDate / totalAssignments) * 100 : 0;
+
+        // Calculate overall progress for this date
+        const progressComponents: number[] = [];
+        if (totalVideos > 0) progressComponents.push(videoProgress);
+        if (totalMcqs > 0) progressComponents.push(mcqProgress);
+        if (totalExams > 0) progressComponents.push(examProgress);
+        if (totalAssignments > 0) progressComponents.push(assignmentProgress);
+        
+        const dayProgress = progressComponents.length > 0
+          ? progressComponents.reduce((a, b) => a + b, 0) / progressComponents.length
+          : 0;
 
         return {
           date: dateStr,
           displayDate: format(date, "MMM d"),
-          progress: Math.round(weightedProgress * 10) / 10,
+          progress: Math.round(Math.min(dayProgress, 100) * 10) / 10,
           breakdown: {
-            chapters: Math.round(Math.min(chapterProgress, 100) * 10) / 10,
+            chapters: Math.round((completedChapters / Math.max(totalChapters, 1)) * 100 * 10) / 10,
             videos: Math.round(Math.min(videoProgress, 100) * 10) / 10,
-            mcqs: Math.round(mcqProgress * 10) / 10,
-            exams: Math.round(examProgress * 10) / 10,
-            assignments: Math.round(assignmentProgress * 10) / 10,
+            mcqs: Math.round(Math.min(mcqProgress, 100) * 10) / 10,
+            exams: Math.round(Math.min(examProgress, 100) * 10) / 10,
+            assignments: Math.round(Math.min(assignmentProgress, 100) * 10) / 10,
           },
         };
       });
@@ -245,7 +304,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
 
       return {
         trendData: sampledData,
-        currentProgress: latestProgress?.progress || 0,
+        currentProgress: Math.round(overallProgress * 10) / 10,
         breakdown: latestProgress?.breakdown || {
           chapters: 0,
           videos: 0,
@@ -254,13 +313,19 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
           assignments: 0,
         },
         totals: {
-          chaptersCompleted: cumulativeChapters,
+          chaptersCompleted: completedChapters,
           totalChapters,
-          videosWatched: cumulativeVideos,
+          videosWatched: completedVideos,
           totalVideos,
-          testsAttempted: allMcqScores.length + allExamScores.length,
-          assignmentsSubmitted: allAssignmentScores.length,
+          mcqsCompleted: completedMcqs,
+          totalMcqs,
+          examsCompleted: completedExams,
+          totalExams,
+          assignmentsCompleted: completedAssignments,
+          totalAssignments,
+          testsAttempted: paperTestResults.length,
         },
+        chapterDetails: chapterProgressList,
       };
     },
     staleTime: 5 * 60 * 1000,
