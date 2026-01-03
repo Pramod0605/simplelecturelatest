@@ -140,11 +140,16 @@ export const MCQTest = ({ topicId, chapterId, chapterOnly }: MCQTestProps) => {
       : questionCounts?.[difficulty] || 0;
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Start MCQ Test</CardTitle>
+      <Card className="group relative overflow-hidden transition-all duration-300 border-0 shadow-md hover:shadow-xl bg-gradient-to-br from-green-50 to-emerald-50/50 dark:from-green-950/40 dark:to-emerald-950/30 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-green-500 before:to-emerald-500">
+        <CardHeader className="pb-3 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 bg-green-100 dark:bg-green-900/50">
+              <Trophy className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <CardTitle>Start MCQ Test</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pb-6">
           <div className="space-y-2">
             <Label>Difficulty Level</Label>
             <Select value={difficulty} onValueChange={(v: DifficultyLevel) => setDifficulty(v)}>
@@ -193,7 +198,7 @@ export const MCQTest = ({ topicId, chapterId, chapterOnly }: MCQTestProps) => {
 
           <Button 
             onClick={startTest} 
-            className="w-full" 
+            className="w-full bg-green-600 hover:bg-green-700 text-white" 
             size="lg"
             disabled={availableCount === 0}
           >
