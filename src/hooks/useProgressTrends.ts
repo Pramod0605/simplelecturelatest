@@ -19,7 +19,7 @@ interface ProgressTrendPoint {
 
 interface UseProgressTrendsOptions {
   courseId?: string;
-  subjectId?: string;
+  subjectName?: string;
   days?: number;
 }
 
@@ -33,10 +33,10 @@ const WEIGHTS = {
 };
 
 export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
-  const { courseId, subjectId, days = 30 } = options;
+  const { courseId, subjectName, days = 30 } = options;
 
   return useQuery({
-    queryKey: ["progress-trends", courseId, subjectId, days],
+    queryKey: ["progress-trends", courseId, subjectName, days],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -57,7 +57,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // Chapter completions with dates
         supabase
           .from("student_progress")
-          .select("completed_at, chapter_id, is_completed, chapters!inner(course_id, subject_id)")
+          .select("completed_at, chapter_id, is_completed, chapters!inner(course_id, subject)")
           .eq("student_id", user.id)
           .eq("is_completed", true)
           .gte("completed_at", startDate.toISOString())
@@ -66,7 +66,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // Video watch progress
         supabase
           .from("video_watch_progress")
-          .select("last_watched_at, completed, topic_videos!inner(topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject_id)))")
+          .select("last_watched_at, completed, topic_videos!inner(topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject)))")
           .eq("user_id", user.id)
           .eq("completed", true)
           .gte("last_watched_at", startDate.toISOString())
@@ -75,15 +75,15 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // MCQ test submissions
         supabase
           .from("test_submissions")
-          .select("submitted_at, score, total_questions, topics!inner(chapter_id, chapters!inner(course_id, subject_id))")
+          .select("submitted_at, score, total_questions, topics!inner(chapter_id, chapters!inner(course_id, subject))")
           .eq("student_id", user.id)
           .gte("submitted_at", startDate.toISOString())
           .lte("submitted_at", endDate.toISOString()),
 
-        // Paper test results (PYQ, proficiency, exams)
+        // Paper test results (PYQ, proficiency, exams) - uses popular_subjects table
         supabase
           .from("paper_test_results")
-          .select("submitted_at, percentage, subject_id, subjects!inner(course_id)")
+          .select("submitted_at, percentage, subject_id, popular_subjects!inner(id, name)")
           .eq("student_id", user.id)
           .gte("submitted_at", startDate.toISOString())
           .lte("submitted_at", endDate.toISOString()),
@@ -91,7 +91,7 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // Assignment submissions
         supabase
           .from("assignment_submissions")
-          .select("submitted_at, percentage, assignments!inner(course_id)")
+          .select("submitted_at, percentage, assignments!inner(course_id, chapter_id, chapters!inner(subject))")
           .eq("student_id", user.id)
           .gte("submitted_at", startDate.toISOString())
           .lte("submitted_at", endDate.toISOString()),
@@ -99,56 +99,57 @@ export const useProgressTrends = (options: UseProgressTrendsOptions = {}) => {
         // Total chapters for calculating percentage
         supabase
           .from("chapters")
-          .select("id, course_id, subject_id"),
+          .select("id, course_id, subject"),
 
         // Total videos for calculating percentage
         supabase
           .from("topic_videos")
-          .select("id, topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject_id))"),
+          .select("id, topic_id, topics!inner(chapter_id, chapters!inner(course_id, subject))"),
       ]);
 
-      // Apply filters
-      const filterByCourseAndSubject = (item: any, courseKey: string, subjectKey: string) => {
-        if (courseId && courseId !== "all" && item[courseKey] !== courseId) return false;
-        if (subjectId && subjectId !== "all" && item[subjectKey] !== subjectId) return false;
+      // Apply filters - using subject (text) instead of subject_id
+      const filterByCourseAndSubject = (courseIdValue: string | undefined, subjectValue: string | undefined) => {
+        if (courseId && courseId !== "all" && courseIdValue !== courseId) return false;
+        if (subjectName && subjectName !== "all" && subjectValue !== subjectName) return false;
         return true;
       };
 
       // Filter chapters
       const chapters = (chaptersResult.data || []).filter((c: any) => 
-        filterByCourseAndSubject(c.chapters, "course_id", "subject_id")
+        filterByCourseAndSubject(c.chapters?.course_id, c.chapters?.subject)
       );
 
       // Filter videos
       const videos = (videosResult.data || []).filter((v: any) => 
-        filterByCourseAndSubject(v.topic_videos?.topics?.chapters, "course_id", "subject_id")
+        filterByCourseAndSubject(v.topic_videos?.topics?.chapters?.course_id, v.topic_videos?.topics?.chapters?.subject)
       );
 
       // Filter MCQs
       const mcqs = (mcqsResult.data || []).filter((m: any) => 
-        filterByCourseAndSubject(m.topics?.chapters, "course_id", "subject_id")
+        filterByCourseAndSubject(m.topics?.chapters?.course_id, m.topics?.chapters?.subject)
       );
 
-      // Filter exams
+      // Filter exams - popular_subjects has name field
       const exams = (examsResult.data || []).filter((e: any) => {
-        if (courseId && courseId !== "all" && e.subjects?.course_id !== courseId) return false;
-        if (subjectId && subjectId !== "all" && e.subject_id !== subjectId) return false;
+        // For exams, we can't filter by courseId easily, but we can filter by subject name
+        if (subjectName && subjectName !== "all" && e.popular_subjects?.name !== subjectName) return false;
         return true;
       });
 
       // Filter assignments
       const assignments = (assignmentsResult.data || []).filter((a: any) => {
         if (courseId && courseId !== "all" && a.assignments?.course_id !== courseId) return false;
+        if (subjectName && subjectName !== "all" && a.assignments?.chapters?.subject !== subjectName) return false;
         return true;
       });
 
       // Get totals for percentage calculation
       const totalChapters = (totalChaptersResult.data || []).filter((c: any) => 
-        filterByCourseAndSubject(c, "course_id", "subject_id")
+        filterByCourseAndSubject(c.course_id, c.subject)
       ).length || 1;
 
       const totalVideos = (totalVideosResult.data || []).filter((v: any) => 
-        filterByCourseAndSubject(v.topics?.chapters, "course_id", "subject_id")
+        filterByCourseAndSubject(v.topics?.chapters?.course_id, v.topics?.chapters?.subject)
       ).length || 1;
 
       // Generate date range

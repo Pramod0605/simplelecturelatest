@@ -10,6 +10,7 @@ interface ProgressFiltersProps {
   onCourseChange: (value: string) => void;
   onSubjectChange: (value: string) => void;
   onReset: () => void;
+  onCourseChangeCallback?: () => void;
 }
 
 export const ProgressFilters = ({
@@ -20,10 +21,15 @@ export const ProgressFilters = ({
   onCourseChange,
   onSubjectChange,
   onReset,
+  onCourseChangeCallback,
 }: ProgressFiltersProps) => {
+  const handleCourseChange = (value: string) => {
+    onCourseChange(value);
+    onCourseChangeCallback?.();
+  };
   return (
     <div className="flex flex-wrap items-center gap-3 p-4 bg-muted/50 rounded-lg">
-      <Select value={selectedCourse} onValueChange={onCourseChange}>
+      <Select value={selectedCourse} onValueChange={handleCourseChange}>
         <SelectTrigger className="w-[200px] bg-background">
           <SelectValue placeholder="All Courses" />
         </SelectTrigger>
