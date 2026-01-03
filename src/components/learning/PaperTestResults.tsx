@@ -350,6 +350,14 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
                                 src={imageAnswer} 
                                 alt="Your answer" 
                                 className="mt-1 max-h-48 rounded-lg border shadow-sm"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'mt-1 p-4 rounded-lg border bg-muted text-muted-foreground text-sm';
+                                  fallback.textContent = 'Image could not be loaded';
+                                  target.parentNode?.appendChild(fallback);
+                                }}
                               />
                             </div>
                           )}
