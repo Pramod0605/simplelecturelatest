@@ -143,32 +143,39 @@ export function PaperTestResults({ subjectId }: PaperTestResultsProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">My Results</h2>
-        <Badge variant="secondary">{results.length} Tests Completed</Badge>
-      </div>
-
       <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as ResultCategory)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all" className="gap-2">
+        <TabsList className="grid w-full grid-cols-4 p-1.5 h-auto bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-sm">
+          <TabsTrigger 
+            value="all" 
+            className="gap-2 py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
+          >
             All
             {getCategoryCount("all") > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">{getCategoryCount("all")}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="previous_year" className="gap-2">
+          <TabsTrigger 
+            value="previous_year" 
+            className="gap-2 py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+          >
             PYQ
             {getCategoryCount("previous_year") > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">{getCategoryCount("previous_year")}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="proficiency" className="gap-2">
+          <TabsTrigger 
+            value="proficiency" 
+            className="gap-2 py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 hover:text-purple-600 dark:hover:text-purple-400"
+          >
             Proficiency
             {getCategoryCount("proficiency") > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">{getCategoryCount("proficiency")}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="exam" className="gap-2">
+          <TabsTrigger 
+            value="exam" 
+            className="gap-2 py-2.5 rounded-lg font-medium transition-all duration-300 data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-slate-800 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400 hover:text-amber-600 dark:hover:text-amber-400"
+          >
             Exam
             {getCategoryCount("exam") > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">{getCategoryCount("exam")}</Badge>
